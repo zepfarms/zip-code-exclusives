@@ -17,6 +17,9 @@ const ZipAvailableSection = ({ zipCode, handleClaimArea }: ZipAvailableSectionPr
       <p className="mt-2 text-green-700">
         You can claim exclusive rights to leads in this zip code for just $199/month.
       </p>
+      <p className="mt-1 text-sm text-green-600">
+        Initial payment today. Your first leads will be delivered in 7 days.
+      </p>
       <div className="mt-4">
         <Button 
           className="w-full bg-accent-600 hover:bg-accent-700"

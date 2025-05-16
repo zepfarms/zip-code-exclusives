@@ -86,11 +86,16 @@ const Payment = () => {
               </div>
               <div className="flex justify-between text-lg font-semibold">
                 <span>Total Today:</span>
-                <span>$0.00</span>
+                <span>$199.00</span>
               </div>
-              <p className="mt-4 text-sm text-gray-500">
-                Your subscription will begin with a 7-day free trial. You can cancel anytime before the trial ends.
-              </p>
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded text-sm text-blue-700">
+                <p className="font-medium mb-1">Important Information:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Your subscription begins immediately after payment.</li>
+                  <li>First leads will be delivered in 7 days.</li>
+                  <li>Your next payment will be due in 37 days (30 days after your first leads).</li>
+                </ul>
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -106,7 +111,7 @@ const Payment = () => {
                   </>
                 ) : (
                   <>
-                    Start Your 7-Day Free Trial
+                    Subscribe Now - $199/month
                   </>
                 )}
               </Button>
@@ -124,7 +129,7 @@ const Payment = () => {
           </CardContent>
           <CardFooter className="text-xs text-gray-500 text-center">
             By completing your purchase, you agree to our Terms of Service and Privacy Policy.
-            Your subscription will automatically renew each month (at $199/month) after the 7-day trial.
+            Your subscription will automatically renew each month (at $199/month).
           </CardFooter>
         </Card>
       </main>

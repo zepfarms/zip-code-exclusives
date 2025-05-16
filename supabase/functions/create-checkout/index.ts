@@ -70,7 +70,7 @@ serve(async (req: Request) => {
       customerId = newCustomer.id;
     }
 
-    // Create checkout session
+    // Create checkout session - charge immediately but set metadata for the 7-day waiting period
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],
@@ -80,12 +80,11 @@ serve(async (req: Request) => {
             currency: "usd",
             product_data: {
               name: `Exclusive Territory Access - Zip Code ${zipCode}`,
-              description: "Monthly subscription for exclusive lead generation rights",
+              description: "Monthly subscription for exclusive lead generation rights (First leads in 7 days)",
             },
             unit_amount: 19900, // $199.00 in cents
             recurring: {
               interval: "month",
-              trial_period_days: 7,
             },
           },
           quantity: 1,
@@ -97,11 +96,13 @@ serve(async (req: Request) => {
       metadata: {
         userId: user.id,
         zipCode: zipCode,
+        leadsStartDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
       },
       subscription_data: {
         metadata: {
           userId: user.id,
           zipCode: zipCode,
+          leadsStartDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
         },
       },
     });

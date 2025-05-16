@@ -55,9 +55,13 @@ const PaymentSuccess = () => {
           return;
         }
 
-        // Calculate next billing date (7 days from now)
+        // Calculate leads start date (7 days from now)
+        const leadsStartDate = new Date();
+        leadsStartDate.setDate(leadsStartDate.getDate() + 7);
+        
+        // Calculate next billing date (37 days from now = 7 days wait + 30 days service)
         const nextBillingDate = new Date();
-        nextBillingDate.setDate(nextBillingDate.getDate() + 7);
+        nextBillingDate.setDate(nextBillingDate.getDate() + 37);
 
         // Then, create a new territory for the user
         const { error: territoryError } = await supabase
@@ -66,7 +70,7 @@ const PaymentSuccess = () => {
             zip_code: zipCode,
             user_id: userId,
             active: true,
-            start_date: new Date().toISOString(),
+            start_date: leadsStartDate.toISOString(),
             next_billing_date: nextBillingDate.toISOString()
           });
 
@@ -145,17 +149,17 @@ const PaymentSuccess = () => {
                         <span className="font-medium">Zip Code {zipCode}</span>
                       </li>
                       <li className="flex justify-between">
-                        <span>Free Trial Period:</span>
-                        <span className="font-medium">7 days</span>
+                        <span>First Leads Delivery:</span>
+                        <span className="font-medium">{new Date(new Date().setDate(new Date().getDate() + 7)).toLocaleDateString()}</span>
                       </li>
                       <li className="flex justify-between">
                         <span>Monthly Subscription:</span>
                         <span className="font-medium">$199.00</span>
                       </li>
                       <li className="flex justify-between">
-                        <span>First Billing Date:</span>
+                        <span>Next Billing Date:</span>
                         <span className="font-medium">
-                          {new Date(new Date().setDate(new Date().getDate() + 7)).toLocaleDateString()}
+                          {new Date(new Date().setDate(new Date().getDate() + 37)).toLocaleDateString()}
                         </span>
                       </li>
                     </ul>
