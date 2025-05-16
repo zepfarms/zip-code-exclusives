@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -11,6 +11,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useNavigate } from 'react-router-dom';
+import { Loader } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const ZipCodeChecker = () => {
   const [zipCode, setZipCode] = useState('');
@@ -18,19 +21,44 @@ const ZipCodeChecker = () => {
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
   const [waitlistEmail, setWaitlistEmail] = useState('');
   const [isSubmittingWaitlist, setIsSubmittingWaitlist] = useState(false);
+  const navigate = useNavigate();
 
-  // This is a mock function. In production, this would check against your database
-  const checkZipCodeAvailability = (zip: string) => {
-    // For demo purposes, we'll just use random availability
-    // In production, you'd check against your database
+  const checkZipCodeAvailability = async (zip: string) => {
     setIsChecking(true);
     
-    setTimeout(() => {
-      // For demo purposes: Zip codes starting with even numbers are available
-      const isZipAvailable = parseInt(zip[0]) % 2 === 0;
-      setIsAvailable(isZipAvailable);
+    try {
+      // First check if the zip code exists in our database
+      const { data: zipCodeData, error: zipCodeError } = await supabase
+        .from('zip_codes')
+        .select('is_available')
+        .eq('code', zip)
+        .single();
+
+      if (zipCodeError) {
+        if (zipCodeError.code === 'PGRST116') {
+          // ZIP code not found in database, add it as available
+          const { error: insertError } = await supabase
+            .from('zip_codes')
+            .insert({ code: zip, is_available: true });
+            
+          if (insertError) {
+            throw new Error(insertError.message);
+          }
+          
+          setIsAvailable(true);
+        } else {
+          throw new Error(zipCodeError.message);
+        }
+      } else {
+        // ZIP code found, check availability
+        setIsAvailable(zipCodeData.is_available);
+      }
+    } catch (error) {
+      console.error("Error checking zip code:", error);
+      toast.error("Failed to check zip code: " + (error.message || "Unknown error"));
+    } finally {
       setIsChecking(false);
-    }, 1000);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -45,7 +73,7 @@ const ZipCodeChecker = () => {
     checkZipCodeAvailability(zipCode);
   };
 
-  const handleJoinWaitlist = (e: React.FormEvent) => {
+  const handleJoinWaitlist = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
@@ -56,12 +84,31 @@ const ZipCodeChecker = () => {
     
     setIsSubmittingWaitlist(true);
     
-    // In production, you would send this to your backend
-    setTimeout(() => {
-      setIsSubmittingWaitlist(false);
+    try {
+      // Add to waitlist table in Supabase
+      const { error } = await supabase
+        .from('waitlist')
+        .insert({
+          email: waitlistEmail,
+          zip_code: zipCode
+        });
+        
+      if (error) {
+        throw new Error(error.message);
+      }
+      
       toast.success("You've been added to the waitlist!");
       setWaitlistEmail('');
-    }, 1000);
+    } catch (error) {
+      console.error("Error joining waitlist:", error);
+      toast.error("Failed to join waitlist: " + (error.message || "Unknown error"));
+    } finally {
+      setIsSubmittingWaitlist(false);
+    }
+  };
+
+  const handleClaimArea = () => {
+    navigate('/payment', { state: { zipCode } });
   };
 
   return (
@@ -92,7 +139,14 @@ const ZipCodeChecker = () => {
             className="w-full bg-brand-700 hover:bg-brand-800"
             disabled={isChecking}
           >
-            {isChecking ? 'Checking...' : 'Check Availability'}
+            {isChecking ? (
+              <>
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+                Checking...
+              </>
+            ) : (
+              'Check Availability'
+            )}
           </Button>
         </form>
 
@@ -105,7 +159,10 @@ const ZipCodeChecker = () => {
               You can claim exclusive rights to leads in this zip code for just $199/month.
             </p>
             <div className="mt-4">
-              <Button className="w-full bg-accent-600 hover:bg-accent-700">
+              <Button 
+                className="w-full bg-accent-600 hover:bg-accent-700"
+                onClick={handleClaimArea}
+              >
                 Claim This Area Now
               </Button>
             </div>
@@ -143,7 +200,14 @@ const ZipCodeChecker = () => {
                 className="w-full border-teal-700 text-teal-700 hover:bg-teal-50"
                 disabled={isSubmittingWaitlist}
               >
-                {isSubmittingWaitlist ? 'Submitting...' : 'Join Waitlist'}
+                {isSubmittingWaitlist ? (
+                  <>
+                    <Loader className="mr-2 h-4 w-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  'Join Waitlist'
+                )}
               </Button>
             </form>
           </div>

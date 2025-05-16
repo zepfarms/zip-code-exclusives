@@ -9,7 +9,171 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      leads: {
+        Row: {
+          address: string | null
+          archived: boolean | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          status: string | null
+          territory_zip_code: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          address?: string | null
+          archived?: boolean | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          status?: string | null
+          territory_zip_code: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          address?: string | null
+          archived?: boolean | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          status?: string | null
+          territory_zip_code?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      territories: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          id: string
+          next_billing_date: string | null
+          start_date: string | null
+          user_id: string
+          zip_code: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          id?: string
+          next_billing_date?: string | null
+          start_date?: string | null
+          user_id: string
+          zip_code: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          id?: string
+          next_billing_date?: string | null
+          start_date?: string | null
+          user_id?: string
+          zip_code?: string
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          company: string | null
+          created_at: string
+          first_name: string | null
+          id: string
+          is_admin: boolean | null
+          last_name: string | null
+          notification_email: boolean | null
+          notification_sms: boolean | null
+          phone: string | null
+          stripe_customer_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          first_name?: string | null
+          id: string
+          is_admin?: boolean | null
+          last_name?: string | null
+          notification_email?: boolean | null
+          notification_sms?: boolean | null
+          phone?: string | null
+          stripe_customer_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          is_admin?: boolean | null
+          last_name?: string | null
+          notification_email?: boolean | null
+          notification_sms?: boolean | null
+          phone?: string | null
+          stripe_customer_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      waitlist: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          zip_code: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          zip_code: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          zip_code?: string
+        }
+        Relationships: []
+      }
+      zip_codes: {
+        Row: {
+          city: string | null
+          code: string
+          created_at: string
+          id: number
+          is_available: boolean | null
+          state: string | null
+        }
+        Insert: {
+          city?: string | null
+          code: string
+          created_at?: string
+          id?: number
+          is_available?: boolean | null
+          state?: string | null
+        }
+        Update: {
+          city?: string | null
+          code?: string
+          created_at?: string
+          id?: number
+          is_available?: boolean | null
+          state?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

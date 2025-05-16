@@ -2,6 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { CheckCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Pricing = () => {
   return (
@@ -34,9 +35,11 @@ const Pricing = () => {
                 No contracts, cancel anytime.
               </p>
               
-              <Button className="px-12 py-6 text-lg bg-accent-600 hover:bg-accent-700">
-                Check Area Availability
-              </Button>
+              <Link to="/check-availability">
+                <Button className="px-12 py-6 text-lg bg-accent-600 hover:bg-accent-700">
+                  Check Area Availability
+                </Button>
+              </Link>
             </div>
             
             <div className="border-t border-gray-100 p-8 md:p-12">
@@ -76,8 +79,8 @@ const Pricing = () => {
                 <div className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" />
                   <div>
-                    <h4 className="font-medium">No Setup Fees</h4>
-                    <p className="text-gray-600 mt-1">Your first 7 days are dedicated to setup with no charge.</p>
+                    <h4 className="font-medium">7-Day Free Trial</h4>
+                    <p className="text-gray-600 mt-1">Try the service risk-free for 7 days.</p>
                   </div>
                 </div>
                 
