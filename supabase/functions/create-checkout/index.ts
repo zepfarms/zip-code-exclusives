@@ -92,8 +92,8 @@ serve(async (req: Request) => {
         },
       ],
       mode: "subscription",
-      success_url: `${req.headers.get("origin")}/payment-success?zip_code=${zipCode}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get("origin")}/payment?zip_code=${zipCode}`,
+      success_url: `https://leadxclusive.com/payment-success?zip_code=${zipCode}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `https://leadxclusive.com/payment?zip_code=${zipCode}`,
       metadata: {
         userId: user.id,
         zipCode: zipCode,
