@@ -1,7 +1,5 @@
 
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Card,
   CardContent,
@@ -12,15 +10,15 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useNavigate } from 'react-router-dom';
-import { Loader } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import ZipCodeForm from './zip-checker/ZipCodeForm';
+import ZipAvailableSection from './zip-checker/ZipAvailableSection';
+import ZipWaitlistSection from './zip-checker/ZipWaitlistSection';
 
 const ZipCodeChecker = () => {
   const [zipCode, setZipCode] = useState('');
   const [isChecking, setIsChecking] = useState(false);
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
-  const [waitlistEmail, setWaitlistEmail] = useState('');
-  const [isSubmittingWaitlist, setIsSubmittingWaitlist] = useState(false);
   const navigate = useNavigate();
 
   const checkZipCodeAvailability = async (zip: string) => {
@@ -54,57 +52,11 @@ const ZipCodeChecker = () => {
         // ZIP code found, check availability
         setIsAvailable(zipCodeData.is_available);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error checking zip code:", error);
       toast.error("Failed to check zip code: " + (error.message || "Unknown error"));
     } finally {
       setIsChecking(false);
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Basic validation
-    if (!zipCode || zipCode.length !== 5 || !/^\d+$/.test(zipCode)) {
-      toast.error("Please enter a valid 5-digit zip code");
-      return;
-    }
-    
-    checkZipCodeAvailability(zipCode);
-  };
-
-  const handleJoinWaitlist = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Basic validation
-    if (!waitlistEmail || !/\S+@\S+\.\S+/.test(waitlistEmail)) {
-      toast.error("Please enter a valid email address");
-      return;
-    }
-    
-    setIsSubmittingWaitlist(true);
-    
-    try {
-      // Add to waitlist table in Supabase
-      const { error } = await supabase
-        .from('waitlist')
-        .insert({
-          email: waitlistEmail,
-          zip_code: zipCode
-        });
-        
-      if (error) {
-        throw new Error(error.message);
-      }
-      
-      toast.success("You've been added to the waitlist!");
-      setWaitlistEmail('');
-    } catch (error) {
-      console.error("Error joining waitlist:", error);
-      toast.error("Failed to join waitlist: " + (error.message || "Unknown error"));
-    } finally {
-      setIsSubmittingWaitlist(false);
     }
   };
 
@@ -121,97 +73,19 @@ const ZipCodeChecker = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex flex-col space-y-2">
-            <label htmlFor="zipCode" className="text-sm font-medium text-gray-700">
-              Enter Zip Code
-            </label>
-            <Input
-              id="zipCode"
-              placeholder="e.g. 90210"
-              value={zipCode}
-              onChange={(e) => setZipCode(e.target.value)}
-              className="w-full"
-              maxLength={5}
-            />
-          </div>
-          <Button 
-            type="submit" 
-            className="w-full bg-brand-700 hover:bg-brand-800"
-            disabled={isChecking}
-          >
-            {isChecking ? (
-              <>
-                <Loader className="mr-2 h-4 w-4 animate-spin" />
-                Checking...
-              </>
-            ) : (
-              'Check Availability'
-            )}
-          </Button>
-        </form>
+        <ZipCodeForm 
+          zipCode={zipCode} 
+          setZipCode={setZipCode}
+          onSubmit={checkZipCodeAvailability}
+          isChecking={isChecking}
+        />
 
         {isAvailable === true && (
-          <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md">
-            <h3 className="font-bold text-green-800">
-              Congratulations! This area is available!
-            </h3>
-            <p className="mt-2 text-green-700">
-              You can claim exclusive rights to leads in this zip code for just $199/month.
-            </p>
-            <div className="mt-4">
-              <Button 
-                className="w-full bg-accent-600 hover:bg-accent-700"
-                onClick={handleClaimArea}
-              >
-                Claim This Area Now
-              </Button>
-            </div>
-          </div>
+          <ZipAvailableSection zipCode={zipCode} handleClaimArea={handleClaimArea} />
         )}
 
         {isAvailable === false && (
-          <div className="mt-6">
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-md">
-              <h3 className="font-bold text-amber-800">
-                This area is already taken
-              </h3>
-              <p className="mt-2 text-amber-700">
-                Would you like to join the waitlist for this zip code?
-              </p>
-            </div>
-            
-            <form onSubmit={handleJoinWaitlist} className="mt-4 space-y-4">
-              <div className="flex flex-col space-y-2">
-                <label htmlFor="waitlistEmail" className="text-sm font-medium text-gray-700">
-                  Your Email
-                </label>
-                <Input
-                  id="waitlistEmail"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={waitlistEmail}
-                  onChange={(e) => setWaitlistEmail(e.target.value)}
-                  className="w-full"
-                />
-              </div>
-              <Button 
-                type="submit" 
-                variant="outline"
-                className="w-full border-teal-700 text-teal-700 hover:bg-teal-50"
-                disabled={isSubmittingWaitlist}
-              >
-                {isSubmittingWaitlist ? (
-                  <>
-                    <Loader className="mr-2 h-4 w-4 animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  'Join Waitlist'
-                )}
-              </Button>
-            </form>
-          </div>
+          <ZipWaitlistSection zipCode={zipCode} />
         )}
       </CardContent>
       <CardFooter className="flex justify-center text-sm text-gray-500">
