@@ -36,7 +36,14 @@ const ZipCodeChecker = () => {
 
       if (zipCodeError) {
         if (zipCodeError.code === 'PGRST116') {
-          // ZIP code not found in database, add it as available
+          // ZIP code not found in database
+          // Let's add it as available but with anonymous insert
+          const { error: signInError } = await supabase.auth.signInAnonymously();
+          
+          if (signInError) {
+            throw new Error("Authentication error: " + signInError.message);
+          }
+          
           const { error: insertError } = await supabase
             .from('zip_codes')
             .insert({ code: zip, is_available: true });
@@ -45,6 +52,8 @@ const ZipCodeChecker = () => {
             throw new Error(insertError.message);
           }
           
+          // Sign out the anonymous user after operation
+          await supabase.auth.signOut();
           setIsAvailable(true);
         } else {
           throw new Error(zipCodeError.message);
