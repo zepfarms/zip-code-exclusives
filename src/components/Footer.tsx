@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 
@@ -63,7 +64,7 @@ const Footer = () => {
             <h3 className="text-lg font-semibold text-gray-900">Contact</h3>
             <ul className="space-y-2">
               <li className="text-gray-600">
-                <strong>Email:</strong> contact@leadxclusive.com
+                <strong>Email:</strong> help@leadxclusive.com
               </li>
               <li>
                 <Link to="/contact" className="text-gray-600 hover:text-brand-700 transition-colors">
