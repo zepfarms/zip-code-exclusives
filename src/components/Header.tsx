@@ -39,9 +39,6 @@ const Header = () => {
           <Link to="/about" className="text-gray-600 hover:text-brand-700 transition-colors">
             About Us
           </Link>
-          <Link to="/contact" className="text-gray-600 hover:text-brand-700 transition-colors">
-            Contact
-          </Link>
         </nav>
         
         <div className="flex items-center gap-4">

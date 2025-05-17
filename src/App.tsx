@@ -13,8 +13,12 @@ import Payment from "./pages/Payment";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
-import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
+import HowItWorksPage from "./pages/HowItWorksPage";
+import PricingPage from "./pages/PricingPage";
+import AboutUsPage from "./pages/AboutUsPage";
+import InvestorLeadsPage from "./pages/InvestorLeadsPage";
+import RealtorLeadsPage from "./pages/RealtorLeadsPage";
 
 const queryClient = new QueryClient();
 
@@ -33,7 +37,11 @@ const App = () => (
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/contact" element={<Contact />} />
+          <Route path="/how-it-works" element={<HowItWorksPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/about" element={<AboutUsPage />} />
+          <Route path="/investor-leads" element={<InvestorLeadsPage />} />
+          <Route path="/realtor-leads" element={<RealtorLeadsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
