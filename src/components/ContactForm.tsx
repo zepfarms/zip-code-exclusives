@@ -45,22 +45,19 @@ const ContactForm = () => {
     setIsSubmitting(true);
     
     try {
-      // Save contact message to database
+      // Save contact message to database using the unauthenticated client
+      // We use "as any" here as a temporary workaround until the types are regenerated
       const { error: insertError } = await supabase
-        .from('contact_messages')
+        .from('contact_messages' as any)
         .insert({
           name: data.name,
           email: data.email,
           phone: data.phone || null,
           message: data.message,
           recipient: 'help@leadxclusive.com',
-        });
+        } as any);
         
       if (insertError) throw new Error(insertError.message);
-      
-      // Call an edge function (needs to be created) to send email
-      // This is a placeholder for now, you'd need to create the edge function
-      // sendNotificationEmail(data.name, data.email, data.message, 'help@leadxclusive.com');
       
       toast.success('Your message has been sent successfully!');
       form.reset();
