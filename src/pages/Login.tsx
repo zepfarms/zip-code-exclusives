@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -14,13 +14,15 @@ import {
 import { toast } from "sonner";
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { supabase } from '@/integrations/supabase/client';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!email || !password) {
@@ -30,13 +32,38 @@ const Login = () => {
     
     setIsLoading(true);
     
-    // This is where you'd integrate with Supabase for authentication
-    // For now, we'll simulate a login process
-    setTimeout(() => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data.user) {
+        toast.success("Login successful!");
+        
+        // Check if user is admin
+        const { data: profileData } = await supabase
+          .from('user_profiles')
+          .select('is_admin')
+          .eq('id', data.user.id)
+          .single();
+          
+        if (profileData?.is_admin) {
+          navigate('/admin');
+        } else {
+          navigate('/dashboard');
+        }
+      }
+    } catch (error: any) {
+      console.error("Login error:", error);
+      toast.error(error.message || "Failed to login");
+    } finally {
       setIsLoading(false);
-      // Success message and redirect would happen after successful auth
-      toast.error("Login functionality will be implemented with Supabase integration");
-    }, 1000);
+    }
   };
 
   return (
