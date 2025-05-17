@@ -1,9 +1,24 @@
-
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
 const Header = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleCheckAvailability = () => {
+    // If we're on the home page, scroll to the form
+    if (location.pathname === '/') {
+      const zipCheckerElement = document.getElementById('zip-checker-section');
+      if (zipCheckerElement) {
+        zipCheckerElement.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      // Otherwise navigate to the check-availability page
+      navigate('/check-availability');
+    }
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-sm border-b border-gray-200">
       <div className="container flex items-center justify-between h-16 px-4 md:px-6">
@@ -35,11 +50,12 @@ const Header = () => {
               Log In
             </Button>
           </Link>
-          <Link to="/check-availability">
-            <Button className="bg-accent-600 hover:bg-accent-700">
-              Check Availability
-            </Button>
-          </Link>
+          <Button 
+            className="bg-accent-600 hover:bg-accent-700"
+            onClick={handleCheckAvailability}
+          >
+            Check Availability
+          </Button>
         </div>
       </div>
     </header>

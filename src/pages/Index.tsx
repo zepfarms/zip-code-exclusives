@@ -14,6 +14,14 @@ import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Index = () => {
+  // Function to scroll to the zip code checker section
+  const scrollToZipChecker = () => {
+    const zipCheckerElement = document.getElementById('zip-checker-section');
+    if (zipCheckerElement) {
+      zipCheckerElement.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -30,12 +38,13 @@ const Index = () => {
                 One investor or agent per zip code. No competition. Premium leads delivered directly to you.
               </p>
               <div className="flex flex-col md:flex-row gap-4 justify-center">
-                <Link to="/check-availability">
-                  <Button className="px-8 py-6 text-lg bg-accent-600 hover:bg-accent-700 group">
-                    Check Availability
-                    <ArrowRight className="ml-2 h-5 w-5 transform group-hover:translate-x-1 transition-transform" />
-                  </Button>
-                </Link>
+                <Button 
+                  className="px-8 py-6 text-lg bg-accent-600 hover:bg-accent-700 group"
+                  onClick={scrollToZipChecker}
+                >
+                  Check Availability
+                  <ArrowRight className="ml-2 h-5 w-5 transform group-hover:translate-x-1 transition-transform" />
+                </Button>
                 <Link to="/how-it-works">
                   <Button variant="outline" className="px-8 py-6 text-lg bg-transparent border-white text-white hover:bg-white/10">
                     Learn How It Works
@@ -53,7 +62,7 @@ const Index = () => {
         </section>
 
         {/* Check Availability Section */}
-        <section className="py-16 bg-white">
+        <section id="zip-checker-section" className="py-16 bg-white">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
