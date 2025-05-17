@@ -12,7 +12,7 @@ import CallToAction from '@/components/CallToAction';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 
 const Index = () => {
   // Function to scroll to the zip code checker section
