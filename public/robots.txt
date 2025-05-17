@@ -1,14 +1,18 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
 
 User-agent: *
 Allow: /
+
+# Sitemap location
+Sitemap: https://leadxclusive.com/sitemap.xml
+
+# Disallow admin routes
+Disallow: /admin
+Disallow: /dashboard
+
+# Allow important pages
+Allow: /how-it-works
+Allow: /pricing
+Allow: /investor-leads
+Allow: /realtor-leads
+Allow: /about
+Allow: /check-availability

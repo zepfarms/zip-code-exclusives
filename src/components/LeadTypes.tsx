@@ -2,6 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const LeadTypes = () => {
   const leadTypes = [
@@ -14,7 +15,8 @@ const LeadTypes = () => {
         "Sellers wanting to avoid the traditional listing process",
         "Potential for significant ROI on purchases"
       ],
-      cta: "Perfect For Real Estate Investors"
+      cta: "Perfect For Real Estate Investors",
+      link: "/investor-leads"
     },
     {
       title: "Realtor Leads",
@@ -25,7 +27,8 @@ const LeadTypes = () => {
         "Clients who need agent representation and guidance",
         "Opportunity for listing and potentially buyer commissions"
       ],
-      cta: "Perfect For Licensed Real Estate Agents"
+      cta: "Perfect For Licensed Real Estate Agents",
+      link: "/realtor-leads"
     }
   ];
 
@@ -60,10 +63,12 @@ const LeadTypes = () => {
               
               <div className="p-6 bg-gray-50">
                 <div className="text-sm font-medium text-gray-500 mb-3">{type.cta}</div>
-                <Button className="w-full bg-accent-600 hover:bg-accent-700 group">
-                  Check Availability
-                  <ArrowRight className="ml-2 h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
-                </Button>
+                <Link to={type.link}>
+                  <Button className="w-full bg-accent-600 hover:bg-accent-700 group">
+                    Learn More
+                    <ArrowRight className="ml-2 h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </Link>
               </div>
             </div>
           ))}

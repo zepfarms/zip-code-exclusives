@@ -12,6 +12,7 @@ import CallToAction from '@/components/CallToAction';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet';
 
 const Index = () => {
   // Function to scroll to the zip code checker section
@@ -24,6 +25,12 @@ const Index = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <Helmet>
+        <title>LeadXclusive | Exclusive Real Estate Leads With No Competition</title>
+        <meta name="description" content="Get exclusive real estate leads with one investor or agent per zip code. High-quality seller leads for investors and realtors with no competition." />
+        <link rel="canonical" href="https://leadxclusive.com/" />
+      </Helmet>
+      
       <Header />
       
       <main className="flex-1">
