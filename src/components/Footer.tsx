@@ -8,8 +8,8 @@ const Footer = () => {
   return (
     <footer className="bg-gray-50 border-t border-gray-200">
       <div className="container px-4 py-12 mx-auto md:px-6">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
-          <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+          <div className="space-y-4 col-span-2 md:col-span-1">
             <Link to="/" className="inline-block">
               <span className="text-2xl font-bold text-brand-700">LeadXclusive</span>
             </Link>

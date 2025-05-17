@@ -1,0 +1,12 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#1a365d"/>
+  <rect x="100" y="100" width="1000" height="430" fill="#ffffff" rx="20" ry="20"/>
+  <text x="600" y="250" font-family="Arial, sans-serif" font-size="72" font-weight="bold" text-anchor="middle" fill="#1a365d">LeadXclusive</text>
+  <text x="600" y="340" font-family="Arial, sans-serif" font-size="36" text-anchor="middle" fill="#444444">Exclusive Real Estate Leads</text>
+  <text x="600" y="400" font-family="Arial, sans-serif" font-size="28" text-anchor="middle" fill="#dd6b20">One client per zip code - No competition</text>
+  
+  <!-- Simple house icon -->
+  <path d="M450 200 L550 120 L650 200 L630 200 L630 300 L470 300 L470 200 Z" fill="#dd6b20"/>
+  <rect x="530" y="240" width="40" height="60" fill="#1a365d"/>
+</svg>
