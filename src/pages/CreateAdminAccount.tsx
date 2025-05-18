@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,18 +29,21 @@ const CreateAdminAccount = () => {
       if (authData.user) {
         const userId = authData.user.id;
         
-        // 2. Update the user profile to set admin privileges
+        // 2. Insert directly into the user_profiles table instead of updating
         const { error: profileError } = await supabase
           .from('user_profiles')
-          .update({
+          .insert({
+            id: userId,
             first_name: 'Admin',
             last_name: 'User',
             is_admin: true,
             notification_email: true
-          })
-          .eq('id', userId);
+          });
           
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error("Profile creation error:", profileError);
+          throw profileError;
+        }
         
         // 3. Create a territory assignment for the user with zip code 23518
         const { error: territoryError } = await supabase
