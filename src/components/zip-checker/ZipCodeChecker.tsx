@@ -70,8 +70,11 @@ const ZipCodeChecker = () => {
         setRealtorAvailable(realtorData?.is_available ?? false);
       }
       
-      // Default values for demo/testing (using direct data, not state)
-      if (!investorData && !realtorData) {
+      // Set default values for demo/testing - avoid using state in conditions
+      const noInvestorData = !investorData && investorError?.code === 'PGRST116';
+      const noRealtorData = !realtorData && realtorError?.code === 'PGRST116';
+      
+      if (noInvestorData && noRealtorData) {
         setInvestorAvailable(true);
         setRealtorAvailable(true);
       }
@@ -79,6 +82,7 @@ const ZipCodeChecker = () => {
     } catch (error: any) {
       console.error("Error checking zip code:", error);
       toast.error("Failed to check zip code: " + (error.message || "Unknown error"));
+      // Set fallback values
       setInvestorAvailable(true);
       setRealtorAvailable(true);
     } finally {
