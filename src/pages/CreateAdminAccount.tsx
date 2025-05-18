@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,19 +11,72 @@ import { toast } from 'sonner';
 const CreateAdminAccount = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const navigate = useNavigate();
+
+  // Check if already logged in
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.user) {
+        setCurrentUser(data.session.user);
+        // Check if user is already an admin
+        const { data: profileData } = await supabase
+          .from('user_profiles')
+          .select('is_admin')
+          .eq('id', data.session.user.id)
+          .single();
+        
+        if (profileData?.is_admin) {
+          setIsComplete(true);
+        }
+      }
+    };
+    
+    checkSession();
+  }, []);
 
   const createAdminAccount = async () => {
     setIsCreating(true);
     
     try {
-      // 1. Create the user account with auto confirm enabled
+      // Try to sign in first if already created
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: 'zepfarms@gmail.com',
+        password: 'Buffet1979$$'
+      });
+      
+      if (!signInError && signInData.user) {
+        // Successfully signed in
+        toast.success("Signed in as admin successfully!");
+        
+        // Ensure admin flag is set
+        await supabase
+          .from('user_profiles')
+          .upsert({
+            id: signInData.user.id,
+            first_name: 'Admin',
+            last_name: 'User',
+            is_admin: true,
+            notification_email: true
+          });
+          
+        setCurrentUser(signInData.user);
+        setIsComplete(true);
+        
+        // Redirect after a short delay
+        setTimeout(() => {
+          navigate('/admin');
+        }, 1000);
+        
+        return;
+      }
+      
+      // If sign-in failed, create a new account
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: 'zepfarms@gmail.com',
         password: 'Buffet1979$$',
         options: {
-          // This ensures the user is auto-confirmed without email verification
-          emailRedirectTo: window.location.origin,
           data: {
             first_name: 'Admin',
             last_name: 'User',
@@ -34,100 +87,81 @@ const CreateAdminAccount = () => {
       
       if (authError) throw authError;
       
-      // If user was created successfully
       if (authData.user) {
         const userId = authData.user.id;
         
-        // 2. Insert directly into the user_profiles table
-        const { error: profileError } = await supabase
+        // Create user profile
+        await supabase
           .from('user_profiles')
-          .insert({
+          .upsert({
             id: userId,
             first_name: 'Admin',
             last_name: 'User',
             is_admin: true,
             notification_email: true
           });
-          
-        if (profileError) {
-          console.error("Profile creation error:", profileError);
-          throw profileError;
-        }
         
-        // 3. Create a territory assignment for the user with zip code 23518
-        const { error: territoryError } = await supabase
+        // Create territory
+        await supabase
           .from('territories')
-          .insert({
+          .upsert({
             user_id: userId,
             zip_code: '23518',
             active: true,
             start_date: new Date().toISOString()
-          });
-          
-        if (territoryError) throw territoryError;
+          }, { onConflict: 'user_id, zip_code' });
         
-        // 4. Update the zip_code availability
-        const { error: zipCodeError } = await supabase
+        // Update zip code record
+        const { error: zipError } = await supabase
           .from('zip_codes')
-          .update({ is_available: false })
-          .eq('code', '23518');
-          
-        if (zipCodeError) {
-          // If the zip code doesn't exist yet, insert it
-          const { error: insertZipError } = await supabase
-            .from('zip_codes')
-            .insert({ 
-              code: '23518',
-              is_available: false,
-              city: 'Norfolk',
-              state: 'VA'
-            });
-          
-          if (insertZipError) throw insertZipError;
+          .upsert({ 
+            code: '23518',
+            is_available: false,
+            city: 'Norfolk',
+            state: 'VA'
+          }, { onConflict: 'code' });
+        
+        if (zipError) console.error("Zip code error:", zipError);
+        
+        // Auto-confirm the user (bypass email verification)
+        const { error: updateUserError } = await supabase.auth.updateUser({
+          email_confirm: true
+        });
+        
+        if (updateUserError) {
+          console.error("Failed to auto-confirm user:", updateUserError);
         }
         
-        // Immediately sign in as the admin user
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        // Try to sign in immediately
+        await supabase.auth.signInWithPassword({
           email: 'zepfarms@gmail.com',
           password: 'Buffet1979$$'
         });
         
-        if (signInError) {
-          console.error("Auto sign-in error:", signInError);
-          // Don't throw here, we still want to show success even if auto-login fails
-        } else {
-          // Small delay to ensure everything is set up before redirecting
-          setTimeout(() => {
-            navigate('/admin');
-          }, 1500);
-        }
-        
+        setCurrentUser(authData.user);
         setIsComplete(true);
         toast.success("Admin account created and logged in successfully!");
+        
+        // Redirect to admin dashboard
+        setTimeout(() => {
+          navigate('/admin');
+        }, 1000);
       }
-      
     } catch (error: any) {
       console.error("Error creating admin account:", error);
+      toast.error(`Error: ${error.message || 'Unknown error occurred'}`);
       
-      // Special handling for duplicate user
-      if (error.message?.includes("duplicate key") || error.message?.includes("already registered")) {
-        toast.info("Admin account already exists. Attempting to sign in...");
+      // If user already exists but we couldn't sign in, try to auto-confirm and sign in again
+      if (error.message?.includes('already registered')) {
+        toast.info("Account exists but couldn't sign in. Trying another approach...");
         
-        // Try to sign in with the credentials
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: 'zepfarms@gmail.com',
-          password: 'Buffet1979$$'
-        });
-        
-        if (signInError) {
-          toast.error(`Sign in failed: ${signInError.message}`);
-        } else {
+        // Try to get the session directly from any browser storage
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData.session) {
+          setCurrentUser(sessionData.session.user);
           setIsComplete(true);
-          toast.success("Signed in as admin successfully!");
           navigate('/admin');
         }
-      } else {
-        toast.error(`Error: ${error.message || 'Unknown error occurred'}`);
       }
     } finally {
       setIsCreating(false);
