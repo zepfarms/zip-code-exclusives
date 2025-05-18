@@ -15,6 +15,12 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Loader, Search } from 'lucide-react';
 
+interface UserProfile {
+  first_name: string | null;
+  last_name: string | null;
+  email: string;
+}
+
 interface Territory {
   id: string;
   zip_code: string;
@@ -27,12 +33,8 @@ interface Territory {
   user_profiles?: {
     first_name: string | null;
     last_name: string | null;
-  };
-  user_profile: {
-    first_name: string | null;
-    last_name: string | null;
-    email: string;
-  };
+  } | null;
+  user_profile: UserProfile;
 }
 
 const TerritoriesTable = () => {
@@ -75,19 +77,19 @@ const TerritoriesTable = () => {
         const authData = await supabase.auth.admin.listUsers();
         const authUsers = authData.data?.users || [];
 
-        const processedData: Territory[] = data.map(territory => {
+        const processedData = data.map(territory => {
           const authUser = authUsers.find(u => u.id === territory.user_id);
           return {
             ...territory,
             user_profile: {
-              first_name: territory.user_profiles?.first_name || null,
-              last_name: territory.user_profiles?.last_name || null,
+              first_name: territory.user_profiles ? territory.user_profiles.first_name : null,
+              last_name: territory.user_profiles ? territory.user_profiles.last_name : null,
               email: authUser?.email || 'N/A'
             }
           };
         });
         
-        setTerritories(processedData);
+        setTerritories(processedData as Territory[]);
         setIsLoading(false);
       } catch (error) {
         console.error("Error fetching territories:", error);

@@ -24,6 +24,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Loader, Search, Edit } from 'lucide-react';
 
+interface UserProfile {
+  first_name: string | null;
+  last_name: string | null;
+  email: string;
+}
+
 interface Lead {
   id: string;
   name: string;
@@ -40,12 +46,8 @@ interface Lead {
   user_profiles?: {
     first_name: string | null;
     last_name: string | null;
-  };
-  user_profile?: {
-    first_name: string | null;
-    last_name: string | null;
-    email: string;
-  };
+  } | null;
+  user_profile?: UserProfile;
 }
 
 const LeadsTable = () => {
@@ -91,14 +93,14 @@ const LeadsTable = () => {
           return {
             ...lead,
             user_profile: {
-              first_name: lead.user_profiles?.first_name || null,
-              last_name: lead.user_profiles?.last_name || null,
+              first_name: lead.user_profiles ? lead.user_profiles.first_name : null,
+              last_name: lead.user_profiles ? lead.user_profiles.last_name : null,
               email: authUser?.email || 'N/A'
             }
           };
         });
         
-        setLeads(processedData);
+        setLeads(processedData as Lead[]);
         setIsLoading(false);
       } catch (error) {
         console.error("Error fetching leads:", error);
