@@ -24,9 +24,22 @@ interface LeadNotificationPayload {
   userId: string;
 }
 
-async function sendEmail(email: string, lead: any) {
+async function sendEmail(emails: string[], lead: any) {
+  if (!emails || emails.length === 0) {
+    console.log("No email addresses provided for notification");
+    return false;
+  }
+
+  // Filter out empty strings
+  const validEmails = emails.filter(email => email && email.trim());
+  
+  if (validEmails.length === 0) {
+    console.log("No valid email addresses found after filtering");
+    return false;
+  }
+
   const msg = {
-    to: email,
+    to: validEmails,
     from: "leads@leadxclusive.com", // Use your verified sender
     subject: "New Lead Notification",
     html: `
@@ -45,7 +58,7 @@ async function sendEmail(email: string, lead: any) {
 
   try {
     await SendGrid.send(msg);
-    console.log("Email notification sent successfully");
+    console.log("Email notification sent successfully to", validEmails);
     return true;
   } catch (error) {
     console.error("Error sending email notification:", error);
@@ -53,7 +66,20 @@ async function sendEmail(email: string, lead: any) {
   }
 }
 
-async function sendSms(phone: string, lead: any) {
+async function sendSms(phones: string[], lead: any) {
+  if (!phones || phones.length === 0) {
+    console.log("No phone numbers provided for notification");
+    return false;
+  }
+
+  // Filter out empty strings
+  const validPhones = phones.filter(phone => phone && phone.trim());
+  
+  if (validPhones.length === 0) {
+    console.log("No valid phone numbers found after filtering");
+    return false;
+  }
+
   // Using Email-to-SMS gateways (free option)
   // This will only work with US phone numbers and certain carriers
   
@@ -64,7 +90,6 @@ async function sendSms(phone: string, lead: any) {
   // Verizon: number@vtext.com
   // Sprint: number@messaging.sprintpcs.com
 
-  // We'll try all major carriers (if one fails, hopefully another will work)
   const carriers = [
     "txt.att.net", 
     "tmomail.net", 
@@ -72,26 +97,35 @@ async function sendSms(phone: string, lead: any) {
     "messaging.sprintpcs.com"
   ];
   
-  const cleanPhone = phone.replace(/\D/g, '');
-  if (cleanPhone.length !== 10) {
-    console.error("Invalid phone number format");
-    return false;
-  }
-  
   try {
-    // Try sending to all carriers
-    const emailPromises = carriers.map(carrier => {
-      const smsMsg = {
-        to: `${cleanPhone}@${carrier}`,
-        from: "leads@leadxclusive.com", // Use your verified sender
-        subject: "New Lead",
-        text: `New lead: ${lead.name || 'Unknown'} - ${lead.phone || 'No phone'} - Zip: ${lead.territory_zip_code}`,
-      };
-      
-      return SendGrid.send(smsMsg);
-    });
+    const smsPromises = [];
     
-    await Promise.allSettled(emailPromises);
+    for (const phone of validPhones) {
+      const cleanPhone = phone.replace(/\D/g, '');
+      if (cleanPhone.length !== 10) {
+        console.error(`Invalid phone number format: ${phone}`);
+        continue;
+      }
+      
+      // Try sending to all carriers
+      for (const carrier of carriers) {
+        const smsMsg = {
+          to: `${cleanPhone}@${carrier}`,
+          from: "leads@leadxclusive.com", // Use your verified sender
+          subject: "New Lead",
+          text: `New lead: ${lead.name || 'Unknown'} - ${lead.phone || 'No phone'} - Zip: ${lead.territory_zip_code}`,
+        };
+        
+        smsPromises.push(SendGrid.send(smsMsg).catch(err => {
+          // Silently catch errors for individual carriers
+          console.log(`Failed SMS to ${cleanPhone}@${carrier}: ${err.message}`);
+          return null;
+        }));
+      }
+    }
+    
+    // Wait for all SMS attempts to complete
+    await Promise.allSettled(smsPromises);
     console.log("SMS notification attempts completed");
     return true;
   } catch (error) {
@@ -147,14 +181,26 @@ const handler = async (req: Request): Promise<Response> => {
       sms: false
     };
     
+    // Collect all email addresses
+    const allEmails = [
+      user.email, 
+      ...(userProfile.secondary_emails || [])
+    ].filter(Boolean);
+    
+    // Collect all phone numbers
+    const allPhones = [
+      userProfile.phone,
+      ...(userProfile.secondary_phones || [])
+    ].filter(Boolean);
+    
     // Send email notification if enabled
-    if (userProfile.notification_email) {
-      notificationResults.email = await sendEmail(user.email, lead);
+    if (userProfile.notification_email && allEmails.length > 0) {
+      notificationResults.email = await sendEmail(allEmails, lead);
     }
     
     // Send SMS notification if enabled and phone is available
-    if (userProfile.notification_sms && userProfile.phone) {
-      notificationResults.sms = await sendSms(userProfile.phone, lead);
+    if (userProfile.notification_sms && allPhones.length > 0) {
+      notificationResults.sms = await sendSms(allPhones, lead);
     }
     
     return new Response(JSON.stringify({

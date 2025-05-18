@@ -15,6 +15,7 @@ import { z } from 'zod';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { supabase } from '@/integrations/supabase/client';
+import { X, Plus } from 'lucide-react';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -22,6 +23,15 @@ const Dashboard = () => {
   const [territories, setTerritories] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [contacts, setContacts] = useState({
+    emails: [''],
+    phones: ['']
+  });
+  const [subscriptionInfo, setSubscriptionInfo] = useState({
+    totalMonthly: 0,
+    nextRenewal: null,
+    daysRemaining: 0
+  });
 
   useEffect(() => {
     // Check if user is logged in
@@ -55,6 +65,26 @@ const Dashboard = () => {
       if (profileError) throw profileError;
       setUserProfile(profile);
 
+      // Parse secondary contacts if they exist
+      if (profile.secondary_emails) {
+        setContacts(prev => ({
+          ...prev,
+          emails: [profile.email || '', ...profile.secondary_emails]
+        }));
+      }
+      
+      if (profile.secondary_phones) {
+        setContacts(prev => ({
+          ...prev,
+          phones: [profile.phone || '', ...profile.secondary_phones]
+        }));
+      } else {
+        setContacts(prev => ({
+          ...prev,
+          phones: [profile.phone || '']
+        }));
+      }
+
       // Get territories
       const { data: territoriesData, error: territoriesError } = await supabase
         .from('territories')
@@ -64,6 +94,27 @@ const Dashboard = () => {
       
       if (territoriesError) throw territoriesError;
       setTerritories(territoriesData);
+
+      // Calculate subscription info
+      if (territoriesData && territoriesData.length > 0) {
+        // Find earliest next billing date
+        const nextBillingDates = territoriesData
+          .map(t => t.next_billing_date)
+          .filter(date => date) // Filter out null dates
+          .sort();
+          
+        if (nextBillingDates.length > 0) {
+          const nextRenewal = new Date(nextBillingDates[0]);
+          const today = new Date();
+          const daysRemaining = Math.ceil((nextRenewal - today) / (1000 * 60 * 60 * 24));
+          
+          setSubscriptionInfo({
+            totalMonthly: territoriesData.length * 99.99, // Assuming $99.99 per territory
+            nextRenewal: nextRenewal,
+            daysRemaining: daysRemaining
+          });
+        }
+      }
 
       // Get leads
       const { data: leadsData, error: leadsError } = await supabase
@@ -144,13 +195,76 @@ const Dashboard = () => {
     }
   };
 
+  // Handle adding a new contact email field
+  const handleAddEmail = () => {
+    if (contacts.emails.length < 3) {
+      setContacts(prev => ({
+        ...prev,
+        emails: [...prev.emails, '']
+      }));
+    } else {
+      toast.error('Maximum of 3 email addresses allowed');
+    }
+  };
+
+  // Handle adding a new contact phone field
+  const handleAddPhone = () => {
+    if (contacts.phones.length < 3) {
+      setContacts(prev => ({
+        ...prev,
+        phones: [...prev.phones, '']
+      }));
+    } else {
+      toast.error('Maximum of 3 phone numbers allowed');
+    }
+  };
+
+  // Handle removing a contact field
+  const handleRemoveEmail = (index) => {
+    if (index === 0) {
+      toast.error('Primary email cannot be removed');
+      return;
+    }
+    setContacts(prev => ({
+      ...prev,
+      emails: prev.emails.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleRemovePhone = (index) => {
+    if (index === 0) {
+      toast.error('Primary phone cannot be removed');
+      return;
+    }
+    setContacts(prev => ({
+      ...prev,
+      phones: prev.phones.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Handle changing a contact value
+  const handleEmailChange = (index, value) => {
+    setContacts(prev => {
+      const newEmails = [...prev.emails];
+      newEmails[index] = value;
+      return { ...prev, emails: newEmails };
+    });
+  };
+
+  const handlePhoneChange = (index, value) => {
+    setContacts(prev => {
+      const newPhones = [...prev.phones];
+      newPhones[index] = value;
+      return { ...prev, phones: newPhones };
+    });
+  };
+
   // Profile form schema
   const profileSchema = z.object({
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     company: z.string().optional(),
     email: z.string().email(),
-    phone: z.string().optional(),
     notificationEmail: z.boolean(),
     notificationSms: z.boolean()
   });
@@ -163,7 +277,6 @@ const Dashboard = () => {
       lastName: userProfile?.last_name || '',
       company: userProfile?.company || '',
       email: '',
-      phone: userProfile?.phone || '',
       notificationEmail: userProfile?.notification_email || true,
       notificationSms: userProfile?.notification_sms || false
     }
@@ -177,7 +290,6 @@ const Dashboard = () => {
         lastName: userProfile.last_name || '',
         company: userProfile.company || '',
         email: '', // Will be filled from auth session
-        phone: userProfile.phone || '',
         notificationEmail: userProfile.notification_email,
         notificationSms: userProfile.notification_sms
       });
@@ -203,7 +315,9 @@ const Dashboard = () => {
           first_name: values.firstName,
           last_name: values.lastName,
           company: values.company,
-          phone: values.phone,
+          phone: contacts.phones[0], // Primary phone
+          secondary_phones: contacts.phones.slice(1), // Additional phones
+          secondary_emails: contacts.emails.slice(1), // Additional emails
           notification_email: values.notificationEmail,
           notification_sms: values.notificationSms,
           updated_at: new Date().toISOString() // Convert Date to string
@@ -229,6 +343,34 @@ const Dashboard = () => {
     } catch (error) {
       console.error('Error updating profile:', error);
       toast.error('Failed to update profile');
+    }
+  };
+
+  // Stripe customer portal handler
+  const handleManageBilling = async () => {
+    try {
+      setIsLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast.error('You must be logged in');
+        return;
+      }
+      
+      const { data, error } = await supabase.functions.invoke('customer-portal', {
+        body: { returnUrl: window.location.origin + '/dashboard' }
+      });
+      
+      if (error) throw error;
+      
+      // Redirect to Stripe Customer Portal
+      window.location.href = data.url;
+      
+    } catch (error) {
+      console.error('Error opening customer portal:', error);
+      toast.error('Failed to open billing portal');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -447,38 +589,96 @@ const Dashboard = () => {
                           )}
                         />
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <FormField
-                            control={profileForm.control}
-                            name="email"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Email</FormLabel>
-                                <FormControl>
-                                  <Input type="email" placeholder="your@email.com" {...field} />
-                                </FormControl>
-                                <FormDescription>
-                                  Email address for account notifications
-                                </FormDescription>
-                              </FormItem>
-                            )}
-                          />
+                        <div className="border-t pt-6">
+                          <h3 className="font-medium mb-4">Contact Information</h3>
                           
-                          <FormField
-                            control={profileForm.control}
-                            name="phone"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Phone</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="(555) 123-4567" {...field} />
-                                </FormControl>
-                                <FormDescription>
-                                  Phone number for lead notifications
-                                </FormDescription>
-                              </FormItem>
-                            )}
-                          />
+                          <div className="space-y-4">
+                            <div>
+                              <FormLabel>Email Addresses (for lead notifications)</FormLabel>
+                              <div className="space-y-2">
+                                {contacts.emails.map((email, index) => (
+                                  <div key={`email-${index}`} className="flex items-center gap-2">
+                                    <Input 
+                                      type="email"
+                                      placeholder={index === 0 ? "Primary Email" : "Additional Email"}
+                                      value={email}
+                                      onChange={(e) => handleEmailChange(index, e.target.value)}
+                                      className="flex-1"
+                                    />
+                                    {index === 0 ? (
+                                      <div className="w-8 h-8 flex items-center justify-center">
+                                        <span className="text-xs text-gray-500">Primary</span>
+                                      </div>
+                                    ) : (
+                                      <Button 
+                                        type="button" 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={() => handleRemoveEmail(index)}
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                ))}
+                                
+                                {contacts.emails.length < 3 && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-2"
+                                    onClick={handleAddEmail}
+                                  >
+                                    <Plus className="h-4 w-4 mr-2" /> Add Email
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <FormLabel>Phone Numbers (for lead notifications)</FormLabel>
+                              <div className="space-y-2">
+                                {contacts.phones.map((phone, index) => (
+                                  <div key={`phone-${index}`} className="flex items-center gap-2">
+                                    <Input 
+                                      type="tel"
+                                      placeholder={index === 0 ? "Primary Phone" : "Additional Phone"}
+                                      value={phone}
+                                      onChange={(e) => handlePhoneChange(index, e.target.value)}
+                                      className="flex-1"
+                                    />
+                                    {index === 0 ? (
+                                      <div className="w-8 h-8 flex items-center justify-center">
+                                        <span className="text-xs text-gray-500">Primary</span>
+                                      </div>
+                                    ) : (
+                                      <Button 
+                                        type="button" 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={() => handleRemovePhone(index)}
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                ))}
+                                
+                                {contacts.phones.length < 3 && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-2"
+                                    onClick={handleAddPhone}
+                                  >
+                                    <Plus className="h-4 w-4 mr-2" /> Add Phone
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         </div>
                         
                         <div className="border-t pt-6">
@@ -544,13 +744,82 @@ const Dashboard = () => {
                 <CardHeader>
                   <CardTitle>Billing Information</CardTitle>
                   <CardDescription>
-                    Manage your payment methods and view invoices
+                    Manage your payment methods and subscriptions
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-center py-8 text-gray-500">
-                    Billing information will be implemented with Stripe and Supabase integration.
-                  </p>
+                  {isLoading ? (
+                    <div className="text-center py-8">Loading billing information...</div>
+                  ) : territories.length > 0 ? (
+                    <div className="space-y-6">
+                      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                        <div className="px-4 py-5 sm:px-6">
+                          <h3 className="text-lg leading-6 font-medium text-gray-900">
+                            Subscription Summary
+                          </h3>
+                          <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                            Details about your territory subscriptions
+                          </p>
+                        </div>
+                        <div className="border-t border-gray-200">
+                          <dl>
+                            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                              <dt className="text-sm font-medium text-gray-500">Active Territories</dt>
+                              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                {territories.length}
+                              </dd>
+                            </div>
+                            
+                            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                              <dt className="text-sm font-medium text-gray-500">Monthly Total</dt>
+                              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                ${subscriptionInfo.totalMonthly.toFixed(2)}
+                              </dd>
+                            </div>
+                            
+                            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                              <dt className="text-sm font-medium text-gray-500">Next Billing Date</dt>
+                              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                {subscriptionInfo.nextRenewal ? new Date(subscriptionInfo.nextRenewal).toLocaleDateString() : 'N/A'}
+                                {subscriptionInfo.daysRemaining > 0 && (
+                                  <span className="ml-2 text-sm text-gray-500">
+                                    ({subscriptionInfo.daysRemaining} days remaining)
+                                  </span>
+                                )}
+                              </dd>
+                            </div>
+                            
+                            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                              <dt className="text-sm font-medium text-gray-500">Payment Method</dt>
+                              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                <Button onClick={handleManageBilling}>
+                                  Manage Payment Methods
+                                </Button>
+                              </dd>
+                            </div>
+                          </dl>
+                        </div>
+                      </div>
+
+                      <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                        <div className="flex">
+                          <div className="ml-3">
+                            <h3 className="text-sm font-medium text-blue-800">Need Help?</h3>
+                            <div className="mt-2 text-sm text-blue-700">
+                              <p>
+                                For billing questions or to discuss custom territory packages, please contact our support team.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500 mb-4">You don't have any active territories yet</p>
+                      <Button onClick={handleAddArea}>Add Your First Territory</Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
