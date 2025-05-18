@@ -33,23 +33,21 @@ const ZipCodeChecker = () => {
         .eq('code', zip)
         .single();
 
-      // If we got an error fetching the zip code data
+      // Handle investor lead availability
       if (investorError) {
         if (investorError.code === 'PGRST116') {
-          // ZIP code not found in database
-          // We'll assume it's available since it doesn't exist yet
+          // ZIP code not found in database for this type
           setInvestorAvailable(true);
         } else {
-          console.error("Error checking zip code:", investorError);
-          toast.error("Failed to check zip code: " + investorError.message);
+          console.error("Error checking investor zip:", investorError);
           setInvestorAvailable(null);
         }
       } else {
         // ZIP code found, check availability
         setInvestorAvailable(investorData?.is_available ?? false);
       }
-      
-      // For demo purposes, we'll set realtor availability the same as investor
+
+      // For demo purposes, set realtor availability the same as investor
       // In a real app, you would check this separately
       setRealtorAvailable(investorAvailable);
       

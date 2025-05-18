@@ -66,7 +66,7 @@ const Register = () => {
     
     try {
       // Register user with Supabase
-      const { data, error } = await supabase.auth.signUp({
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -80,20 +80,30 @@ const Register = () => {
         }
       });
 
-      if (error) throw error;
-
-      toast.success("Account created successfully! Redirecting to payment...");
+      if (signUpError) throw signUpError;
       
+      // Now sign in the user immediately after registration
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (signInError) {
+        // If sign in fails, we'll notify the user but still allow them to continue to payment
+        console.error("Auto sign-in failed:", signInError);
+        toast.warning("Account created but automatic login failed. Please sign in manually after payment.");
+      } else {
+        toast.success("Account created and logged in successfully!");
+      }
+
       // Navigate to payment page with user type and zip code
-      setTimeout(() => {
-        navigate("/payment", { 
-          state: { 
-            zipCode,
-            userType,
-            leadType: userType // Pass the lead type matching the user type
-          }
-        });
-      }, 1500);
+      navigate("/payment", { 
+        state: { 
+          zipCode,
+          userType,
+          leadType: userType // Pass the lead type matching the user type
+        }
+      });
     } catch (error: any) {
       toast.error(error.message || "Failed to create account");
     } finally {

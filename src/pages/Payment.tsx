@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,11 +20,35 @@ const Payment = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const zipCode = location.state?.zipCode || new URLSearchParams(location.search).get('zip_code') || 'your selected area';
   const leadType = location.state?.leadType || 'investor'; // Default to investor if not specified
 
   // Check if zipCode is valid (5-digit number)
   const isValidZipCode = /^\d{5}$/.test(zipCode);
+
+  // Check auth status on component mount
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          // If not authenticated and we have zip code and lead type, redirect to registration
+          if (zipCode && leadType) {
+            toast.info("Please create an account to continue with your purchase");
+            navigate('/register', { state: { zipCode, leadType, redirectTo: '/payment' } });
+          }
+        }
+      } catch (error) {
+        console.error("Error checking auth status:", error);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuthStatus();
+  }, [zipCode, leadType, navigate]);
 
   const handlePayment = async () => {
     try {
@@ -33,7 +57,7 @@ const Payment = () => {
       // Check if user is authenticated
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        toast.error("Please sign in to continue");
+        toast.info("Please sign in to continue");
         navigate('/register', { state: { redirectTo: '/payment', zipCode, leadType } });
         return;
       }
@@ -62,6 +86,18 @@ const Payment = () => {
       setIsLoading(false);
     }
   };
+
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <Loader className="h-8 w-8 animate-spin text-brand-600" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
