@@ -128,6 +128,8 @@ export type Database = {
           notification_email: boolean | null
           notification_sms: boolean | null
           phone: string | null
+          secondary_emails: string[] | null
+          secondary_phones: string[] | null
           stripe_customer_id: string | null
           updated_at: string
         }
@@ -141,6 +143,8 @@ export type Database = {
           notification_email?: boolean | null
           notification_sms?: boolean | null
           phone?: string | null
+          secondary_emails?: string[] | null
+          secondary_phones?: string[] | null
           stripe_customer_id?: string | null
           updated_at?: string
         }
@@ -154,6 +158,8 @@ export type Database = {
           notification_email?: boolean | null
           notification_sms?: boolean | null
           phone?: string | null
+          secondary_emails?: string[] | null
+          secondary_phones?: string[] | null
           stripe_customer_id?: string | null
           updated_at?: string
         }
