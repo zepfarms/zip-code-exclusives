@@ -26,7 +26,11 @@ interface Territory {
   zip_code: string;
   lead_type: string;
   user_id: string;
-  user_profile?: {
+  user_profiles?: {
+    first_name: string | null;
+    last_name: string | null;
+  };
+  user_profile: {
     first_name: string | null;
     last_name: string | null;
     email: string;
@@ -109,12 +113,13 @@ const AddLeadForm = () => {
         const authData = await supabase.auth.admin.listUsers();
         const authUsers = authData.data?.users || [];
 
-        const processedData = data.map(territory => {
+        const processedData: Territory[] = data.map(territory => {
           const authUser = authUsers.find(u => u.id === territory.user_id);
           return {
             ...territory,
             user_profile: {
-              ...territory.user_profiles,
+              first_name: territory.user_profiles?.first_name || null,
+              last_name: territory.user_profiles?.last_name || null,
               email: authUser?.email || 'N/A'
             }
           };

@@ -13,7 +13,8 @@ const LeadTypes = () => {
         "Motivated sellers looking for quick cash offers",
         "Properties that may need repairs or renovations",
         "Sellers wanting to avoid the traditional listing process",
-        "Potential for significant ROI on purchases"
+        "Potential for significant ROI on purchases",
+        "Exclusive Territory"
       ],
       cta: "Perfect For Real Estate Investors",
       link: "/investor-leads"

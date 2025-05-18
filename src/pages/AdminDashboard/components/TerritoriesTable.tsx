@@ -24,6 +24,10 @@ interface Territory {
   next_billing_date: string | null;
   lead_type: string;
   created_at: string;
+  user_profiles?: {
+    first_name: string | null;
+    last_name: string | null;
+  };
   user_profile: {
     first_name: string | null;
     last_name: string | null;
@@ -76,7 +80,8 @@ const TerritoriesTable = () => {
           return {
             ...territory,
             user_profile: {
-              ...territory.user_profiles,
+              first_name: territory.user_profiles?.first_name || null,
+              last_name: territory.user_profiles?.last_name || null,
               email: authUser?.email || 'N/A'
             }
           };

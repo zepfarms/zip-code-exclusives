@@ -19,7 +19,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +37,10 @@ interface Lead {
   updated_at: string;
   archived: boolean;
   user_id: string | null;
+  user_profiles?: {
+    first_name: string | null;
+    last_name: string | null;
+  };
   user_profile?: {
     first_name: string | null;
     last_name: string | null;
@@ -88,7 +91,8 @@ const LeadsTable = () => {
           return {
             ...lead,
             user_profile: {
-              ...lead.user_profiles,
+              first_name: lead.user_profiles?.first_name || null,
+              last_name: lead.user_profiles?.last_name || null,
               email: authUser?.email || 'N/A'
             }
           };
