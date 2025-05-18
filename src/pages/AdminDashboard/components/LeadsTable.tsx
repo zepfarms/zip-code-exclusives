@@ -86,15 +86,22 @@ const LeadsTable = () => {
         const authData = await supabase.auth.admin.listUsers();
         const authUsers = authData.data?.users || [];
 
-        const processedData = data.map(lead => {
+        // Handle the data safely considering the types
+        const processedData = data.map((lead: any) => {
           if (!lead.user_id) return lead;
           
           const authUser = authUsers.find(u => u.id === lead.user_id);
+          
+          // Safe access to nested properties
+          const userProfiles = lead.user_profiles;
+          const firstName = userProfiles && typeof userProfiles === 'object' ? userProfiles.first_name : null;
+          const lastName = userProfiles && typeof userProfiles === 'object' ? userProfiles.last_name : null;
+          
           return {
             ...lead,
             user_profile: {
-              first_name: lead.user_profiles ? lead.user_profiles.first_name : null,
-              last_name: lead.user_profiles ? lead.user_profiles.last_name : null,
+              first_name: firstName,
+              last_name: lastName,
               email: authUser?.email || 'N/A'
             }
           };

@@ -34,7 +34,7 @@ interface Territory {
     first_name: string | null;
     last_name: string | null;
   } | null;
-  user_profile: UserProfile;
+  user_profile?: UserProfile;
 }
 
 const TerritoriesTable = () => {
@@ -77,13 +77,20 @@ const TerritoriesTable = () => {
         const authData = await supabase.auth.admin.listUsers();
         const authUsers = authData.data?.users || [];
 
-        const processedData = data.map(territory => {
+        // Handle the data safely considering the types
+        const processedData = data.map((territory: any) => {
           const authUser = authUsers.find(u => u.id === territory.user_id);
+          
+          // Safe access to nested properties
+          const userProfiles = territory.user_profiles;
+          const firstName = userProfiles && typeof userProfiles === 'object' ? userProfiles.first_name : null;
+          const lastName = userProfiles && typeof userProfiles === 'object' ? userProfiles.last_name : null;
+          
           return {
             ...territory,
             user_profile: {
-              first_name: territory.user_profiles ? territory.user_profiles.first_name : null,
-              last_name: territory.user_profiles ? territory.user_profiles.last_name : null,
+              first_name: firstName,
+              last_name: lastName,
               email: authUser?.email || 'N/A'
             }
           };
