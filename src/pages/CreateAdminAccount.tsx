@@ -17,10 +17,19 @@ const CreateAdminAccount = () => {
     setIsCreating(true);
     
     try {
-      // 1. Create the user account
+      // 1. Create the user account with auto confirm enabled
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: 'zepfarms@gmail.com',
         password: 'Buffet1979$$',
+        options: {
+          // This ensures the user is auto-confirmed without email verification
+          emailRedirectTo: window.location.origin,
+          data: {
+            first_name: 'Admin',
+            last_name: 'User',
+            is_admin: true
+          }
+        }
       });
       
       if (authError) throw authError;
@@ -29,7 +38,7 @@ const CreateAdminAccount = () => {
       if (authData.user) {
         const userId = authData.user.id;
         
-        // 2. Insert directly into the user_profiles table instead of updating
+        // 2. Insert directly into the user_profiles table
         const { error: profileError } = await supabase
           .from('user_profiles')
           .insert({
@@ -77,13 +86,49 @@ const CreateAdminAccount = () => {
           if (insertZipError) throw insertZipError;
         }
         
+        // Immediately sign in as the admin user
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: 'zepfarms@gmail.com',
+          password: 'Buffet1979$$'
+        });
+        
+        if (signInError) {
+          console.error("Auto sign-in error:", signInError);
+          // Don't throw here, we still want to show success even if auto-login fails
+        } else {
+          // Small delay to ensure everything is set up before redirecting
+          setTimeout(() => {
+            navigate('/admin');
+          }, 1500);
+        }
+        
         setIsComplete(true);
-        toast.success("Admin account created successfully!");
+        toast.success("Admin account created and logged in successfully!");
       }
       
     } catch (error: any) {
       console.error("Error creating admin account:", error);
-      toast.error(`Error: ${error.message || 'Unknown error occurred'}`);
+      
+      // Special handling for duplicate user
+      if (error.message?.includes("duplicate key") || error.message?.includes("already registered")) {
+        toast.info("Admin account already exists. Attempting to sign in...");
+        
+        // Try to sign in with the credentials
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: 'zepfarms@gmail.com',
+          password: 'Buffet1979$$'
+        });
+        
+        if (signInError) {
+          toast.error(`Sign in failed: ${signInError.message}`);
+        } else {
+          setIsComplete(true);
+          toast.success("Signed in as admin successfully!");
+          navigate('/admin');
+        }
+      } else {
+        toast.error(`Error: ${error.message || 'Unknown error occurred'}`);
+      }
     } finally {
       setIsCreating(false);
     }
@@ -144,9 +189,9 @@ const CreateAdminAccount = () => {
                 </div>
                 <Button 
                   className="w-full bg-brand-700 hover:bg-brand-800" 
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate('/admin')}
                 >
-                  Go to Login
+                  Go to Admin Dashboard
                 </Button>
               </div>
             )}
