@@ -42,7 +42,7 @@ const ZipCodeChecker = () => {
         .eq('lead_type', 'agent')
         .single();
 
-      // Handle investor lead availability
+      // Handle investor lead availability - breaking circular reference
       if (investorError) {
         if (investorError.code === 'PGRST116') {
           // ZIP code not found in database for this type
@@ -56,7 +56,7 @@ const ZipCodeChecker = () => {
         setInvestorAvailable(investorData?.is_available ?? false);
       }
 
-      // Handle realtor lead availability
+      // Handle realtor lead availability - breaking circular reference
       if (realtorError) {
         if (realtorError.code === 'PGRST116') {
           // ZIP code not found in database for this type
@@ -70,11 +70,11 @@ const ZipCodeChecker = () => {
         setRealtorAvailable(realtorData?.is_available ?? false);
       }
       
-      // Set default values for demo/testing - avoid using state in conditions
-      const noInvestorData = !investorData && investorError?.code === 'PGRST116';
-      const noRealtorData = !realtorData && realtorError?.code === 'PGRST116';
+      // Set default values for demo/testing - use simplified logic
+      const noInvestorDataFound = !investorData && investorError?.code === 'PGRST116';
+      const noRealtorDataFound = !realtorData && realtorError?.code === 'PGRST116';
       
-      if (noInvestorData && noRealtorData) {
+      if (noInvestorDataFound && noRealtorDataFound) {
         setInvestorAvailable(true);
         setRealtorAvailable(true);
       }
@@ -82,7 +82,7 @@ const ZipCodeChecker = () => {
     } catch (error: any) {
       console.error("Error checking zip code:", error);
       toast.error("Failed to check zip code: " + (error.message || "Unknown error"));
-      // Set fallback values
+      // Set fallback values directly
       setInvestorAvailable(true);
       setRealtorAvailable(true);
     } finally {

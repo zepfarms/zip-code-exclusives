@@ -41,7 +41,7 @@ const ZipCodeChecker = () => {
         .eq('lead_type', 'agent')
         .single();
 
-      // Handle investor lead availability
+      // Handle investor lead availability - breaking circular reference
       if (investorError) {
         if (investorError.code === 'PGRST116') {
           // ZIP code not found in database for this type
@@ -55,7 +55,7 @@ const ZipCodeChecker = () => {
         setInvestorAvailable(investorData?.is_available ?? false);
       }
 
-      // Handle realtor lead availability
+      // Handle realtor lead availability - breaking circular reference
       if (realtorError) {
         if (realtorError.code === 'PGRST116') {
           // ZIP code not found in database for this type
@@ -69,11 +69,11 @@ const ZipCodeChecker = () => {
         setRealtorAvailable(realtorData?.is_available ?? false);
       }
       
-      // Set default values when no data exists, using direct check on variables rather than state
-      const noInvestorData = !investorData && investorError?.code === 'PGRST116';
-      const noRealtorData = !realtorData && realtorError?.code === 'PGRST116';
+      // Set default values when no data exists, using direct check on raw variables
+      const noInvestorDataFound = !investorData && investorError?.code === 'PGRST116';
+      const noRealtorDataFound = !realtorData && realtorError?.code === 'PGRST116';
       
-      if (noInvestorData && noRealtorData) {
+      if (noInvestorDataFound && noRealtorDataFound) {
         setInvestorAvailable(true);
         setRealtorAvailable(true);
       }
