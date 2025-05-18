@@ -206,7 +206,7 @@ const Dashboard = () => {
           phone: values.phone,
           notification_email: values.notificationEmail,
           notification_sms: values.notificationSms,
-          updated_at: new Date()
+          updated_at: new Date().toISOString() // Convert Date to string
         })
         .eq('id', session.user.id);
       
@@ -224,7 +224,7 @@ const Dashboard = () => {
       
       toast.success('Profile updated successfully');
       
-      // Refresh user profile data
+      // Refresh user data
       fetchUserData(session.user.id);
     } catch (error) {
       console.error('Error updating profile:', error);
