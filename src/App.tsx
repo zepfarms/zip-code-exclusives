@@ -21,7 +21,6 @@ import PricingPage from "./pages/PricingPage";
 import AboutUsPage from "./pages/AboutUsPage";
 import InvestorLeadsPage from "./pages/InvestorLeadsPage";
 import RealtorLeadsPage from "./pages/RealtorLeadsPage";
-import CreateAdminAccount from "./pages/CreateAdminAccount";
 
 const queryClient = new QueryClient();
 
@@ -47,7 +46,6 @@ const App = () => (
             <Route path="/about" element={<AboutUsPage />} />
             <Route path="/investor-leads" element={<InvestorLeadsPage />} />
             <Route path="/realtor-leads" element={<RealtorLeadsPage />} />
-            <Route path="/create-admin-account" element={<CreateAdminAccount />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
