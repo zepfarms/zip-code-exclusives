@@ -41,8 +41,8 @@ const ZipCodeChecker = () => {
         .eq('code', zip)
         .eq('lead_type', 'agent')
         .single();
-        
-      // Process investor data
+      
+      // Process investor result
       if (investorResult.error) {
         if (investorResult.error.code === 'PGRST116') {
           // ZIP code not found for investor
@@ -55,7 +55,7 @@ const ZipCodeChecker = () => {
         setInvestorAvailable(investorResult.data?.is_available ?? false);
       }
       
-      // Process realtor data
+      // Process realtor result
       if (realtorResult.error) {
         if (realtorResult.error.code === 'PGRST116') {
           // ZIP code not found for realtor
@@ -68,15 +68,12 @@ const ZipCodeChecker = () => {
         setRealtorAvailable(realtorResult.data?.is_available ?? false);
       }
       
-      // Handle case when both are not found in database (demo mode)
-      const bothNotFound = 
-        (investorResult.error?.code === 'PGRST116') && 
-        (realtorResult.error?.code === 'PGRST116');
-        
-      if (bothNotFound) {
+      // Demo mode handling
+      if (investorResult.error?.code === 'PGRST116' && realtorResult.error?.code === 'PGRST116') {
         setInvestorAvailable(true);
         setRealtorAvailable(true);
       }
+      
     } catch (error: any) {
       console.error("Error checking zip code:", error);
       toast.error("Failed to check zip code: " + (error.message || "Unknown error"));
@@ -93,6 +90,9 @@ const ZipCodeChecker = () => {
     navigate('/register', { state: { scrollToTop: true } });
   };
 
+  // Determine if either lead type is available
+  const atLeastOneAvailable = investorAvailable === true || realtorAvailable === true;
+  
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
@@ -109,6 +109,7 @@ const ZipCodeChecker = () => {
           isChecking={isChecking}
         />
 
+        {/* Only show results if we've checked availability */}
         {(investorAvailable !== null || realtorAvailable !== null) && (
           <div className="mt-6 space-y-6">
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
@@ -146,7 +147,7 @@ const ZipCodeChecker = () => {
                 )}
               </div>
               
-              {(investorAvailable || realtorAvailable) && (
+              {atLeastOneAvailable && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <p className="mb-4 text-sm text-gray-600">
                     This zip code is available! Create an account to claim this territory.
@@ -161,7 +162,7 @@ const ZipCodeChecker = () => {
                 </div>
               )}
               
-              {!investorAvailable && !realtorAvailable && (
+              {investorAvailable === false && realtorAvailable === false && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <p className="text-sm text-amber-700">
                     This zip code is currently claimed. Join our waitlist to be notified when it becomes available.
