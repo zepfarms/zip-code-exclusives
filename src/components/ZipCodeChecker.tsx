@@ -59,8 +59,11 @@ const ZipCodeChecker = () => {
     }
   };
 
-  const handleClaimArea = (leadType: string) => {
-    navigate('/register', { state: { zipCode, leadType } });
+  const handleCreateAccount = (leadType: string) => {
+    // We just store the zip code in localStorage for later use after signup
+    localStorage.setItem('checkedZipCode', zipCode);
+    localStorage.setItem('preferredLeadType', leadType);
+    navigate('/register');
   };
 
   return (
@@ -80,12 +83,70 @@ const ZipCodeChecker = () => {
         />
 
         {(investorAvailable !== null || realtorAvailable !== null) && (
-          <ZipAvailableSection 
-            zipCode={zipCode} 
-            investorAvailable={investorAvailable}
-            realtorAvailable={realtorAvailable}
-            handleClaimArea={handleClaimArea} 
-          />
+          <div className="mt-6 space-y-6">
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <h3 className="font-medium text-lg mb-2">Zip Code {zipCode} Status</h3>
+              
+              <div className="space-y-4">
+                {investorAvailable !== null && (
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Investor Leads:</span>
+                    {investorAvailable ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Available
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        Not Available
+                      </span>
+                    )}
+                  </div>
+                )}
+                
+                {realtorAvailable !== null && (
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Realtor Leads:</span>
+                    {realtorAvailable ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Available
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        Not Available
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {(investorAvailable || realtorAvailable) && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <p className="mb-4 text-sm text-gray-600">
+                    This zip code is available! Create an account to claim this territory.
+                  </p>
+                  
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {investorAvailable && (
+                      <button
+                        onClick={() => handleCreateAccount('investor')}
+                        className="px-4 py-2 bg-brand-600 text-white rounded hover:bg-brand-700 transition-colors flex-1"
+                      >
+                        Create Account
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {!investorAvailable && !realtorAvailable && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <p className="text-sm text-amber-700">
+                    This zip code is currently claimed. Join our waitlist to be notified when it becomes available.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {investorAvailable === false && realtorAvailable === false && (

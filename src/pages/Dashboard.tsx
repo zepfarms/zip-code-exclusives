@@ -14,7 +14,8 @@ import { z } from 'zod';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { supabase } from '@/integrations/supabase/client';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Loader } from 'lucide-react';
+import AddTerritoryCard from '@/components/dashboard/AddTerritoryCard';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -373,6 +374,13 @@ const Dashboard = () => {
     }
   };
 
+  const refreshData = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      fetchUserData(session.user.id);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -384,18 +392,79 @@ const Dashboard = () => {
               <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
               <p className="text-gray-600">Manage your territories and leads</p>
             </div>
-            <Button onClick={handleAddArea} className="mt-4 md:mt-0 bg-accent-600 hover:bg-accent-700">
-              Add New Area
-            </Button>
           </div>
           
-          <Tabs defaultValue="leads">
+          <Tabs defaultValue="territories">
             <TabsList className="mb-6">
-              <TabsTrigger value="leads">My Leads</TabsTrigger>
               <TabsTrigger value="territories">My Territories</TabsTrigger>
+              <TabsTrigger value="leads">My Leads</TabsTrigger>
               <TabsTrigger value="profile">Profile</TabsTrigger>
               <TabsTrigger value="billing">Billing</TabsTrigger>
             </TabsList>
+            
+            <TabsContent value="territories">
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {/* Add Territory Card */}
+                <AddTerritoryCard onTerritoryAdded={refreshData} />
+
+                {/* Existing Territories */}
+                {!isLoading && territories.length > 0 && territories.map((territory) => (
+                  <Card key={territory.id}>
+                    <CardHeader>
+                      <CardTitle className="text-xl">Zip Code {territory.zip_code}</CardTitle>
+                      <CardDescription>
+                        {territory.lead_type === 'investor' ? 'Investment' : 'Realtor'} Leads
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Status:</span>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Active
+                          </span>
+                        </div>
+                        
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Start Date:</span>
+                          <span>{territory.start_date ? new Date(territory.start_date).toLocaleDateString() : 'N/A'}</span>
+                        </div>
+                        
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Next Billing:</span>
+                          <span>{territory.next_billing_date ? new Date(territory.next_billing_date).toLocaleDateString() : 'N/A'}</span>
+                        </div>
+                        
+                        <div className="pt-3">
+                          <Button 
+                            variant="outline" 
+                            className="w-full text-red-500 border-red-200 hover:bg-red-50"
+                            onClick={() => handleRemoveArea(territory.id, territory.zip_code)}
+                          >
+                            Cancel Subscription
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              
+              {isLoading && (
+                <div className="flex justify-center items-center py-12">
+                  <Loader className="h-8 w-8 animate-spin text-brand-600" />
+                </div>
+              )}
+              
+              {!isLoading && territories.length === 0 && (
+                <Card className="text-center p-8">
+                  <h3 className="text-lg font-medium mb-2">No Territories Yet</h3>
+                  <p className="text-gray-600 mb-6">
+                    Add your first exclusive territory to start receiving qualified leads
+                  </p>
+                </Card>
+              )}
+            </TabsContent>
             
             <TabsContent value="leads">
               <div className="space-y-6">
@@ -467,65 +536,6 @@ const Dashboard = () => {
                     ) : (
                       <div className="text-center py-8 text-gray-500">
                         No leads available yet. They will appear here once generated for your territories.
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="territories">
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>My Territories</CardTitle>
-                    <CardDescription>
-                      Manage your exclusive zip code territories
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {isLoading ? (
-                      <div className="text-center py-8">Loading territories...</div>
-                    ) : territories.length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                          <thead>
-                            <tr className="border-b border-gray-200">
-                              <th className="py-3 px-4 font-medium">Zip Code</th>
-                              <th className="py-3 px-4 font-medium">Status</th>
-                              <th className="py-3 px-4 font-medium">Start Date</th>
-                              <th className="py-3 px-4 font-medium">Next Billing</th>
-                              <th className="py-3 px-4 font-medium">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {territories.map((territory) => (
-                              <tr key={territory.id} className="border-b border-gray-100 hover:bg-gray-50">
-                                <td className="py-3 px-4 font-medium">{territory.zip_code}</td>
-                                <td className="py-3 px-4">
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    Active
-                                  </span>
-                                </td>
-                                <td className="py-3 px-4">{territory.start_date ? new Date(territory.start_date).toLocaleDateString() : 'N/A'}</td>
-                                <td className="py-3 px-4">{territory.next_billing_date ? new Date(territory.next_billing_date).toLocaleDateString() : 'N/A'}</td>
-                                <td className="py-3 px-4">
-                                  <Button 
-                                    variant="outline" 
-                                    className="text-sm border-red-500 text-red-500 hover:bg-red-50"
-                                    onClick={() => handleRemoveArea(territory.id, territory.zip_code)}
-                                  >
-                                    Cancel
-                                  </Button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        No territories found. Click "Add New Area" to get started.
                       </div>
                     )}
                   </CardContent>

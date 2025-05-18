@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -16,33 +16,38 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
+import { Loader } from 'lucide-react';
 
 const Register = () => {
+  // Form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [userType, setUserType] = useState('');
   const [licenseState, setLicenseState] = useState('');
   const [licenseNumber, setLicenseNumber] = useState('');
+  
+  // UI state
+  const [isLoading, setIsLoading] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   
-  const location = useLocation();
   const navigate = useNavigate();
   
-  // Extract zip code and lead type from location state if available
-  const zipCode = location.state?.zipCode || '';
-  const leadType = location.state?.leadType || '';
-  const redirectTo = location.state?.redirectTo || '/payment';
+  // Check for stored zip code and lead type from ZipCodeChecker
+  const checkedZipCode = localStorage.getItem('checkedZipCode');
+  const preferredLeadType = localStorage.getItem('preferredLeadType');
   
-  // Set default user type based on leadType from state
+  // Set default user type based on stored lead type
   useEffect(() => {
-    if (leadType) {
-      setUserType(leadType);
+    if (preferredLeadType) {
+      setUserType(preferredLeadType);
+    } else {
+      // Default to investor if not specified
+      setUserType('investor');
     }
-  }, [leadType]);
+  }, [preferredLeadType]);
 
   // Check auth status on component mount - only once
   useEffect(() => {
@@ -50,16 +55,10 @@ const Register = () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
-        // If already logged in and we have a redirect, go there directly
+        // If already logged in, go to dashboard
         if (session) {
-          if (redirectTo) {
-            navigate(redirectTo, { 
-              state: { 
-                zipCode,
-                leadType: userType || leadType
-              }
-            });
-          }
+          navigate('/dashboard', { replace: true });
+          return;
         }
       } catch (error) {
         console.error("Error checking auth status:", error);
@@ -120,25 +119,14 @@ const Register = () => {
       if (signInError) {
         console.error("Auto sign-in failed:", signInError);
         toast.warning("Account created but automatic login failed. Please sign in manually.");
-        navigate('/login', { 
-          state: { 
-            redirectTo, 
-            zipCode,
-            leadType: userType
-          }
-        });
+        navigate('/login');
         return;
       }
 
       toast.success("Account created and logged in successfully!");
 
-      // Navigate to payment page with zip code and lead type
-      navigate(redirectTo, { 
-        state: { 
-          zipCode,
-          leadType: userType
-        }
-      });
+      // Navigate to dashboard
+      navigate('/dashboard', { replace: true });
     } catch (error: any) {
       console.error("Registration error:", error);
       toast.error(error.message || "Failed to create account");
@@ -169,8 +157,8 @@ const Register = () => {
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Create Your Account</CardTitle>
             <CardDescription>
-              {zipCode 
-                ? `Register to claim exclusive rights to ${userType === 'investor' ? 'investor' : 'realtor'} leads in zip code ${zipCode}` 
+              {checkedZipCode 
+                ? `Register to claim exclusive rights to receive leads in zip code ${checkedZipCode}` 
                 : "Register to start receiving exclusive real estate leads"}
             </CardDescription>
           </CardHeader>
@@ -247,44 +235,42 @@ const Register = () => {
                 />
               </div>
 
-              {!leadType && (
-                <div className="space-y-3 pt-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    I am looking for: <span className="text-red-500">*</span>
-                  </label>
-                  <RadioGroup 
-                    value={userType} 
-                    onValueChange={setUserType}
-                    className="flex flex-col space-y-3"
-                  >
-                    <div className="flex items-center space-x-3 rounded-md border p-3">
-                      <RadioGroupItem value="investor" id="investor" />
-                      <label htmlFor="investor" className="flex flex-col cursor-pointer">
-                        <span className="font-medium">Investor Leads</span>
-                        <span className="text-sm text-gray-500">
-                          Receive leads from potential sellers for investment opportunities
-                        </span>
-                      </label>
-                    </div>
+              <div className="space-y-3 pt-2">
+                <label className="text-sm font-medium text-gray-700">
+                  I am looking for: <span className="text-red-500">*</span>
+                </label>
+                <RadioGroup 
+                  value={userType} 
+                  onValueChange={setUserType}
+                  className="flex flex-col space-y-3"
+                >
+                  <div className="flex items-center space-x-3 rounded-md border p-3">
+                    <RadioGroupItem value="investor" id="investor" />
+                    <label htmlFor="investor" className="flex flex-col cursor-pointer">
+                      <span className="font-medium">Investor Leads</span>
+                      <span className="text-sm text-gray-500">
+                        Receive leads from potential sellers for investment opportunities
+                      </span>
+                    </label>
+                  </div>
 
-                    <div className="flex items-center space-x-3 rounded-md border p-3">
-                      <RadioGroupItem value="agent" id="agent" />
-                      <label htmlFor="agent" className="flex flex-col cursor-pointer">
-                        <span className="font-medium">Real Estate Agent Leads</span>
-                        <span className="text-sm text-gray-500">
-                          Receive leads from potential buyers and sellers (requires real estate license)
-                        </span>
-                      </label>
-                    </div>
-                  </RadioGroup>
-                </div>
-              )}
+                  <div className="flex items-center space-x-3 rounded-md border p-3">
+                    <RadioGroupItem value="agent" id="agent" />
+                    <label htmlFor="agent" className="flex flex-col cursor-pointer">
+                      <span className="font-medium">Real Estate Agent Leads</span>
+                      <span className="text-sm text-gray-500">
+                        Receive leads from potential buyers and sellers (requires real estate license)
+                      </span>
+                    </label>
+                  </div>
+                </RadioGroup>
+              </div>
               
-              {leadType && (
+              {checkedZipCode && (
                 <div className="p-4 bg-brand-50 rounded-md border border-brand-100">
-                  <h3 className="font-medium text-brand-800">Selected Lead Type:</h3>
+                  <h3 className="font-medium text-brand-800">Selected Zip Code:</h3>
                   <p className="text-brand-700">
-                    {userType === 'investor' ? 'Investor Leads' : 'Real Estate Agent Leads'} in zip code {zipCode}
+                    {zipCode || checkedZipCode}
                   </p>
                 </div>
               )}
@@ -332,7 +318,14 @@ const Register = () => {
                   className="w-full bg-accent-600 hover:bg-accent-700"
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Creating Account...' : 'Create Account & Continue to Payment'}
+                  {isLoading ? (
+                    <>
+                      <Loader className="mr-2 h-4 w-4 animate-spin" />
+                      Creating Account...
+                    </>
+                  ) : (
+                    'Create Account'
+                  )}
                 </Button>
               </div>
             </form>

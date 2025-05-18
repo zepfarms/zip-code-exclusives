@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,104 +10,60 @@ import ZipCodeForm from '@/components/zip-checker/ZipCodeForm';
 import ZipAvailableSection from '@/components/zip-checker/ZipAvailableSection';
 import ZipWaitlistSection from '@/components/zip-checker/ZipWaitlistSection';
 import { supabase } from '@/integrations/supabase/client';
+import { Loader } from 'lucide-react';
+import AddTerritoryCard from '@/components/dashboard/AddTerritoryCard';
 
 const AddTerritory = () => {
-  const [zipCode, setZipCode] = useState('');
-  const [isChecking, setIsChecking] = useState(false);
-  const [investorAvailable, setInvestorAvailable] = useState<boolean | null>(null);
-  const [realtorAvailable, setRealtorAvailable] = useState<boolean | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
 
-  const checkZipCodeAvailability = async (zip: string) => {
-    setIsChecking(true);
-    
-    try {
-      // First check if the user is logged in
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session) {
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
         toast.error("You must be logged in to add a territory");
         navigate('/login');
         return;
       }
+      
+      setIsAuthenticated(true);
+      setIsLoading(false);
+    };
+    
+    checkAuthStatus();
+  }, [navigate]);
 
-      // Check if the zip code exists in our database
-      const { data: zipCodeData, error: zipCodeError } = await supabase
-        .from('zip_codes')
-        .select('is_available')
-        .eq('code', zip)
-        .single();
-
-      if (zipCodeError) {
-        if (zipCodeError.code === 'PGRST116') {
-          // ZIP code not found in database
-          // We'll assume it's available
-          setInvestorAvailable(true);
-          setRealtorAvailable(true);
-        } else {
-          throw new Error(zipCodeError.message);
-        }
-      } else {
-        // ZIP code found, check availability
-        setInvestorAvailable(zipCodeData?.is_available ?? false);
-        setRealtorAvailable(zipCodeData?.is_available ?? false);
-      }
-    } catch (error: any) {
-      console.error("Error checking zip code:", error);
-      toast.error("Failed to check zip code: " + (error.message || "Unknown error"));
-    } finally {
-      setIsChecking(false);
-    }
+  const handleTerritoryAdded = () => {
+    // This function will be called after successful territory addition
+    toast.success("Territory added successfully!");
+    navigate('/dashboard');
   };
 
-  const handleClaimArea = (leadType: string) => {
-    navigate('/payment', { state: { zipCode, leadType } });
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <Loader className="h-8 w-8 animate-spin text-brand-600" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
       
-      <main className="flex-1 bg-gray-50 py-8">
-        <div className="container mx-auto px-4">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Add New Territory</h1>
-          <p className="text-gray-600 mb-8">
-            Enter a zip code to check availability and add it to your exclusive territories.
-          </p>
+      <main className="flex-1 bg-gray-50 py-12">
+        <div className="container mx-auto px-4 max-w-xl">
+          <h1 className="text-3xl font-bold text-gray-900 mb-6 text-center">Add New Territory</h1>
           
-          <div className="max-w-md mx-auto">
-            <Card>
-              <CardHeader>
-                <CardTitle>Check Zip Code Availability</CardTitle>
-                <CardDescription>
-                  See if your desired area is available for exclusive leads
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ZipCodeForm 
-                  zipCode={zipCode} 
-                  setZipCode={setZipCode}
-                  onSubmit={checkZipCodeAvailability}
-                  isChecking={isChecking}
-                />
-
-                {(investorAvailable !== null || realtorAvailable !== null) && (
-                  <ZipAvailableSection 
-                    zipCode={zipCode} 
-                    investorAvailable={investorAvailable}
-                    realtorAvailable={realtorAvailable}
-                    handleClaimArea={handleClaimArea} 
-                  />
-                )}
-
-                {investorAvailable === false && realtorAvailable === false && (
-                  <ZipWaitlistSection zipCode={zipCode} />
-                )}
-              </CardContent>
-              <CardFooter className="flex justify-center text-sm text-gray-500">
-                We respect your privacy and will never share your information.
-              </CardFooter>
-            </Card>
-          </div>
+          {isAuthenticated && (
+            <AddTerritoryCard onTerritoryAdded={handleTerritoryAdded} />
+          )}
         </div>
       </main>
       
