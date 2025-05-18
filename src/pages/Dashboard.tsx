@@ -65,25 +65,21 @@ const Dashboard = () => {
       if (profileError) throw profileError;
       setUserProfile(profile);
 
-      // Parse secondary contacts if they exist
-      if (profile.secondary_emails) {
-        setContacts(prev => ({
-          ...prev,
-          emails: [profile.email || '', ...profile.secondary_emails]
-        }));
-      }
+      // Initialize secondary emails array to an empty array by default
+      const secondaryEmails = profile.secondary_emails || [];
+      // Get email from auth session
+      const { data: { session } } = await supabase.auth.getSession();
+      const primaryEmail = session?.user?.email || '';
       
-      if (profile.secondary_phones) {
-        setContacts(prev => ({
-          ...prev,
-          phones: [profile.phone || '', ...profile.secondary_phones]
-        }));
-      } else {
-        setContacts(prev => ({
-          ...prev,
-          phones: [profile.phone || '']
-        }));
-      }
+      // Initialize secondary phones array to an empty array by default
+      const secondaryPhones = profile.secondary_phones || [];
+      const primaryPhone = profile.phone || '';
+      
+      // Set contacts with primary and secondary emails
+      setContacts({
+        emails: [primaryEmail, ...secondaryEmails],
+        phones: [primaryPhone, ...secondaryPhones]
+      });
 
       // Get territories
       const { data: territoriesData, error: territoriesError } = await supabase
@@ -106,7 +102,7 @@ const Dashboard = () => {
         if (nextBillingDates.length > 0) {
           const nextRenewal = new Date(nextBillingDates[0]);
           const today = new Date();
-          const daysRemaining = Math.ceil((nextRenewal - today) / (1000 * 60 * 60 * 24));
+          const daysRemaining = Math.ceil((nextRenewal.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
           
           setSubscriptionInfo({
             totalMonthly: territoriesData.length * 99.99, // Assuming $99.99 per territory
@@ -308,6 +304,10 @@ const Dashboard = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
       
+      // Get secondary emails and phones (excluding the primary ones)
+      const secondaryEmails = contacts.emails.slice(1);
+      const secondaryPhones = contacts.phones.slice(1);
+      
       // Update profile
       const { error: updateError } = await supabase
         .from('user_profiles')
@@ -316,8 +316,8 @@ const Dashboard = () => {
           last_name: values.lastName,
           company: values.company,
           phone: contacts.phones[0], // Primary phone
-          secondary_phones: contacts.phones.slice(1), // Additional phones
-          secondary_emails: contacts.emails.slice(1), // Additional emails
+          secondary_phones: secondaryPhones, // Additional phones
+          secondary_emails: secondaryEmails, // Additional emails
           notification_email: values.notificationEmail,
           notification_sms: values.notificationSms,
           updated_at: new Date().toISOString() // Convert Date to string
