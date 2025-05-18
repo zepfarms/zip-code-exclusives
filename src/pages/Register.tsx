@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -270,7 +269,7 @@ const Register = () => {
                 <div className="p-4 bg-brand-50 rounded-md border border-brand-100">
                   <h3 className="font-medium text-brand-800">Selected Zip Code:</h3>
                   <p className="text-brand-700">
-                    {zipCode || checkedZipCode}
+                    {checkedZipCode}
                   </p>
                 </div>
               )}
