@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -34,6 +33,7 @@ const Register = () => {
   // Extract zip code and lead type from location state if available
   const zipCode = location.state?.zipCode || '';
   const leadType = location.state?.leadType || '';
+  const redirectTo = location.state?.redirectTo || '/payment';
   
   // Set default user type based on leadType from state
   useEffect(() => {
@@ -41,6 +41,27 @@ const Register = () => {
       setUserType(leadType);
     }
   }, [leadType]);
+
+  // Check auth status on component mount
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // If already logged in and we have a redirect, go there directly
+      if (session) {
+        if (redirectTo) {
+          navigate(redirectTo, { 
+            state: { 
+              zipCode,
+              leadType: userType || leadType
+            }
+          });
+        }
+      }
+    };
+    
+    checkAuthStatus();
+  }, [navigate, redirectTo, zipCode, leadType, userType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,22 +110,29 @@ const Register = () => {
       });
       
       if (signInError) {
-        // If sign in fails, we'll notify the user but still allow them to continue to payment
         console.error("Auto sign-in failed:", signInError);
-        toast.warning("Account created but automatic login failed. Please sign in manually after payment.");
-      } else {
-        toast.success("Account created and logged in successfully!");
+        toast.warning("Account created but automatic login failed. Please sign in manually.");
+        navigate('/login', { 
+          state: { 
+            redirectTo, 
+            zipCode,
+            leadType: userType
+          }
+        });
+        return;
       }
 
-      // Navigate to payment page with user type and zip code
-      navigate("/payment", { 
+      toast.success("Account created and logged in successfully!");
+
+      // Navigate to payment page with zip code and lead type
+      navigate(redirectTo, { 
         state: { 
           zipCode,
-          userType,
-          leadType: userType // Pass the lead type matching the user type
+          leadType: userType
         }
       });
     } catch (error: any) {
+      console.error("Registration error:", error);
       toast.error(error.message || "Failed to create account");
     } finally {
       setIsLoading(false);
@@ -230,6 +258,7 @@ const Register = () => {
                   </RadioGroup>
                 </div>
               )}
+              
               {leadType && (
                 <div className="p-4 bg-brand-50 rounded-md border border-brand-100">
                   <h3 className="font-medium text-brand-800">Selected Lead Type:</h3>

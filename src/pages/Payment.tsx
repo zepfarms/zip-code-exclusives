@@ -21,6 +21,7 @@ const Payment = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [user, setUser] = useState<any>(null);
   const zipCode = location.state?.zipCode || new URLSearchParams(location.search).get('zip_code') || 'your selected area';
   const leadType = location.state?.leadType || 'investor'; // Default to investor if not specified
 
@@ -34,11 +35,23 @@ const Payment = () => {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
+          // Store current path and parameters for redirect after login
+          localStorage.setItem('redirectAfterAuth', JSON.stringify({
+            path: '/payment',
+            state: { zipCode, leadType }
+          }));
+          
           // If not authenticated and we have zip code and lead type, redirect to registration
           if (zipCode && leadType) {
             toast.info("Please create an account to continue with your purchase");
             navigate('/register', { state: { zipCode, leadType, redirectTo: '/payment' } });
+          } else {
+            // General case with no params
+            navigate('/register', { state: { redirectTo: '/payment' } });
           }
+        } else {
+          // User is authenticated, set the user
+          setUser(session.user);
         }
       } catch (error) {
         console.error("Error checking auth status:", error);
