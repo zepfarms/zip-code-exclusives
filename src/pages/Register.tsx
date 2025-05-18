@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ const Register = () => {
   const [userType, setUserType] = useState('');
   const [licenseState, setLicenseState] = useState('');
   const [licenseNumber, setLicenseNumber] = useState('');
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -42,26 +44,32 @@ const Register = () => {
     }
   }, [leadType]);
 
-  // Check auth status on component mount
+  // Check auth status on component mount - only once
   useEffect(() => {
     const checkAuthStatus = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // If already logged in and we have a redirect, go there directly
-      if (session) {
-        if (redirectTo) {
-          navigate(redirectTo, { 
-            state: { 
-              zipCode,
-              leadType: userType || leadType
-            }
-          });
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        // If already logged in and we have a redirect, go there directly
+        if (session) {
+          if (redirectTo) {
+            navigate(redirectTo, { 
+              state: { 
+                zipCode,
+                leadType: userType || leadType
+              }
+            });
+          }
         }
+      } catch (error) {
+        console.error("Error checking auth status:", error);
+      } finally {
+        setIsCheckingAuth(false);
       }
     };
     
     checkAuthStatus();
-  }, [navigate, redirectTo, zipCode, leadType, userType]);
+  }, []); // Only run once on component mount
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,6 +146,19 @@ const Register = () => {
       setIsLoading(false);
     }
   };
+
+  // If still checking auth, show loading
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent-600"></div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

@@ -41,21 +41,23 @@ const Payment = () => {
             state: { zipCode, leadType }
           }));
           
-          // If not authenticated and we have zip code and lead type, redirect to registration
-          if (zipCode && leadType) {
-            toast.info("Please create an account to continue with your purchase");
-            navigate('/register', { state: { zipCode, leadType, redirectTo: '/payment' } });
-          } else {
-            // General case with no params
-            navigate('/register', { state: { redirectTo: '/payment' } });
-          }
+          // If not authenticated, redirect to registration
+          toast.info("Please create an account to continue with your purchase");
+          navigate('/register', { 
+            state: { 
+              zipCode, 
+              leadType, 
+              redirectTo: '/payment' 
+            },
+            replace: true // Use replace instead of push to avoid browser history issues
+          });
         } else {
           // User is authenticated, set the user
           setUser(session.user);
+          setIsCheckingAuth(false);
         }
       } catch (error) {
         console.error("Error checking auth status:", error);
-      } finally {
         setIsCheckingAuth(false);
       }
     };
