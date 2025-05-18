@@ -92,6 +92,7 @@ export type Database = {
           active: boolean | null
           created_at: string
           id: string
+          lead_type: string
           next_billing_date: string | null
           start_date: string | null
           user_id: string
@@ -101,6 +102,7 @@ export type Database = {
           active?: boolean | null
           created_at?: string
           id?: string
+          lead_type?: string
           next_billing_date?: string | null
           start_date?: string | null
           user_id: string
@@ -110,6 +112,7 @@ export type Database = {
           active?: boolean | null
           created_at?: string
           id?: string
+          lead_type?: string
           next_billing_date?: string | null
           start_date?: string | null
           user_id?: string
@@ -125,6 +128,8 @@ export type Database = {
           id: string
           is_admin: boolean | null
           last_name: string | null
+          license_number: string | null
+          license_state: string | null
           notification_email: boolean | null
           notification_sms: boolean | null
           phone: string | null
@@ -132,6 +137,7 @@ export type Database = {
           secondary_phones: string[] | null
           stripe_customer_id: string | null
           updated_at: string
+          user_type: string
         }
         Insert: {
           company?: string | null
@@ -140,6 +146,8 @@ export type Database = {
           id: string
           is_admin?: boolean | null
           last_name?: string | null
+          license_number?: string | null
+          license_state?: string | null
           notification_email?: boolean | null
           notification_sms?: boolean | null
           phone?: string | null
@@ -147,6 +155,7 @@ export type Database = {
           secondary_phones?: string[] | null
           stripe_customer_id?: string | null
           updated_at?: string
+          user_type?: string
         }
         Update: {
           company?: string | null
@@ -155,6 +164,8 @@ export type Database = {
           id?: string
           is_admin?: boolean | null
           last_name?: string | null
+          license_number?: string | null
+          license_state?: string | null
           notification_email?: boolean | null
           notification_sms?: boolean | null
           phone?: string | null
@@ -162,6 +173,7 @@ export type Database = {
           secondary_phones?: string[] | null
           stripe_customer_id?: string | null
           updated_at?: string
+          user_type?: string
         }
         Relationships: []
       }

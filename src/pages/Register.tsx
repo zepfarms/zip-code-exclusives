@@ -14,6 +14,8 @@ import {
 import { toast } from "sonner";
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { supabase } from "@/integrations/supabase/client";
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -22,6 +24,9 @@ const Register = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [userType, setUserType] = useState('investor');
+  const [licenseState, setLicenseState] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -29,12 +34,12 @@ const Register = () => {
   // Extract zip code from location state if available
   const zipCode = location.state?.zipCode || '';
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
     if (!email || !password || !confirmPassword || !firstName || !lastName) {
-      toast.error("Please fill in all fields");
+      toast.error("Please fill in all required fields");
       return;
     }
     
@@ -42,20 +47,50 @@ const Register = () => {
       toast.error("Passwords do not match");
       return;
     }
+
+    // Validate license information for agents
+    if (userType === 'agent' && (!licenseState || !licenseNumber)) {
+      toast.error("License information is required for real estate agents");
+      return;
+    }
     
     setIsLoading(true);
     
-    // This is where you'd integrate with Supabase for registration
-    // For now, we'll simulate the process
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Register user with Supabase
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            user_type: userType,
+            license_state: licenseState || null,
+            license_number: licenseNumber || null
+          }
+        }
+      });
+
+      if (error) throw error;
+
       toast.success("Account created successfully! Redirecting to payment...");
       
-      // Navigate to payment page (to be implemented)
+      // Navigate to payment page with user type and zip code
       setTimeout(() => {
-        navigate("/payment", { state: { zipCode } });
+        navigate("/payment", { 
+          state: { 
+            zipCode,
+            userType,
+            leadType: userType // Pass the lead type matching the user type
+          }
+        });
       }, 1500);
-    }, 1000);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create account");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -77,7 +112,7 @@ const Register = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label htmlFor="firstName" className="text-sm font-medium text-gray-700">
-                    First Name
+                    First Name <span className="text-red-500">*</span>
                   </label>
                   <Input
                     id="firstName"
@@ -89,7 +124,7 @@ const Register = () => {
                 
                 <div className="space-y-2">
                   <label htmlFor="lastName" className="text-sm font-medium text-gray-700">
-                    Last Name
+                    Last Name <span className="text-red-500">*</span>
                   </label>
                   <Input
                     id="lastName"
@@ -102,7 +137,7 @@ const Register = () => {
               
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium text-gray-700">
-                  Email Address
+                  Email Address <span className="text-red-500">*</span>
                 </label>
                 <Input
                   id="email"
@@ -119,7 +154,7 @@ const Register = () => {
               
               <div className="space-y-2">
                 <label htmlFor="password" className="text-sm font-medium text-gray-700">
-                  Password
+                  Password <span className="text-red-500">*</span>
                 </label>
                 <Input
                   id="password"
@@ -133,7 +168,7 @@ const Register = () => {
               
               <div className="space-y-2">
                 <label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
-                  Confirm Password
+                  Confirm Password <span className="text-red-500">*</span>
                 </label>
                 <Input
                   id="confirmPassword"
@@ -144,6 +179,74 @@ const Register = () => {
                   required
                 />
               </div>
+
+              <div className="space-y-3 pt-2">
+                <label className="text-sm font-medium text-gray-700">
+                  I am looking for: <span className="text-red-500">*</span>
+                </label>
+                <RadioGroup 
+                  value={userType} 
+                  onValueChange={setUserType}
+                  className="flex flex-col space-y-3"
+                >
+                  <div className="flex items-center space-x-3 rounded-md border p-3">
+                    <RadioGroupItem value="investor" id="investor" />
+                    <label htmlFor="investor" className="flex flex-col cursor-pointer">
+                      <span className="font-medium">Investor Leads</span>
+                      <span className="text-sm text-gray-500">
+                        Receive leads from potential sellers for investment opportunities
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center space-x-3 rounded-md border p-3">
+                    <RadioGroupItem value="agent" id="agent" />
+                    <label htmlFor="agent" className="flex flex-col cursor-pointer">
+                      <span className="font-medium">Real Estate Agent Leads</span>
+                      <span className="text-sm text-gray-500">
+                        Receive leads from potential buyers and sellers (requires real estate license)
+                      </span>
+                    </label>
+                  </div>
+                </RadioGroup>
+              </div>
+              
+              {userType === 'agent' && (
+                <div className="space-y-4 p-4 bg-gray-50 rounded-md border">
+                  <div className="text-sm font-medium text-gray-800">
+                    Real Estate License Information <span className="text-red-500">*</span>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Required for real estate agent leads. We'll verify this information.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="licenseState" className="text-sm font-medium text-gray-700">
+                        Licensed State <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        id="licenseState"
+                        value={licenseState}
+                        onChange={(e) => setLicenseState(e.target.value)}
+                        required={userType === 'agent'}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="licenseNumber" className="text-sm font-medium text-gray-700">
+                        License Number <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        id="licenseNumber"
+                        value={licenseNumber}
+                        onChange={(e) => setLicenseNumber(e.target.value)}
+                        required={userType === 'agent'}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
               
               <div className="pt-2">
                 <Button 

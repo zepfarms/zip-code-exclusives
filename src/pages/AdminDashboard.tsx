@@ -8,11 +8,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from "sonner";
 
 const AdminDashboard = () => {
-  // Mock data for demonstration
+  // Mock data updated to include user_type and lead_type
   const [clients] = useState([
-    { id: '1', name: 'John Smith', email: 'john@example.com', phone: '(555) 123-4567', territories: ['90210', '90211'], leadsReceived: 11, activeDate: '2023-04-01' },
-    { id: '2', name: 'Sarah Johnson', email: 'sarah@example.com', phone: '(555) 987-6543', territories: ['90220'], leadsReceived: 5, activeDate: '2023-04-15' },
-    { id: '3', name: 'David Wilson', email: 'david@example.com', phone: '(555) 234-5678', territories: ['90230', '90231', '90232'], leadsReceived: 17, activeDate: '2023-05-01' },
+    { id: '1', name: 'John Smith', email: 'john@example.com', phone: '(555) 123-4567', territories: [{ zip: '90210', leadType: 'agent' }, { zip: '90211', leadType: 'investor' }], leadsReceived: 11, activeDate: '2023-04-01', userType: 'agent', licenseState: 'California', licenseNumber: 'CA12345678' },
+    { id: '2', name: 'Sarah Johnson', email: 'sarah@example.com', phone: '(555) 987-6543', territories: [{ zip: '90220', leadType: 'investor' }], leadsReceived: 5, activeDate: '2023-04-15', userType: 'investor', licenseState: null, licenseNumber: null },
+    { id: '3', name: 'David Wilson', email: 'david@example.com', phone: '(555) 234-5678', territories: [{ zip: '90230', leadType: 'agent' }, { zip: '90231', leadType: 'agent' }, { zip: '90232', leadType: 'investor' }], leadsReceived: 17, activeDate: '2023-05-01', userType: 'agent', licenseState: 'Nevada', licenseNumber: 'NV87654321' },
   ]);
 
   const [newLead, setNewLead] = useState({
@@ -23,12 +23,17 @@ const AdminDashboard = () => {
     city: '',
     state: '',
     zipCode: '',
+    leadType: 'investor', // Default lead type
     notes: ''
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setNewLead(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleLeadTypeChange = (value: string) => {
+    setNewLead(prev => ({ ...prev, leadType: value }));
   };
 
   const handleAddLead = (e: React.FormEvent) => {
@@ -39,13 +44,15 @@ const AdminDashboard = () => {
       return;
     }
     
-    // Find client with this zip code
+    // Find client with this zip code and matching lead type
     const matchingClient = clients.find(client => 
-      client.territories.includes(newLead.zipCode)
+      client.territories.some(territory => 
+        territory.zip === newLead.zipCode && territory.leadType === newLead.leadType
+      )
     );
     
     if (matchingClient) {
-      toast.success(`Lead assigned to ${matchingClient.name} (${matchingClient.email})`);
+      toast.success(`${newLead.leadType.charAt(0).toUpperCase() + newLead.leadType.slice(1)} lead assigned to ${matchingClient.name} (${matchingClient.email})`);
       // Reset form
       setNewLead({
         name: '',
@@ -55,10 +62,11 @@ const AdminDashboard = () => {
         city: '',
         state: '',
         zipCode: '',
+        leadType: 'investor',
         notes: ''
       });
     } else {
-      toast.error(`No client found for zip code ${newLead.zipCode}`);
+      toast.error(`No ${newLead.leadType} found for zip code ${newLead.zipCode}`);
     }
   };
 
@@ -189,6 +197,26 @@ const AdminDashboard = () => {
                         />
                       </div>
                     </div>
+
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium">
+                        Lead Type <span className="text-red-500">*</span>
+                      </label>
+                      <RadioGroup 
+                        value={newLead.leadType} 
+                        onValueChange={handleLeadTypeChange}
+                        className="flex space-x-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="investor" id="lead-investor" />
+                          <label htmlFor="lead-investor">Investor Lead</label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="agent" id="lead-agent" />
+                          <label htmlFor="lead-agent">Agent Lead</label>
+                        </div>
+                      </RadioGroup>
+                    </div>
                     
                     <div className="space-y-2">
                       <label htmlFor="notes" className="text-sm font-medium">
@@ -220,14 +248,28 @@ const AdminDashboard = () => {
                 <CardContent>
                   {newLead.zipCode ? (
                     <div>
-                      {clients.some(client => client.territories.includes(newLead.zipCode)) ? (
-                        clients.filter(client => client.territories.includes(newLead.zipCode)).map(client => (
+                      {clients.some(client => 
+                        client.territories.some(
+                          territory => territory.zip === newLead.zipCode && territory.leadType === newLead.leadType
+                        )
+                      ) ? (
+                        clients.filter(client => 
+                          client.territories.some(
+                            territory => territory.zip === newLead.zipCode && territory.leadType === newLead.leadType
+                          )
+                        ).map(client => (
                           <div key={client.id} className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                            <div className="font-bold text-green-800">Lead will be assigned to:</div>
+                            <div className="font-bold text-green-800">
+                              {newLead.leadType === 'agent' ? 'Agent' : 'Investor'} lead will be assigned to:
+                            </div>
                             <div className="mt-2 space-y-1">
                               <div><span className="font-medium">Name:</span> {client.name}</div>
                               <div><span className="font-medium">Email:</span> {client.email}</div>
                               <div><span className="font-medium">Phone:</span> {client.phone}</div>
+                              <div><span className="font-medium">Type:</span> {client.userType === 'agent' ? 'Real Estate Agent' : 'Investor'}</div>
+                              {client.userType === 'agent' && (
+                                <div><span className="font-medium">License:</span> {client.licenseState} #{client.licenseNumber}</div>
+                              )}
                               <div className="mt-2 text-sm text-green-700">
                                 This client has received {client.leadsReceived} leads to date.
                               </div>
@@ -236,9 +278,9 @@ const AdminDashboard = () => {
                         ))
                       ) : (
                         <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                          <div className="font-bold text-amber-800">No client found for this zip code</div>
+                          <div className="font-bold text-amber-800">No client found for this zip code and lead type</div>
                           <div className="mt-2 text-amber-700">
-                            Zip code {newLead.zipCode} isn't currently assigned to any client.
+                            Zip code {newLead.zipCode} isn't currently assigned to any {newLead.leadType} client.
                           </div>
                         </div>
                       )}
@@ -268,6 +310,7 @@ const AdminDashboard = () => {
                       <tr className="border-b border-gray-200">
                         <th className="py-3 px-4 font-medium">Name</th>
                         <th className="py-3 px-4 font-medium">Contact</th>
+                        <th className="py-3 px-4 font-medium">Type</th>
                         <th className="py-3 px-4 font-medium">Territories</th>
                         <th className="py-3 px-4 font-medium">Leads</th>
                         <th className="py-3 px-4 font-medium">Status</th>
@@ -283,13 +326,34 @@ const AdminDashboard = () => {
                             <div className="text-sm text-gray-500">{client.phone}</div>
                           </td>
                           <td className="py-3 px-4">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              client.userType === 'agent' 
+                                ? 'bg-blue-100 text-blue-800' 
+                                : 'bg-purple-100 text-purple-800'
+                            }`}>
+                              {client.userType === 'agent' ? 'Agent' : 'Investor'}
+                            </span>
+                            {client.userType === 'agent' && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                License: {client.licenseState} #{client.licenseNumber}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
                             <div className="flex flex-wrap gap-1">
-                              {client.territories.map(zip => (
+                              {client.territories.map(territory => (
                                 <span 
-                                  key={zip} 
-                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"
+                                  key={`${territory.zip}-${territory.leadType}`} 
+                                  className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium 
+                                    ${territory.leadType === 'agent' 
+                                      ? 'bg-blue-50 text-blue-700 border border-blue-200' 
+                                      : 'bg-purple-50 text-purple-700 border border-purple-200'
+                                    }`}
                                 >
-                                  {zip}
+                                  {territory.zip}
+                                  <span className="ml-1 text-[10px]">
+                                    ({territory.leadType === 'agent' ? 'A' : 'I'})
+                                  </span>
                                 </span>
                               ))}
                             </div>
