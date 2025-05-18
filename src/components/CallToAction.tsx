@@ -14,8 +14,8 @@ const CallToAction = () => {
         zipCheckerElement.scrollIntoView({ behavior: 'smooth' });
       }
     } else {
-      // Otherwise navigate to the check-availability page
-      navigate('/check-availability');
+      // Otherwise navigate to the check-availability page with scrollToTop flag
+      navigate('/check-availability', { state: { scrollToTop: true } });
     }
   };
 

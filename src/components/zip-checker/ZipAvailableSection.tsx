@@ -22,7 +22,7 @@ const ZipAvailableSection = ({
   const atLeastOneAvailable = investorAvailable || realtorAvailable;
   
   const handleCreateAccount = () => {
-    navigate('/register');
+    navigate('/register', { state: { scrollToTop: true } });
   };
   
   if (!atLeastOneAvailable) {

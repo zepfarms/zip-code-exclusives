@@ -70,8 +70,8 @@ const ZipCodeChecker = () => {
         setRealtorAvailable(realtorData?.is_available ?? false);
       }
       
-      // Default values for demo/testing (removed circular reference to state variables)
-      if (investorData === null && realtorData === null) {
+      // Default values for demo/testing (using direct data, not state)
+      if (!investorData && !realtorData) {
         setInvestorAvailable(true);
         setRealtorAvailable(true);
       }
@@ -90,7 +90,7 @@ const ZipCodeChecker = () => {
     // Store the zip code in localStorage for later use
     localStorage.setItem('checkedZipCode', zipCode);
     localStorage.setItem('preferredLeadType', leadType);
-    navigate('/register');
+    navigate('/register', { state: { scrollToTop: true } });
   };
 
   return (

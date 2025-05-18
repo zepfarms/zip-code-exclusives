@@ -3,8 +3,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, useNavigationType } from "react-router-dom";
 import { HelmetProvider } from 'react-helmet-async';
+import { useEffect } from "react";
 import BreadcrumbNav from "./components/BreadcrumbNav";
 
 import Index from "./pages/Index";
@@ -23,6 +24,21 @@ import InvestorLeadsPage from "./pages/InvestorLeadsPage";
 import RealtorLeadsPage from "./pages/RealtorLeadsPage";
 import AddTerritory from "./pages/AddTerritory";
 
+// Scroll restoration component
+const ScrollToTop = () => {
+  const { pathname, state } = useLocation();
+  const navigationType = useNavigationType();
+  
+  useEffect(() => {
+    // Scroll to top on page navigation
+    if (state?.scrollToTop || navigationType === 'PUSH') {
+      window.scrollTo(0, 0);
+    }
+  }, [pathname, state, navigationType]);
+  
+  return null;
+};
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -32,6 +48,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <ScrollToTop />
           <BreadcrumbNav />
           <Routes>
             <Route path="/" element={<Index />} />

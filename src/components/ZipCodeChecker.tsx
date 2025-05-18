@@ -13,7 +13,6 @@ import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import ZipCodeForm from './zip-checker/ZipCodeForm';
 import { Button } from './ui/button';
-import { CheckCircle, XCircle } from 'lucide-react';
 
 const ZipCodeChecker = () => {
   const [zipCode, setZipCode] = useState('');
@@ -70,15 +69,14 @@ const ZipCodeChecker = () => {
         setRealtorAvailable(realtorData?.is_available ?? false);
       }
 
-      // For demo purposes, set default values without referencing state
-      if (investorData === null && realtorData === null) {
+      // For demo purposes, set defaults when no data exists
+      if (!investorData && !realtorData) {
         setInvestorAvailable(true);
         setRealtorAvailable(true);
       }
     } catch (error: any) {
       console.error("Error checking zip code:", error);
       toast.error("Failed to check zip code: " + (error.message || "Unknown error"));
-      // For demo purposes, set both to available
       setInvestorAvailable(true);
       setRealtorAvailable(true);
     } finally {
@@ -88,7 +86,7 @@ const ZipCodeChecker = () => {
 
   const handleCreateAccount = () => {
     localStorage.setItem('checkedZipCode', zipCode);
-    navigate('/register');
+    navigate('/register', { state: { scrollToTop: true } });
   };
 
   return (
