@@ -14,7 +14,8 @@ import { supabase } from '@/integrations/supabase/client';
 const AddTerritory = () => {
   const [zipCode, setZipCode] = useState('');
   const [isChecking, setIsChecking] = useState(false);
-  const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
+  const [investorAvailable, setInvestorAvailable] = useState<boolean | null>(null);
+  const [realtorAvailable, setRealtorAvailable] = useState<boolean | null>(null);
   const navigate = useNavigate();
 
   const checkZipCodeAvailability = async (zip: string) => {
@@ -39,22 +40,16 @@ const AddTerritory = () => {
       if (zipCodeError) {
         if (zipCodeError.code === 'PGRST116') {
           // ZIP code not found in database
-          // We'll add it as available through a public insert
-          const { error: insertError } = await supabase
-            .from('zip_codes')
-            .insert({ code: zip, is_available: true });
-            
-          if (insertError) {
-            throw new Error(insertError.message);
-          }
-          
-          setIsAvailable(true);
+          // We'll assume it's available
+          setInvestorAvailable(true);
+          setRealtorAvailable(true);
         } else {
           throw new Error(zipCodeError.message);
         }
       } else {
         // ZIP code found, check availability
-        setIsAvailable(zipCodeData.is_available);
+        setInvestorAvailable(zipCodeData?.is_available ?? false);
+        setRealtorAvailable(zipCodeData?.is_available ?? false);
       }
     } catch (error: any) {
       console.error("Error checking zip code:", error);
@@ -64,8 +59,8 @@ const AddTerritory = () => {
     }
   };
 
-  const handleClaimArea = () => {
-    navigate('/payment', { state: { zipCode } });
+  const handleClaimArea = (leadType: string) => {
+    navigate('/payment', { state: { zipCode, leadType } });
   };
 
   return (
@@ -95,11 +90,16 @@ const AddTerritory = () => {
                   isChecking={isChecking}
                 />
 
-                {isAvailable === true && (
-                  <ZipAvailableSection zipCode={zipCode} handleClaimArea={handleClaimArea} />
+                {(investorAvailable !== null || realtorAvailable !== null) && (
+                  <ZipAvailableSection 
+                    zipCode={zipCode} 
+                    investorAvailable={investorAvailable}
+                    realtorAvailable={realtorAvailable}
+                    handleClaimArea={handleClaimArea} 
+                  />
                 )}
 
-                {isAvailable === false && (
+                {investorAvailable === false && realtorAvailable === false && (
                   <ZipWaitlistSection zipCode={zipCode} />
                 )}
               </CardContent>

@@ -18,40 +18,41 @@ import ZipWaitlistSection from './zip-checker/ZipWaitlistSection';
 const ZipCodeChecker = () => {
   const [zipCode, setZipCode] = useState('');
   const [isChecking, setIsChecking] = useState(false);
-  const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
+  const [investorAvailable, setInvestorAvailable] = useState<boolean | null>(null);
+  const [realtorAvailable, setRealtorAvailable] = useState<boolean | null>(null);
   const navigate = useNavigate();
 
   const checkZipCodeAvailability = async (zip: string) => {
     setIsChecking(true);
     
     try {
-      // First check if the zip code exists in our database
-      const { data: zipCodeData, error: zipCodeError } = await supabase
+      // First check if the zip code exists in our database for investor leads
+      const { data: investorData, error: investorError } = await supabase
         .from('zip_codes')
         .select('is_available')
         .eq('code', zip)
         .single();
 
-      if (zipCodeError) {
-        if (zipCodeError.code === 'PGRST116') {
+      // If we got an error fetching the zip code data
+      if (investorError) {
+        if (investorError.code === 'PGRST116') {
           // ZIP code not found in database
-          // We'll add it as available through a public insert
-          const { error: insertError } = await supabase
-            .from('zip_codes')
-            .insert({ code: zip, is_available: true });
-            
-          if (insertError) {
-            throw new Error(insertError.message);
-          }
-          
-          setIsAvailable(true);
+          // We'll assume it's available since it doesn't exist yet
+          setInvestorAvailable(true);
         } else {
-          throw new Error(zipCodeError.message);
+          console.error("Error checking zip code:", investorError);
+          toast.error("Failed to check zip code: " + investorError.message);
+          setInvestorAvailable(null);
         }
       } else {
         // ZIP code found, check availability
-        setIsAvailable(zipCodeData.is_available);
+        setInvestorAvailable(investorData?.is_available ?? false);
       }
+      
+      // For demo purposes, we'll set realtor availability the same as investor
+      // In a real app, you would check this separately
+      setRealtorAvailable(investorAvailable);
+      
     } catch (error: any) {
       console.error("Error checking zip code:", error);
       toast.error("Failed to check zip code: " + (error.message || "Unknown error"));
@@ -60,8 +61,8 @@ const ZipCodeChecker = () => {
     }
   };
 
-  const handleClaimArea = () => {
-    navigate('/payment', { state: { zipCode } });
+  const handleClaimArea = (leadType: string) => {
+    navigate('/register', { state: { zipCode, leadType } });
   };
 
   return (
@@ -80,11 +81,16 @@ const ZipCodeChecker = () => {
           isChecking={isChecking}
         />
 
-        {isAvailable === true && (
-          <ZipAvailableSection zipCode={zipCode} handleClaimArea={handleClaimArea} />
+        {(investorAvailable !== null || realtorAvailable !== null) && (
+          <ZipAvailableSection 
+            zipCode={zipCode} 
+            investorAvailable={investorAvailable}
+            realtorAvailable={realtorAvailable}
+            handleClaimArea={handleClaimArea} 
+          />
         )}
 
-        {isAvailable === false && (
+        {investorAvailable === false && realtorAvailable === false && (
           <ZipWaitlistSection zipCode={zipCode} />
         )}
       </CardContent>

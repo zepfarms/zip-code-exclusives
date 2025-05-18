@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -26,64 +26,46 @@ const ZipCodeChecker = () => {
     setIsChecking(true);
     
     try {
-      // First check if the zip code exists in our database for investor leads
+      // Check for investor lead availability
       const { data: investorData, error: investorError } = await supabase
         .from('zip_codes')
-        .select('is_available, lead_type')
+        .select('is_available')
         .eq('code', zip)
-        .eq('lead_type', 'investor')
         .single();
 
-      // Check for realtor leads separately
+      // Check for realtor lead availability 
       const { data: realtorData, error: realtorError } = await supabase
         .from('zip_codes')
-        .select('is_available, lead_type')
+        .select('is_available')
         .eq('code', zip)
-        .eq('lead_type', 'agent')
         .single();
 
       // Handle investor lead availability
       if (investorError) {
         if (investorError.code === 'PGRST116') {
-          // ZIP code not found in database for investor type
-          // We'll add it as available 
-          const { error: insertError } = await supabase
-            .from('zip_codes')
-            .insert({ code: zip, is_available: true, lead_type: 'investor' });
-            
-          if (insertError) {
-            console.error("Error adding investor lead zip:", insertError);
-          } else {
-            setInvestorAvailable(true);
-          }
+          // ZIP code not found in database for this type
+          setInvestorAvailable(true);
         } else {
           console.error("Error checking investor zip:", investorError);
+          setInvestorAvailable(null);
         }
       } else {
-        // ZIP code found for investor, check availability
-        setInvestorAvailable(investorData.is_available);
+        // ZIP code found, check availability
+        setInvestorAvailable(investorData?.is_available ?? false);
       }
 
       // Handle realtor lead availability
       if (realtorError) {
         if (realtorError.code === 'PGRST116') {
-          // ZIP code not found in database for realtor type
-          // We'll add it as available
-          const { error: insertError } = await supabase
-            .from('zip_codes')
-            .insert({ code: zip, is_available: true, lead_type: 'agent' });
-            
-          if (insertError) {
-            console.error("Error adding realtor lead zip:", insertError);
-          } else {
-            setRealtorAvailable(true);
-          }
+          // ZIP code not found in database for this type
+          setRealtorAvailable(true);
         } else {
           console.error("Error checking realtor zip:", realtorError);
+          setRealtorAvailable(null);
         }
       } else {
-        // ZIP code found for realtor, check availability
-        setRealtorAvailable(realtorData.is_available);
+        // ZIP code found, check availability
+        setRealtorAvailable(realtorData?.is_available ?? false);
       }
     } catch (error: any) {
       console.error("Error checking zip code:", error);
