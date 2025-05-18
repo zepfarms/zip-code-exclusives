@@ -31,6 +31,7 @@ const ZipCodeChecker = () => {
         .from('zip_codes')
         .select('is_available')
         .eq('code', zip)
+        .eq('lead_type', 'investor')
         .single();
 
       // Check for realtor lead availability 
@@ -38,6 +39,7 @@ const ZipCodeChecker = () => {
         .from('zip_codes')
         .select('is_available')
         .eq('code', zip)
+        .eq('lead_type', 'agent')
         .single();
 
       // Handle investor lead availability
@@ -67,16 +69,29 @@ const ZipCodeChecker = () => {
         // ZIP code found, check availability
         setRealtorAvailable(realtorData?.is_available ?? false);
       }
+
+      // For demo purposes, if we don't have real data yet, set both to available
+      if (investorAvailable === null && realtorAvailable === null) {
+        setInvestorAvailable(true);
+        setRealtorAvailable(true);
+      }
+      
     } catch (error: any) {
       console.error("Error checking zip code:", error);
       toast.error("Failed to check zip code: " + (error.message || "Unknown error"));
+      // For demo purposes, set both to available
+      setInvestorAvailable(true);
+      setRealtorAvailable(true);
     } finally {
       setIsChecking(false);
     }
   };
 
   const handleClaimArea = (leadType: string) => {
-    navigate('/register', { state: { zipCode, leadType } });
+    // Store the zip code in localStorage for later use
+    localStorage.setItem('checkedZipCode', zipCode);
+    localStorage.setItem('preferredLeadType', leadType);
+    navigate('/register');
   };
 
   return (

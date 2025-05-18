@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle } from 'lucide-react';
 
 interface ZipAvailableSectionProps {
@@ -17,7 +18,12 @@ const ZipAvailableSection = ({
   handleClaimArea 
 }: ZipAvailableSectionProps) => {
   
+  const navigate = useNavigate();
   const atLeastOneAvailable = investorAvailable || realtorAvailable;
+  
+  const handleCreateAccount = () => {
+    navigate('/register');
+  };
   
   if (!atLeastOneAvailable) {
     return null;
@@ -44,15 +50,6 @@ const ZipAvailableSection = ({
               ? "Available for exclusive access! Perfect for real estate investors looking for off-market properties." 
               : "This territory is already claimed for investor leads."}
           </p>
-          
-          {investorAvailable && (
-            <Button 
-              className="w-full bg-accent-600 hover:bg-accent-700"
-              onClick={() => handleClaimArea('investor')}
-            >
-              Claim for Investors
-            </Button>
-          )}
         </div>
 
         {/* Realtor Lead Card */}
@@ -71,17 +68,23 @@ const ZipAvailableSection = ({
               ? "Available for exclusive access! Ideal for real estate agents seeking homeowners ready to list." 
               : "This territory is already claimed for real estate agent leads."}
           </p>
-          
-          {realtorAvailable && (
-            <Button 
-              className="w-full bg-accent-600 hover:bg-accent-700"
-              onClick={() => handleClaimArea('agent')}
-            >
-              Claim for Agents
-            </Button>
-          )}
         </div>
       </div>
+
+      {atLeastOneAvailable && (
+        <div className="mt-4 py-4 border-t border-gray-200">
+          <p className="text-center mb-4 text-gray-600">
+            Create an account to access available territories in your dashboard.
+          </p>
+          
+          <Button 
+            className="w-full bg-accent-600 hover:bg-accent-700"
+            onClick={handleCreateAccount}
+          >
+            Create Account
+          </Button>
+        </div>
+      )}
 
       {!atLeastOneAvailable && (
         <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-md">

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,50 +25,14 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [userType, setUserType] = useState('');
+  const [userType, setUserType] = useState('investor');
   const [licenseState, setLicenseState] = useState('');
   const [licenseNumber, setLicenseNumber] = useState('');
   
   // UI state
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   
   const navigate = useNavigate();
-  
-  // Check for stored zip code and lead type from ZipCodeChecker
-  const checkedZipCode = localStorage.getItem('checkedZipCode');
-  const preferredLeadType = localStorage.getItem('preferredLeadType');
-  
-  // Set default user type based on stored lead type
-  useEffect(() => {
-    if (preferredLeadType) {
-      setUserType(preferredLeadType);
-    } else {
-      // Default to investor if not specified
-      setUserType('investor');
-    }
-  }, [preferredLeadType]);
-
-  // Check auth status on component mount - only once
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        // If already logged in, go to dashboard
-        if (session) {
-          navigate('/dashboard', { replace: true });
-          return;
-        }
-      } catch (error) {
-        console.error("Error checking auth status:", error);
-      } finally {
-        setIsCheckingAuth(false);
-      }
-    };
-    
-    checkAuthStatus();
-  }, []); // Only run once on component mount
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,7 +90,7 @@ const Register = () => {
       toast.success("Account created and logged in successfully!");
 
       // Navigate to dashboard
-      navigate('/dashboard', { replace: true });
+      navigate('/dashboard');
     } catch (error: any) {
       console.error("Registration error:", error);
       toast.error(error.message || "Failed to create account");
@@ -133,19 +98,6 @@ const Register = () => {
       setIsLoading(false);
     }
   };
-
-  // If still checking auth, show loading
-  if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent-600"></div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -156,9 +108,7 @@ const Register = () => {
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Create Your Account</CardTitle>
             <CardDescription>
-              {checkedZipCode 
-                ? `Register to claim exclusive rights to receive leads in zip code ${checkedZipCode}` 
-                : "Register to start receiving exclusive real estate leads"}
+              Register to start receiving exclusive real estate leads
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -201,9 +151,6 @@ const Register = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
-                <p className="text-xs text-gray-500">
-                  We'll send a verification code to this email
-                </p>
               </div>
               
               <div className="space-y-2">
@@ -236,7 +183,7 @@ const Register = () => {
 
               <div className="space-y-3 pt-2">
                 <label className="text-sm font-medium text-gray-700">
-                  I am looking for: <span className="text-red-500">*</span>
+                  I am a: <span className="text-red-500">*</span>
                 </label>
                 <RadioGroup 
                   value={userType} 
@@ -246,9 +193,9 @@ const Register = () => {
                   <div className="flex items-center space-x-3 rounded-md border p-3">
                     <RadioGroupItem value="investor" id="investor" />
                     <label htmlFor="investor" className="flex flex-col cursor-pointer">
-                      <span className="font-medium">Investor Leads</span>
+                      <span className="font-medium">Real Estate Investor</span>
                       <span className="text-sm text-gray-500">
-                        Receive leads from potential sellers for investment opportunities
+                        I'm looking for investment opportunities
                       </span>
                     </label>
                   </div>
@@ -256,23 +203,14 @@ const Register = () => {
                   <div className="flex items-center space-x-3 rounded-md border p-3">
                     <RadioGroupItem value="agent" id="agent" />
                     <label htmlFor="agent" className="flex flex-col cursor-pointer">
-                      <span className="font-medium">Real Estate Agent Leads</span>
+                      <span className="font-medium">Real Estate Agent</span>
                       <span className="text-sm text-gray-500">
-                        Receive leads from potential buyers and sellers (requires real estate license)
+                        I'm a licensed real estate agent
                       </span>
                     </label>
                   </div>
                 </RadioGroup>
               </div>
-              
-              {checkedZipCode && (
-                <div className="p-4 bg-brand-50 rounded-md border border-brand-100">
-                  <h3 className="font-medium text-brand-800">Selected Zip Code:</h3>
-                  <p className="text-brand-700">
-                    {checkedZipCode}
-                  </p>
-                </div>
-              )}
               
               {userType === 'agent' && (
                 <div className="space-y-4 p-4 bg-gray-50 rounded-md border">

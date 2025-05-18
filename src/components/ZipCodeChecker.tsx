@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   CardContent,
@@ -9,11 +10,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import ZipCodeForm from './zip-checker/ZipCodeForm';
-import ZipAvailableSection from './zip-checker/ZipAvailableSection';
-import ZipWaitlistSection from './zip-checker/ZipWaitlistSection';
+import { Button } from './ui/button';
+import { CheckCircle, XCircle } from 'lucide-react';
 
 const ZipCodeChecker = () => {
   const [zipCode, setZipCode] = useState('');
@@ -26,11 +26,20 @@ const ZipCodeChecker = () => {
     setIsChecking(true);
     
     try {
-      // First check if the zip code exists in our database for investor leads
+      // Check for investor lead availability
       const { data: investorData, error: investorError } = await supabase
         .from('zip_codes')
         .select('is_available')
         .eq('code', zip)
+        .eq('lead_type', 'investor')
+        .single();
+
+      // Check for realtor lead availability 
+      const { data: realtorData, error: realtorError } = await supabase
+        .from('zip_codes')
+        .select('is_available')
+        .eq('code', zip)
+        .eq('lead_type', 'agent')
         .single();
 
       // Handle investor lead availability
@@ -47,22 +56,38 @@ const ZipCodeChecker = () => {
         setInvestorAvailable(investorData?.is_available ?? false);
       }
 
-      // For demo purposes, set realtor availability the same as investor
-      // In a real app, you would check this separately
-      setRealtorAvailable(investorAvailable);
-      
+      // Handle realtor lead availability
+      if (realtorError) {
+        if (realtorError.code === 'PGRST116') {
+          // ZIP code not found in database for this type
+          setRealtorAvailable(true);
+        } else {
+          console.error("Error checking realtor zip:", realtorError);
+          setRealtorAvailable(null);
+        }
+      } else {
+        // ZIP code found, check availability
+        setRealtorAvailable(realtorData?.is_available ?? false);
+      }
+
+      // For demo purposes, if we don't have real data yet, set both to available
+      if (investorAvailable === null && realtorAvailable === null) {
+        setInvestorAvailable(true);
+        setRealtorAvailable(true);
+      }
     } catch (error: any) {
       console.error("Error checking zip code:", error);
       toast.error("Failed to check zip code: " + (error.message || "Unknown error"));
+      // For demo purposes, set both to available
+      setInvestorAvailable(true);
+      setRealtorAvailable(true);
     } finally {
       setIsChecking(false);
     }
   };
 
-  const handleCreateAccount = (leadType: string) => {
-    // We just store the zip code in localStorage for later use after signup
+  const handleCreateAccount = () => {
     localStorage.setItem('checkedZipCode', zipCode);
-    localStorage.setItem('preferredLeadType', leadType);
     navigate('/register');
   };
 
@@ -125,16 +150,12 @@ const ZipCodeChecker = () => {
                     This zip code is available! Create an account to claim this territory.
                   </p>
                   
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    {investorAvailable && (
-                      <button
-                        onClick={() => handleCreateAccount('investor')}
-                        className="px-4 py-2 bg-brand-600 text-white rounded hover:bg-brand-700 transition-colors flex-1"
-                      >
-                        Create Account
-                      </button>
-                    )}
-                  </div>
+                  <Button
+                    onClick={handleCreateAccount}
+                    className="w-full bg-brand-600 text-white rounded hover:bg-brand-700 transition-colors"
+                  >
+                    Create Account
+                  </Button>
                 </div>
               )}
               
@@ -147,10 +168,6 @@ const ZipCodeChecker = () => {
               )}
             </div>
           </div>
-        )}
-
-        {investorAvailable === false && realtorAvailable === false && (
-          <ZipWaitlistSection zipCode={zipCode} />
         )}
       </CardContent>
       <CardFooter className="flex justify-center text-sm text-gray-500">
