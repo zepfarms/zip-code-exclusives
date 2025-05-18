@@ -69,9 +69,9 @@ const ZipCodeChecker = () => {
         // ZIP code found, check availability
         setRealtorAvailable(realtorData?.is_available ?? false);
       }
-
-      // For demo purposes, if we don't have real data yet, set both to available
-      if (investorAvailable === null && realtorAvailable === null) {
+      
+      // Default values for demo/testing (removed circular reference to state variables)
+      if (investorData === null && realtorData === null) {
         setInvestorAvailable(true);
         setRealtorAvailable(true);
       }
@@ -79,7 +79,6 @@ const ZipCodeChecker = () => {
     } catch (error: any) {
       console.error("Error checking zip code:", error);
       toast.error("Failed to check zip code: " + (error.message || "Unknown error"));
-      // For demo purposes, set both to available
       setInvestorAvailable(true);
       setRealtorAvailable(true);
     } finally {

@@ -70,8 +70,8 @@ const ZipCodeChecker = () => {
         setRealtorAvailable(realtorData?.is_available ?? false);
       }
 
-      // For demo purposes, if we don't have real data yet, set both to available
-      if (investorAvailable === null && realtorAvailable === null) {
+      // For demo purposes, set default values without referencing state
+      if (investorData === null && realtorData === null) {
         setInvestorAvailable(true);
         setRealtorAvailable(true);
       }
