@@ -123,14 +123,14 @@ const CreateAdminAccount = () => {
         
         if (zipError) console.error("Zip code error:", zipError);
         
-        // Auto-confirm the user (bypass email verification)
-        const { error: updateUserError } = await supabase.auth.updateUser({
-          email_confirm: true
+        // Auto-confirm the user using the admin API - this is the correct property name
+        await supabase.auth.admin.updateUserById(
+          authData.user.id,
+          { email_confirmed: true }
+        ).catch(error => {
+          console.error("Failed to auto-confirm user:", error);
+          // If admin API fails, we'll try to sign in anyway
         });
-        
-        if (updateUserError) {
-          console.error("Failed to auto-confirm user:", updateUserError);
-        }
         
         // Try to sign in immediately
         await supabase.auth.signInWithPassword({
