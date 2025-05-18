@@ -26,63 +26,65 @@ const ZipCodeChecker = () => {
     setIsChecking(true);
     
     try {
-      // Check for investor lead availability
-      const { data: investorData, error: investorError } = await supabase
+      // Fetch investor data first
+      const investorResult = await supabase
         .from('zip_codes')
         .select('is_available')
         .eq('code', zip)
         .eq('lead_type', 'investor')
         .single();
 
-      // Check for realtor lead availability 
-      const { data: realtorData, error: realtorError } = await supabase
+      // Fetch realtor data separately
+      const realtorResult = await supabase
         .from('zip_codes')
         .select('is_available')
         .eq('code', zip)
         .eq('lead_type', 'agent')
         .single();
 
-      // Handle investor lead availability - breaking circular reference
+      // Process investor availability
+      const investorData = investorResult.data;
+      const investorError = investorResult.error;
+      
       if (investorError) {
         if (investorError.code === 'PGRST116') {
-          // ZIP code not found in database for this type
+          // Not found in database
           setInvestorAvailable(true);
         } else {
           console.error("Error checking investor zip:", investorError);
           setInvestorAvailable(null);
         }
       } else {
-        // ZIP code found, check availability
+        // Data found, use it
         setInvestorAvailable(investorData?.is_available ?? false);
       }
 
-      // Handle realtor lead availability - breaking circular reference
+      // Process realtor availability 
+      const realtorData = realtorResult.data;
+      const realtorError = realtorResult.error;
+      
       if (realtorError) {
         if (realtorError.code === 'PGRST116') {
-          // ZIP code not found in database for this type
+          // Not found in database
           setRealtorAvailable(true);
         } else {
           console.error("Error checking realtor zip:", realtorError);
           setRealtorAvailable(null);
         }
       } else {
-        // ZIP code found, check availability
+        // Data found, use it
         setRealtorAvailable(realtorData?.is_available ?? false);
       }
       
-      // Set default values for demo/testing - use simplified logic
-      const noInvestorDataFound = !investorData && investorError?.code === 'PGRST116';
-      const noRealtorDataFound = !realtorData && realtorError?.code === 'PGRST116';
-      
-      if (noInvestorDataFound && noRealtorDataFound) {
+      // Handle demo case - both not in database
+      if (investorError?.code === 'PGRST116' && realtorError?.code === 'PGRST116') {
         setInvestorAvailable(true);
         setRealtorAvailable(true);
       }
-      
     } catch (error: any) {
       console.error("Error checking zip code:", error);
       toast.error("Failed to check zip code: " + (error.message || "Unknown error"));
-      // Set fallback values directly
+      // Set fallback values for both
       setInvestorAvailable(true);
       setRealtorAvailable(true);
     } finally {
