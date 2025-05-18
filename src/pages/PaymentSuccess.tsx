@@ -63,6 +63,15 @@ const PaymentSuccess = () => {
         const nextBillingDate = new Date();
         nextBillingDate.setDate(nextBillingDate.getDate() + 37);
 
+        // Get user profile to determine lead type
+        const { data: userProfile } = await supabase
+          .from('user_profiles')
+          .select('user_type')
+          .eq('id', userId)
+          .single();
+          
+        const leadType = userProfile?.user_type || 'investor';
+
         // Then, create a new territory for the user
         const { error: territoryError } = await supabase
           .from('territories')
@@ -71,7 +80,8 @@ const PaymentSuccess = () => {
             user_id: userId,
             active: true,
             start_date: leadsStartDate.toISOString(),
-            next_billing_date: nextBillingDate.toISOString()
+            next_billing_date: nextBillingDate.toISOString(),
+            lead_type: leadType
           });
 
         if (territoryError) {
@@ -80,8 +90,8 @@ const PaymentSuccess = () => {
           return;
         }
 
-        // Update user profile with Stripe customer ID if not done already
-        // This would typically be handled by a webhook, but for now we'll just update it here
+        // Send welcome email (this would be handled by a webhook in production)
+        // For now, just show a success message
         
         toast.success("Your territory has been successfully secured!");
         setIsProcessing(false);
@@ -167,6 +177,14 @@ const PaymentSuccess = () => {
                 </div>
 
                 <div className="pt-4 space-y-4">
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+                    <h4 className="font-medium text-blue-800 mb-2">What Happens Next?</h4>
+                    <p className="text-blue-700 text-sm">
+                      We're now setting up your exclusive territory. You'll start receiving leads in as little as 7 days. 
+                      Check your email for important setup information and next steps.
+                    </p>
+                  </div>
+                  
                   <Link to="/dashboard">
                     <Button className="w-full bg-brand-600 hover:bg-brand-700">
                       Go to Dashboard

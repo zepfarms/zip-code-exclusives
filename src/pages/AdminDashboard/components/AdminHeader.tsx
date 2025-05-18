@@ -1,0 +1,41 @@
+
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+const AdminHeader = () => {
+  const navigate = useNavigate();
+  
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast.success("Logged out successfully");
+      navigate('/login');
+    } catch (error) {
+      toast.error("Error logging out");
+    }
+  };
+  
+  return (
+    <header className="bg-white shadow">
+      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">
+          LeadXclusive Admin
+        </h1>
+        
+        <div className="flex items-center space-x-4">
+          <Button variant="outline" onClick={() => navigate('/dashboard')}>
+            Exit Admin
+          </Button>
+          <Button variant="ghost" onClick={handleLogout}>
+            Logout
+          </Button>
+        </div>
+      </div>
+    </header>
+  );
+};
+
+export default AdminHeader;
