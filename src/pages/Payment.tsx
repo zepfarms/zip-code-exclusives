@@ -21,6 +21,7 @@ const Payment = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const zipCode = location.state?.zipCode || new URLSearchParams(location.search).get('zip_code') || 'your selected area';
+  const leadType = location.state?.leadType || 'investor'; // Default to investor if not specified
 
   // Check if zipCode is valid (5-digit number)
   const isValidZipCode = /^\d{5}$/.test(zipCode);
@@ -33,13 +34,13 @@ const Payment = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast.error("Please sign in to continue");
-        navigate('/login', { state: { redirectTo: '/payment', zipCode } });
+        navigate('/register', { state: { redirectTo: '/payment', zipCode, leadType } });
         return;
       }
 
       // Call Stripe checkout function
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { zipCode }
+        body: { zipCode, leadType }
       });
 
       if (error) {
@@ -48,11 +49,13 @@ const Payment = () => {
 
       // Redirect to Stripe checkout
       if (data?.url) {
+        // Save leadType to localStorage to use it after successful payment redirect
+        localStorage.setItem('lastLeadType', leadType);
         window.location.href = data.url;
       } else {
         throw new Error("No checkout URL received");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Payment error:", error);
       toast.error("Failed to process payment: " + (error.message || "Unknown error"));
     } finally {
@@ -70,7 +73,7 @@ const Payment = () => {
             <CardTitle className="text-2xl">Complete Your Purchase</CardTitle>
             <CardDescription>
               {isValidZipCode 
-                ? `Secure exclusive rights to receive all leads in zip code ${zipCode}`
+                ? `Secure exclusive rights to receive ${leadType === 'investor' ? 'investor' : 'realtor'} leads in zip code ${zipCode}`
                 : "Complete your subscription purchase"}
             </CardDescription>
           </CardHeader>
@@ -79,6 +82,10 @@ const Payment = () => {
               <div className="flex justify-between mb-2">
                 <span className="font-medium">Exclusive Territory Access:</span>
                 <span>Zip Code {zipCode}</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="font-medium">Lead Type:</span>
+                <span>{leadType === 'investor' ? 'Investor Leads' : 'Real Estate Agent Leads'}</span>
               </div>
               <div className="flex justify-between mb-4 pb-4 border-b border-gray-200">
                 <span className="font-medium">Monthly Subscription:</span>

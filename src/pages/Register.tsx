@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,15 +24,23 @@ const Register = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [userType, setUserType] = useState('investor');
+  const [userType, setUserType] = useState('');
   const [licenseState, setLicenseState] = useState('');
   const [licenseNumber, setLicenseNumber] = useState('');
   
   const location = useLocation();
   const navigate = useNavigate();
   
-  // Extract zip code from location state if available
+  // Extract zip code and lead type from location state if available
   const zipCode = location.state?.zipCode || '';
+  const leadType = location.state?.leadType || '';
+  
+  // Set default user type based on leadType from state
+  useEffect(() => {
+    if (leadType) {
+      setUserType(leadType);
+    }
+  }, [leadType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,7 +111,7 @@ const Register = () => {
             <CardTitle className="text-2xl">Create Your Account</CardTitle>
             <CardDescription>
               {zipCode 
-                ? `Register to claim exclusive rights to zip code ${zipCode}` 
+                ? `Register to claim exclusive rights to ${userType === 'investor' ? 'investor' : 'realtor'} leads in zip code ${zipCode}` 
                 : "Register to start receiving exclusive real estate leads"}
             </CardDescription>
           </CardHeader>
@@ -180,36 +188,46 @@ const Register = () => {
                 />
               </div>
 
-              <div className="space-y-3 pt-2">
-                <label className="text-sm font-medium text-gray-700">
-                  I am looking for: <span className="text-red-500">*</span>
-                </label>
-                <RadioGroup 
-                  value={userType} 
-                  onValueChange={setUserType}
-                  className="flex flex-col space-y-3"
-                >
-                  <div className="flex items-center space-x-3 rounded-md border p-3">
-                    <RadioGroupItem value="investor" id="investor" />
-                    <label htmlFor="investor" className="flex flex-col cursor-pointer">
-                      <span className="font-medium">Investor Leads</span>
-                      <span className="text-sm text-gray-500">
-                        Receive leads from potential sellers for investment opportunities
-                      </span>
-                    </label>
-                  </div>
+              {!leadType && (
+                <div className="space-y-3 pt-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    I am looking for: <span className="text-red-500">*</span>
+                  </label>
+                  <RadioGroup 
+                    value={userType} 
+                    onValueChange={setUserType}
+                    className="flex flex-col space-y-3"
+                  >
+                    <div className="flex items-center space-x-3 rounded-md border p-3">
+                      <RadioGroupItem value="investor" id="investor" />
+                      <label htmlFor="investor" className="flex flex-col cursor-pointer">
+                        <span className="font-medium">Investor Leads</span>
+                        <span className="text-sm text-gray-500">
+                          Receive leads from potential sellers for investment opportunities
+                        </span>
+                      </label>
+                    </div>
 
-                  <div className="flex items-center space-x-3 rounded-md border p-3">
-                    <RadioGroupItem value="agent" id="agent" />
-                    <label htmlFor="agent" className="flex flex-col cursor-pointer">
-                      <span className="font-medium">Real Estate Agent Leads</span>
-                      <span className="text-sm text-gray-500">
-                        Receive leads from potential buyers and sellers (requires real estate license)
-                      </span>
-                    </label>
-                  </div>
-                </RadioGroup>
-              </div>
+                    <div className="flex items-center space-x-3 rounded-md border p-3">
+                      <RadioGroupItem value="agent" id="agent" />
+                      <label htmlFor="agent" className="flex flex-col cursor-pointer">
+                        <span className="font-medium">Real Estate Agent Leads</span>
+                        <span className="text-sm text-gray-500">
+                          Receive leads from potential buyers and sellers (requires real estate license)
+                        </span>
+                      </label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              )}
+              {leadType && (
+                <div className="p-4 bg-brand-50 rounded-md border border-brand-100">
+                  <h3 className="font-medium text-brand-800">Selected Lead Type:</h3>
+                  <p className="text-brand-700">
+                    {userType === 'investor' ? 'Investor Leads' : 'Real Estate Agent Leads'} in zip code {zipCode}
+                  </p>
+                </div>
+              )}
               
               {userType === 'agent' && (
                 <div className="space-y-4 p-4 bg-gray-50 rounded-md border">
