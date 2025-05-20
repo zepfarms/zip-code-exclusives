@@ -16,6 +16,7 @@ import Footer from '@/components/Footer';
 import { supabase } from '@/integrations/supabase/client';
 import { X, Plus, Loader } from 'lucide-react';
 import AddTerritoryCard from '@/components/dashboard/AddTerritoryCard';
+import { ensureUserProfile, updateUserProfile } from '@/utils/userProfile';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -84,76 +85,22 @@ const Dashboard = () => {
         console.error("Error in territories fetch:", err);
       }
 
-      // Try to get user profile - this might be failing
+      // Get or create user profile using our utility function
       try {
-        // Check if the user profile exists first with a simple count query
-        const { count, error: countError } = await supabase
-          .from('user_profiles')
-          .select('*', { count: 'exact', head: true })
-          .eq('id', userId);
-        
-        if (countError) {
-          console.error("Count query error:", countError);
-          throw countError;
-        }
-
-        // If profile doesn't exist, create it
-        if (count === 0) {
-          console.log("No profile found, creating one");
-          
-          // Get user details from auth session
-          const { data: { session } } = await supabase.auth.getSession();
-          
-          if (session && session.user) {
-            const userMetadata = session.user.user_metadata || {};
-            
-            // Insert a new profile with basic details
-            const { data: newProfile, error: insertError } = await supabase
-              .from('user_profiles')
-              .insert({
-                id: userId,
-                first_name: userMetadata.first_name || '',
-                last_name: userMetadata.last_name || '',
-                user_type: userMetadata.user_type || 'investor',
-                notification_email: true,
-                notification_sms: false
-              })
-              .select();
-              
-            if (insertError) {
-              console.error("Error creating user profile:", insertError);
-              toast.error("Could not create user profile.");
-            } else if (newProfile && newProfile.length > 0) {
-              setUserProfile(newProfile[0]);
-            }
-          }
-        } else {
-          // Profile exists, fetch it
-          const { data: profiles, error: profileError } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', userId)
-            .limit(1);
-          
-          if (profileError) {
-            console.error("Error fetching user profile:", profileError);
-            throw profileError;
-          }
-          
-          if (profiles && profiles.length > 0) {
-            setUserProfile(profiles[0]);
-          }
+        const profile = await ensureUserProfile(userId);
+        if (profile) {
+          setUserProfile(profile);
         }
       } catch (profileError) {
-        console.error("Error fetching user profile:", profileError);
-        toast.error("Could not load your profile. Please try refreshing.");
+        console.error("Error with user profile:", profileError);
+        toast.error("Could not load your profile data. Some features may be limited.");
       }
 
       // Initialize contact information
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          // Initialize secondary emails array to an empty array by default
+          // Get profile data that we just loaded
           const secondaryEmails = userProfile?.secondary_emails || [];
           const primaryEmail = session?.user?.email || '';
           
@@ -400,49 +347,18 @@ const Dashboard = () => {
       const secondaryEmails = contacts.emails.slice(1);
       const secondaryPhones = contacts.phones.slice(1);
       
-      // Check if profile exists before updating
-      const { count } = await supabase
-        .from('user_profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('id', session.user.id);
-        
-      // If profile doesn't exist, create it first
-      if (count === 0) {
-        const { error: insertError } = await supabase
-          .from('user_profiles')
-          .insert({
-            id: session.user.id,
-            first_name: values.firstName,
-            last_name: values.lastName,
-            company: values.company,
-            phone: contacts.phones[0], // Primary phone
-            secondary_phones: secondaryPhones, // Additional phones
-            secondary_emails: secondaryEmails, // Additional emails
-            notification_email: values.notificationEmail,
-            notification_sms: values.notificationSms,
-            updated_at: new Date().toISOString() // Convert Date to string
-          });
-          
-        if (insertError) throw insertError;
-      } else {
-        // Update existing profile
-        const { error: updateError } = await supabase
-          .from('user_profiles')
-          .update({
-            first_name: values.firstName,
-            last_name: values.lastName,
-            company: values.company,
-            phone: contacts.phones[0], // Primary phone
-            secondary_phones: secondaryPhones, // Additional phones
-            secondary_emails: secondaryEmails, // Additional emails
-            notification_email: values.notificationEmail,
-            notification_sms: values.notificationSms,
-            updated_at: new Date().toISOString() // Convert Date to string
-          })
-          .eq('id', session.user.id);
-        
-        if (updateError) throw updateError;
-      }
+      // Use our utility function to update the profile
+      await updateUserProfile(session.user.id, {
+        first_name: values.firstName,
+        last_name: values.lastName,
+        company: values.company,
+        phone: contacts.phones[0], // Primary phone
+        secondary_phones: secondaryPhones, // Additional phones
+        secondary_emails: secondaryEmails, // Additional emails
+        notification_email: values.notificationEmail,
+        notification_sms: values.notificationSms,
+        updated_at: new Date().toISOString() // Convert Date to string
+      });
       
       // Check if email needs to be updated
       if (values.email !== session.user.email) {

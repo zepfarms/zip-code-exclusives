@@ -35,7 +35,6 @@ const Header = () => {
 
     // Listen for auth changes with cleaner subscription handling
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log("Auth state changed:", _event);
       setUser(session?.user || null);
     });
 

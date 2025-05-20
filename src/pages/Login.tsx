@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -66,9 +67,6 @@ const Login = () => {
       
       if (data.user) {
         toast.success("Login successful!");
-        
-        // We shouldn't query user_profiles here directly because it's causing 500 errors
-        // Just redirect to dashboard
         navigate('/dashboard');
       }
     } catch (error: any) {
