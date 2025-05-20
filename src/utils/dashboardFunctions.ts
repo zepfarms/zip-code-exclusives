@@ -98,7 +98,10 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
       
       if (leadsError) {
         console.error("Error fetching leads:", leadsError);
-        toast.error("Could not load your leads. Please try refreshing.");
+        // Only show error toast if it's not just a case of no leads found
+        if (leadsError.code !== 'PGRST116') { // Postgres REST error for no rows returned
+          toast.error("Could not load your leads. Please try refreshing.");
+        }
       } else {
         setLeads(leadsData || []);
       }
