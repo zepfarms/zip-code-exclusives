@@ -66,11 +66,18 @@ export const ensureUserProfile = async (userId: string) => {
   } catch (error) {
     console.error('Profile operation failed:', error);
     // Return a minimal valid profile to prevent UI breakage
+    // Adding the fields that are being accessed in dashboardFunctions.ts
     return {
       id: userId,
       notification_email: true,
       notification_sms: false,
-      user_type: 'investor'
+      user_type: 'investor',
+      secondary_emails: [],
+      secondary_phones: [],
+      phone: '',
+      first_name: '',
+      last_name: '',
+      company: null
     };
   }
 };

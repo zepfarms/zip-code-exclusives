@@ -64,13 +64,13 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
         try {
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
-            // Get secondary emails and phones
-            const secondaryEmails = profile.secondary_emails || [];
+            // Get secondary emails and phones with type safety
+            const secondaryEmails = Array.isArray(profile.secondary_emails) ? profile.secondary_emails : [];
             const primaryEmail = session?.user?.email || '';
             
             // Initialize secondary phones array to an empty array by default
-            const secondaryPhones = profile.secondary_phones || [];
-            const primaryPhone = profile.phone || '';
+            const secondaryPhones = Array.isArray(profile.secondary_phones) ? profile.secondary_phones : [];
+            const primaryPhone = typeof profile.phone === 'string' ? profile.phone : '';
             
             // Set contacts with primary and secondary emails
             setContacts({
