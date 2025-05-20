@@ -9,18 +9,25 @@ const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Check if user is signed in
     const getUser = async () => {
-      const { data } = await supabase.auth.getSession();
-      setUser(data.session?.user || null);
+      try {
+        const { data } = await supabase.auth.getSession();
+        setUser(data.session?.user || null);
+      } catch (error) {
+        console.error('Authentication error:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     getUser();
 
-    // Listen for auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+    // Listen for auth changes with cleaner subscription handling
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
     });
 
@@ -62,31 +69,33 @@ const Header = () => {
           )}
         </nav>
         
-        {/* CTA buttons - Desktop has full buttons, Mobile has only login */}
+        {/* Mobile only shows login button */}
         <div className="flex items-center gap-2">
-          {user ? (
-            <>
-              <Button 
-                variant="ghost" 
-                className="hidden md:flex text-gray-700 hover:text-brand-700"
-                size="sm"
-                onClick={handleLogout}
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Log Out
-              </Button>
-              <Link to="/dashboard" className="md:hidden">
+          {!isLoading && (
+            user ? (
+              <>
+                <Button 
+                  variant="ghost" 
+                  className="hidden md:flex text-gray-700 hover:text-brand-700"
+                  size="sm"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Log Out
+                </Button>
+                <Link to="/dashboard" className="md:hidden">
+                  <Button variant="ghost" size="sm" className="text-gray-700 hover:text-brand-700">
+                    Dashboard
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <Link to="/login">
                 <Button variant="ghost" size="sm" className="text-gray-700 hover:text-brand-700">
-                  Dashboard
+                  Log In
                 </Button>
               </Link>
-            </>
-          ) : (
-            <Link to="/login">
-              <Button variant="ghost" size="sm" className="text-gray-700 hover:text-brand-700">
-                Log In
-              </Button>
-            </Link>
+            )
           )}
           <Link to="/check-availability" className="hidden md:block">
             <Button 
