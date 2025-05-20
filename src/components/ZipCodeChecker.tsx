@@ -158,7 +158,7 @@ const ZipCodeChecker = () => {
         )}
       </CardContent>
       <CardFooter className="flex justify-center text-sm text-gray-500">
-        We respect your privacy and will never share your information.
+        We respect your privacy and never share your information.
       </CardFooter>
     </Card>
   );

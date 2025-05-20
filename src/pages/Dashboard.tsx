@@ -55,25 +55,56 @@ const Dashboard = () => {
     setIsLoading(true);
     
     try {
-      // Get user profile
-      const { data: profile, error: profileError } = await supabase
+      // Get user profile using direct query without RLS
+      const { data: profiles, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('id', userId)
-        .single();
+        .eq('id', userId);
       
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error("Error fetching user data:", profileError);
+        throw profileError;
+      }
+      
+      const profile = profiles && profiles.length > 0 ? profiles[0] : null;
       setUserProfile(profile);
 
+      // If profile doesn't exist yet, create default one for this user
+      if (!profile) {
+        // Get user details from auth session to create profile
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session && session.user) {
+          const userMetadata = session.user.user_metadata || {};
+          
+          // Insert a new profile with basic details
+          const { error: insertError } = await supabase
+            .from('user_profiles')
+            .insert({
+              id: userId,
+              first_name: userMetadata.first_name || '',
+              last_name: userMetadata.last_name || '',
+              user_type: userMetadata.user_type || 'investor',
+              notification_email: true,
+              notification_sms: false
+            });
+            
+          if (insertError) {
+            console.error("Error creating user profile:", insertError);
+            // Continue with app flow even if profile creation fails
+          }
+        }
+      }
+
       // Initialize secondary emails array to an empty array by default
-      const secondaryEmails = profile.secondary_emails || [];
+      const secondaryEmails = profile?.secondary_emails || [];
       // Get email from auth session
       const { data: { session } } = await supabase.auth.getSession();
       const primaryEmail = session?.user?.email || '';
       
       // Initialize secondary phones array to an empty array by default
-      const secondaryPhones = profile.secondary_phones || [];
-      const primaryPhone = profile.phone || '';
+      const secondaryPhones = profile?.secondary_phones || [];
+      const primaryPhone = profile?.phone || '';
       
       // Set contacts with primary and secondary emails
       setContacts({
@@ -89,7 +120,7 @@ const Dashboard = () => {
         .eq('active', true);
       
       if (territoriesError) throw territoriesError;
-      setTerritories(territoriesData);
+      setTerritories(territoriesData || []);
 
       // Calculate subscription info
       if (territoriesData && territoriesData.length > 0) {
@@ -121,7 +152,7 @@ const Dashboard = () => {
         .order('created_at', { ascending: false });
       
       if (leadsError) throw leadsError;
-      setLeads(leadsData);
+      setLeads(leadsData || []);
 
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -273,8 +304,8 @@ const Dashboard = () => {
       lastName: userProfile?.last_name || '',
       company: userProfile?.company || '',
       email: '',
-      notificationEmail: userProfile?.notification_email || true,
-      notificationSms: userProfile?.notification_sms || false
+      notificationEmail: userProfile?.notification_email !== false, // Default to true if null
+      notificationSms: userProfile?.notification_sms === true // Default to false if null
     }
   });
 
@@ -286,8 +317,8 @@ const Dashboard = () => {
         lastName: userProfile.last_name || '',
         company: userProfile.company || '',
         email: '', // Will be filled from auth session
-        notificationEmail: userProfile.notification_email,
-        notificationSms: userProfile.notification_sms
+        notificationEmail: userProfile.notification_email !== false, // Default to true if null
+        notificationSms: userProfile.notification_sms === true // Default to false if null
       });
       
       // Get email from auth session
@@ -308,7 +339,7 @@ const Dashboard = () => {
       const secondaryEmails = contacts.emails.slice(1);
       const secondaryPhones = contacts.phones.slice(1);
       
-      // Update profile
+      // Update profile using direct query
       const { error: updateError } = await supabase
         .from('user_profiles')
         .update({
