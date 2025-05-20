@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -132,69 +131,47 @@ const Header = () => {
         )}
       </div>
 
-      {/* Mobile menu - Fixed to ensure solid background and proper text visibility */}
+      {/* Simple mobile menu with solid white background */}
       {isMobile && isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 bg-white shadow-lg overflow-auto">
-          <div className="pt-16 pb-6 px-6">
-            <div className="flex flex-col items-center justify-start space-y-6">
-              <Link 
-                to="/" 
-                className="w-full text-center text-xl font-medium text-gray-900 p-3 bg-gray-50 rounded-md" 
-                onClick={closeMobileMenu}
-              >
-                Home
+        <div className="fixed inset-0 top-16 z-40 bg-white">
+          <div className="flex flex-col items-center p-6 space-y-4">
+            <Link to="/" className="w-full py-3 text-center text-lg font-medium text-gray-900" onClick={closeMobileMenu}>
+              Home
+            </Link>
+            <Link to="/how-it-works" className="w-full py-3 text-center text-lg font-medium text-gray-900" onClick={closeMobileMenu}>
+              How It Works
+            </Link>
+            <Link to="/pricing" className="w-full py-3 text-center text-lg font-medium text-gray-900" onClick={closeMobileMenu}>
+              Pricing
+            </Link>
+            <Link to="/about" className="w-full py-3 text-center text-lg font-medium text-gray-900" onClick={closeMobileMenu}>
+              About Us
+            </Link>
+            {user && (
+              <Link to="/dashboard" className="w-full py-3 text-center text-lg font-medium text-gray-900" onClick={closeMobileMenu}>
+                Dashboard
               </Link>
-              <Link 
-                to="/how-it-works" 
-                className="w-full text-center text-xl font-medium text-gray-900 p-3 bg-gray-50 rounded-md" 
-                onClick={closeMobileMenu}
-              >
-                How It Works
-              </Link>
-              <Link 
-                to="/pricing" 
-                className="w-full text-center text-xl font-medium text-gray-900 p-3 bg-gray-50 rounded-md" 
-                onClick={closeMobileMenu}
-              >
-                Pricing
-              </Link>
-              <Link 
-                to="/about" 
-                className="w-full text-center text-xl font-medium text-gray-900 p-3 bg-gray-50 rounded-md" 
-                onClick={closeMobileMenu}
-              >
-                About Us
-              </Link>
-              {user && (
-                <Link 
-                  to="/dashboard" 
-                  className="w-full text-center text-xl font-medium text-gray-900 p-3 bg-gray-50 rounded-md" 
-                  onClick={closeMobileMenu}
-                >
-                  Dashboard
-                </Link>
-              )}
-            </div>
+            )}
             
-            <div className="mt-8 w-full">
+            <div className="w-full pt-6">
               {user ? (
                 <Button 
-                  variant="outline"
-                  className="w-full mb-4 p-3 flex items-center justify-center border-2 text-gray-700"
+                  variant="outline" 
+                  className="w-full mb-4 text-gray-700"
                   onClick={handleLogout}
                 >
-                  <LogOut className="mr-2 h-5 w-5" />
+                  <LogOut className="mr-2 h-4 w-4" />
                   Log Out
                 </Button>
               ) : (
                 <Link to="/login" onClick={closeMobileMenu} className="w-full block mb-4">
-                  <Button variant="outline" className="w-full p-3 border-2 text-gray-700">
+                  <Button variant="outline" className="w-full text-gray-700">
                     Log In
                   </Button>
                 </Link>
               )}
               <Button 
-                className="w-full bg-accent-600 hover:bg-accent-700 p-3"
+                className="w-full bg-accent-600 hover:bg-accent-700"
                 onClick={handleCheckAvailability}
               >
                 Check Availability
