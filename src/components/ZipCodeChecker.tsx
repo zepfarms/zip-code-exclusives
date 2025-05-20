@@ -27,7 +27,7 @@ const ZipCodeChecker = () => {
     
     try {
       // Fetch investor data
-      const investorResult = await supabase
+      const { data: investorData, error: investorError } = await supabase
         .from('zip_codes')
         .select('is_available')
         .eq('code', zip)
@@ -35,7 +35,7 @@ const ZipCodeChecker = () => {
         .single();
 
       // Fetch realtor data
-      const realtorResult = await supabase
+      const { data: realtorData, error: realtorError } = await supabase
         .from('zip_codes')
         .select('is_available')
         .eq('code', zip)
@@ -43,33 +43,33 @@ const ZipCodeChecker = () => {
         .single();
       
       // Process investor result
-      if (investorResult.error) {
-        if (investorResult.error.code === 'PGRST116') {
+      if (investorError) {
+        if (investorError.code === 'PGRST116') {
           // ZIP code not found for investor
           setInvestorAvailable(true);
         } else {
-          console.error("Error checking investor zip:", investorResult.error);
+          console.error("Error checking investor zip:", investorError);
           setInvestorAvailable(null);
         }
       } else {
-        setInvestorAvailable(investorResult.data?.is_available ?? false);
+        setInvestorAvailable(investorData?.is_available ?? false);
       }
       
       // Process realtor result
-      if (realtorResult.error) {
-        if (realtorResult.error.code === 'PGRST116') {
+      if (realtorError) {
+        if (realtorError.code === 'PGRST116') {
           // ZIP code not found for realtor
           setRealtorAvailable(true);
         } else {
-          console.error("Error checking realtor zip:", realtorResult.error);
+          console.error("Error checking realtor zip:", realtorError);
           setRealtorAvailable(null);
         }
       } else {
-        setRealtorAvailable(realtorResult.data?.is_available ?? false);
+        setRealtorAvailable(realtorData?.is_available ?? false);
       }
       
       // Demo mode handling
-      if (investorResult.error?.code === 'PGRST116' && realtorResult.error?.code === 'PGRST116') {
+      if (investorError?.code === 'PGRST116' && realtorError?.code === 'PGRST116') {
         setInvestorAvailable(true);
         setRealtorAvailable(true);
       }
@@ -90,8 +90,9 @@ const ZipCodeChecker = () => {
     navigate('/register', { state: { scrollToTop: true } });
   };
 
-  // Determine if either lead type is available
+  // Determine if either lead type is available - calculated directly from state
   const atLeastOneAvailable = investorAvailable === true || realtorAvailable === true;
+  const noneAvailable = investorAvailable === false && realtorAvailable === false;
   
   return (
     <Card className="w-full max-w-md mx-auto">
@@ -162,7 +163,7 @@ const ZipCodeChecker = () => {
                 </div>
               )}
               
-              {investorAvailable === false && realtorAvailable === false && (
+              {noneAvailable && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <p className="text-sm text-amber-700">
                     This zip code is currently claimed. Join our waitlist to be notified when it becomes available.
