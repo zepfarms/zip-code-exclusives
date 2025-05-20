@@ -61,6 +61,10 @@ const AddTerritoryCard = ({ onTerritoryAdded }: { onTerritoryAdded: () => void }
     setIsAdding(true);
     
     try {
+      // Store zipCode and leadType in localStorage to use after successful payment
+      localStorage.setItem('lastZipCode', zipCode);
+      localStorage.setItem('lastLeadType', leadType);
+      
       // Create Stripe checkout session
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { zipCode, leadType }
@@ -72,8 +76,6 @@ const AddTerritoryCard = ({ onTerritoryAdded }: { onTerritoryAdded: () => void }
       
       // Redirect to Stripe checkout
       if (data?.url) {
-        // Save leadType to localStorage to use it after successful payment redirect
-        localStorage.setItem('lastLeadType', leadType);
         window.location.href = data.url;
       } else {
         throw new Error("No checkout URL received");

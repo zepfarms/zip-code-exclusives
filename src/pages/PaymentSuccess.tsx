@@ -1,9 +1,10 @@
 
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Loader } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from "sonner";
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
@@ -12,6 +13,11 @@ const PaymentSuccess = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Extract query parameters from URL
+  const queryParams = new URLSearchParams(location.search);
+  const sessionId = queryParams.get('session_id');
   
   // Automatically redirect to dashboard after checking auth
   useEffect(() => {
@@ -21,6 +27,42 @@ const PaymentSuccess = () => {
       
       if (session) {
         setUserData(session.user);
+        
+        // If we have a session_id from Stripe, verify and create the territory
+        if (sessionId) {
+          try {
+            // Get lead type from localStorage (set during checkout)
+            const leadType = localStorage.getItem('lastLeadType') || 'investor';
+            const zipCode = localStorage.getItem('lastZipCode');
+            
+            if (zipCode) {
+              // Create territory record in database
+              const { error: territoryError } = await supabase
+                .from('territories')
+                .insert({
+                  user_id: session.user.id,
+                  zip_code: zipCode,
+                  lead_type: leadType,
+                  active: true,
+                  start_date: new Date().toISOString(),
+                  next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
+                });
+                
+              if (territoryError) {
+                console.error("Error creating territory:", territoryError);
+                toast.error("There was an issue adding your territory. Please contact support.");
+              } else {
+                toast.success(`Territory ${zipCode} added successfully!`);
+                // Clear the localStorage values after successful territory creation
+                localStorage.removeItem('lastZipCode');
+                localStorage.removeItem('lastLeadType');
+              }
+            }
+          } catch (error) {
+            console.error("Error processing payment success:", error);
+          }
+        }
+        
         setIsLoading(false);
         
         // Start countdown
@@ -43,7 +85,7 @@ const PaymentSuccess = () => {
     };
     
     checkAuth();
-  }, [navigate]);
+  }, [navigate, sessionId]);
   
   const handleGoToDashboard = () => {
     navigate('/dashboard');
