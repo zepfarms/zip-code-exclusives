@@ -73,7 +73,7 @@ serve(async (req) => {
               name: `Exclusive ${leadType === 'investor' ? 'Investor' : 'Realtor'} Leads - Zip Code ${zipCode}`,
               description: `Monthly subscription for exclusive ${leadType === 'investor' ? 'investor' : 'realtor'} leads in zip code ${zipCode}`,
             },
-            unit_amount: 19900,
+            unit_amount: 100, // Changed from 19900 to 100 (=$1.00) for testing
             recurring: {
               interval: "month",
             },
