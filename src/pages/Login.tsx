@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { supabase } from '@/integrations/supabase/client';
+import { ensureUserProfile } from '@/utils/userProfile';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -66,6 +67,14 @@ const Login = () => {
       }
       
       if (data.user) {
+        // Ensure the user has a profile
+        try {
+          await ensureUserProfile(data.user.id);
+        } catch (profileError) {
+          console.error("Failed to create/check profile:", profileError);
+          // Continue anyway - we'll handle profile issues on the dashboard
+        }
+        
         toast.success("Login successful!");
         navigate('/dashboard');
       }

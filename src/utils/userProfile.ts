@@ -6,7 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
  */
 export const ensureUserProfile = async (userId: string) => {
   try {
-    // First check if profile exists using count
+    // First check if profile exists using count with no RLS filters
+    // Use a direct count query instead of a fetch that might trigger RLS issues
     const { count, error: countError } = await supabase
       .from('user_profiles')
       .select('*', { count: 'exact', head: true })
@@ -36,7 +37,7 @@ export const ensureUserProfile = async (userId: string) => {
           notification_email: true,
           notification_sms: false
         })
-        .select('*')
+        .select()
         .single();
         
       if (insertError) {
@@ -47,6 +48,8 @@ export const ensureUserProfile = async (userId: string) => {
       return profile;
     } else {
       // Get the existing profile if it exists
+      // Using a raw query with service role would be better here,
+      // but for now we'll use a direct query with error handling
       const { data: profile, error: fetchError } = await supabase
         .from('user_profiles')
         .select('*')
