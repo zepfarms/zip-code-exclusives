@@ -34,6 +34,7 @@ const Dashboard = () => {
     nextRenewal: null,
     daysRemaining: 0
   });
+  const [debugMode, setDebugMode] = useState(false);
 
   useEffect(() => {
     // Check if user is logged in
@@ -51,6 +52,8 @@ const Dashboard = () => {
           return;
         }
 
+        console.log("User authenticated, loading data for:", session.user.id);
+        
         // Load user data
         await fetchUserData(
           session.user.id, 
@@ -61,6 +64,16 @@ const Dashboard = () => {
           setSubscriptionInfo, 
           setIsLoading
         );
+        
+        // Check for payments that may need processing
+        const sessionId = new URLSearchParams(window.location.search).get('session_id');
+        if (sessionId) {
+          console.log("Found session ID in URL, checking payment status:", sessionId);
+          // Potential redirect from payment, force refresh data
+          setTimeout(() => {
+            refreshData(true);
+          }, 1000);
+        }
       } catch (error) {
         console.error("Authentication error:", error);
         toast.error('Authentication error. Please try logging in again.');
@@ -317,18 +330,41 @@ const Dashboard = () => {
     }
   };
 
-  const refreshData = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      await fetchUserData(
-        session.user.id, 
-        setUserProfile, 
-        setTerritories, 
-        setLeads, 
-        setContacts, 
-        setSubscriptionInfo, 
-        setIsLoading
-      );
+  // Enhanced refresh function with force option and better feedback
+  const refreshData = async (force = false) => {
+    try {
+      if (force) {
+        setIsLoading(true);
+        toast.info("Refreshing your data...");
+      }
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        console.log("Refreshing data for user:", session.user.id);
+        
+        await fetchUserData(
+          session.user.id, 
+          setUserProfile, 
+          setTerritories, 
+          setLeads, 
+          setContacts, 
+          setSubscriptionInfo, 
+          setIsLoading
+        );
+        
+        if (force) {
+          toast.success("Data refreshed successfully");
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+      if (force) {
+        toast.error("Error refreshing data. Please try again.");
+      }
+    } finally {
+      if (force) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -343,16 +379,39 @@ const Dashboard = () => {
               <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
               <p className="text-gray-600">Manage your territories and leads</p>
             </div>
-            {!isLoading && (
+            <div className="flex gap-2 mt-4 md:mt-0">
+              {!isLoading && (
+                <Button 
+                  onClick={() => refreshData(true)}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <span>Refresh Data</span>
+                </Button>
+              )}
               <Button 
-                onClick={refreshData}
-                variant="outline"
-                className="mt-4 md:mt-0"
+                onClick={() => setDebugMode(!debugMode)} 
+                variant="ghost" 
+                size="sm"
               >
-                Refresh Data
+                {debugMode ? "Hide Debug" : "Debug"}
               </Button>
-            )}
+            </div>
           </div>
+          
+          {debugMode && (
+            <div className="mb-6 p-4 border border-gray-300 bg-white rounded-lg text-xs overflow-auto">
+              <h3 className="font-bold mb-2">Debug Information:</h3>
+              <p><strong>User ID:</strong> {userProfile?.id || 'Not loaded'}</p>
+              <p><strong>Territories Count:</strong> {territories?.length || 0}</p>
+              <p><strong>Leads Count:</strong> {leads?.length || 0}</p>
+              <p><strong>Local Storage:</strong></p>
+              <ul className="pl-4">
+                <li>lastZipCode: {localStorage.getItem('lastZipCode') || 'Not set'}</li>
+                <li>lastLeadType: {localStorage.getItem('lastLeadType') || 'Not set'}</li>
+              </ul>
+            </div>
+          )}
           
           <Tabs defaultValue="territories">
             <TabsList className="mb-6">

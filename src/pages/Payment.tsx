@@ -88,8 +88,10 @@ const Payment = () => {
 
       // Redirect to Stripe checkout
       if (data?.url) {
-        // Save leadType to localStorage to use it after successful payment redirect
+        // Save zipCode AND leadType to localStorage to use after successful payment redirect
+        localStorage.setItem('lastZipCode', zipCode);
         localStorage.setItem('lastLeadType', leadType);
+        console.log("Saved to localStorage:", zipCode, leadType);
         window.location.href = data.url;
       } else {
         throw new Error("No checkout URL received");

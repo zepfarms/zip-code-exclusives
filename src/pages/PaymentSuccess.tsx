@@ -13,6 +13,7 @@ const PaymentSuccess = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
   const [territoryCreated, setTerritoryCreated] = useState(false);
+  const [territoryCreationAttempted, setTerritoryCreationAttempted] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -31,39 +32,71 @@ const PaymentSuccess = () => {
           setUserData(session.user);
           
           // If we have a session_id from Stripe, verify and create the territory
-          if (sessionId) {
+          if (sessionId && !territoryCreationAttempted) {
+            setTerritoryCreationAttempted(true);
             try {
+              console.log("Processing successful payment with session ID:", sessionId);
+              
               // Get lead type from localStorage (set during checkout)
               const leadType = localStorage.getItem('lastLeadType') || 'investor';
               const zipCode = localStorage.getItem('lastZipCode');
               
+              console.log("Creating territory with zip:", zipCode, "and lead type:", leadType);
+              
               if (zipCode) {
-                // Create territory record in database
-                const { data, error: territoryError } = await supabase
+                // Check if territory already exists to prevent duplicate entries
+                const { data: existingTerritories, error: checkError } = await supabase
                   .from('territories')
-                  .insert({
-                    user_id: session.user.id,
-                    zip_code: zipCode,
-                    lead_type: leadType,
-                    active: true,
-                    start_date: new Date().toISOString(),
-                    next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
-                  })
-                  .select();
-                  
-                if (territoryError) {
-                  console.error("Error creating territory:", territoryError);
-                  toast.error("There was an issue adding your territory. Please contact support.");
-                } else {
-                  setTerritoryCreated(true);
-                  toast.success(`Territory ${zipCode} added successfully!`);
-                  // Clear the localStorage values after successful territory creation
-                  localStorage.removeItem('lastZipCode');
-                  localStorage.removeItem('lastLeadType');
+                  .select('*')
+                  .eq('user_id', session.user.id)
+                  .eq('zip_code', zipCode)
+                  .eq('active', true);
+                
+                if (checkError) {
+                  console.error("Error checking for existing territories:", checkError);
                 }
+                
+                // Only create if no active territory exists with this zip
+                if (!existingTerritories || existingTerritories.length === 0) {
+                  console.log("No existing territory found, creating new one");
+                  
+                  // Create territory record in database
+                  const { data, error: territoryError } = await supabase
+                    .from('territories')
+                    .insert({
+                      user_id: session.user.id,
+                      zip_code: zipCode,
+                      lead_type: leadType,
+                      active: true,
+                      start_date: new Date().toISOString(),
+                      next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
+                    })
+                    .select();
+                    
+                  if (territoryError) {
+                    console.error("Error creating territory:", territoryError);
+                    toast.error("There was an issue adding your territory. Please contact support.");
+                  } else {
+                    console.log("Territory created successfully:", data);
+                    setTerritoryCreated(true);
+                    toast.success(`Territory ${zipCode} added successfully!`);
+                    
+                    // Clear the localStorage values after successful territory creation
+                    localStorage.removeItem('lastZipCode');
+                    localStorage.removeItem('lastLeadType');
+                  }
+                } else {
+                  console.log("Territory already exists, not creating duplicate");
+                  setTerritoryCreated(true);
+                  toast.success("Your territory was already active");
+                }
+              } else {
+                console.error("No zip code found in localStorage");
+                toast.error("Could not find territory information. Please contact support.");
               }
             } catch (error) {
               console.error("Error processing payment success:", error);
+              toast.error("There was an issue processing your payment. Please contact support.");
             }
           }
           
@@ -84,16 +117,20 @@ const PaymentSuccess = () => {
           return () => clearInterval(timer);
         } else {
           // If not logged in, redirect to login
+          toast.error("You need to be logged in to view this page");
+          navigate('/login', { state: { returnTo: location.pathname + location.search } });
           setIsLoading(false);
         }
       } catch (error) {
         console.error("Authentication error:", error);
         setIsLoading(false);
+        toast.error("Authentication error occurred. Please try logging in again.");
+        navigate('/login');
       }
     };
     
     checkAuth();
-  }, [navigate, sessionId]);
+  }, [navigate, sessionId, territoryCreationAttempted, location]);
   
   const handleGoToDashboard = () => {
     navigate('/dashboard');

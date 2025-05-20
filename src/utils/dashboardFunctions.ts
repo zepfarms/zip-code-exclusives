@@ -20,7 +20,10 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
       
       if (territoriesError) {
         console.error("Error fetching territories:", territoriesError);
-        toast.error("Could not load your territories. Please try refreshing.");
+        // Only show error toast for actual database errors, not empty results
+        if (territoriesError.code !== 'PGRST116') {
+          toast.error("Could not load your territories. Please try refreshing.");
+        }
       } else {
         console.log("Territories fetched successfully:", territoriesData);
         setTerritories(territoriesData || []);
