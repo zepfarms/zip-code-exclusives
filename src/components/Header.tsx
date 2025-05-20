@@ -131,41 +131,61 @@ const Header = () => {
         )}
       </div>
 
-      {/* Simple mobile menu with solid white background */}
+      {/* Mobile menu overlay */}
       {isMobile && isMobileMenuOpen && (
-        <div className="fixed inset-0 top-16 z-40 bg-white">
-          <div className="flex flex-col items-center p-6 space-y-4">
-            <Link to="/" className="w-full py-3 text-center text-lg font-medium text-gray-900" onClick={closeMobileMenu}>
+        <div className="absolute top-16 left-0 right-0 bottom-0 bg-white z-40">
+          <div className="flex flex-col p-4">
+            <Link 
+              to="/" 
+              className="py-3 px-4 text-lg font-medium text-gray-900 hover:bg-gray-100 rounded-md" 
+              onClick={closeMobileMenu}
+            >
               Home
             </Link>
-            <Link to="/how-it-works" className="w-full py-3 text-center text-lg font-medium text-gray-900" onClick={closeMobileMenu}>
+            <Link 
+              to="/how-it-works" 
+              className="py-3 px-4 text-lg font-medium text-gray-900 hover:bg-gray-100 rounded-md" 
+              onClick={closeMobileMenu}
+            >
               How It Works
             </Link>
-            <Link to="/pricing" className="w-full py-3 text-center text-lg font-medium text-gray-900" onClick={closeMobileMenu}>
+            <Link 
+              to="/pricing" 
+              className="py-3 px-4 text-lg font-medium text-gray-900 hover:bg-gray-100 rounded-md" 
+              onClick={closeMobileMenu}
+            >
               Pricing
             </Link>
-            <Link to="/about" className="w-full py-3 text-center text-lg font-medium text-gray-900" onClick={closeMobileMenu}>
+            <Link 
+              to="/about" 
+              className="py-3 px-4 text-lg font-medium text-gray-900 hover:bg-gray-100 rounded-md" 
+              onClick={closeMobileMenu}
+            >
               About Us
             </Link>
             {user && (
-              <Link to="/dashboard" className="w-full py-3 text-center text-lg font-medium text-gray-900" onClick={closeMobileMenu}>
+              <Link 
+                to="/dashboard" 
+                className="py-3 px-4 text-lg font-medium text-gray-900 hover:bg-gray-100 rounded-md" 
+                onClick={closeMobileMenu}
+              >
                 Dashboard
               </Link>
             )}
             
-            <div className="w-full pt-6">
+            <div className="mt-6 space-y-3">
               {user ? (
                 <Button 
                   variant="outline" 
-                  className="w-full mb-4 text-gray-700"
+                  className="w-full justify-center"
                   onClick={handleLogout}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   Log Out
                 </Button>
               ) : (
-                <Link to="/login" onClick={closeMobileMenu} className="w-full block mb-4">
-                  <Button variant="outline" className="w-full text-gray-700">
+                <Link to="/login" onClick={closeMobileMenu} className="block w-full">
+                  <Button variant="outline" className="w-full">
                     Log In
                   </Button>
                 </Link>
