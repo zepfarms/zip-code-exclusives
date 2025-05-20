@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const Header = () => {
   const location = useLocation();
@@ -15,7 +16,13 @@ const Header = () => {
     // Check if user is signed in
     const getUser = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Authentication error:', error);
+          throw error;
+        }
+        
         setUser(data.session?.user || null);
       } catch (error) {
         console.error('Authentication error:', error);
@@ -37,8 +44,19 @@ const Header = () => {
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/');
+    try {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast.success("Logged out successfully");
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Failed to log out');
+    }
   };
 
   return (

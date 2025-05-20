@@ -36,16 +36,26 @@ const Dashboard = () => {
   useEffect(() => {
     // Check if user is logged in
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        toast.error('You must be logged in to view this page');
-        navigate('/login');
-        return;
-      }
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          throw sessionError;
+        }
+        
+        if (!session) {
+          toast.error('You must be logged in to view this page');
+          navigate('/login');
+          return;
+        }
 
-      // Load user data
-      fetchUserData(session.user.id);
+        // Load user data
+        await fetchUserData(session.user.id);
+      } catch (error) {
+        console.error("Authentication error:", error);
+        toast.error('Authentication error. Please try logging in again.');
+        navigate('/login');
+      }
     };
 
     checkAuth();
@@ -55,22 +65,22 @@ const Dashboard = () => {
     setIsLoading(true);
     
     try {
-      // Get user profile using direct query without RLS
+      // Get user profile using direct query
       const { data: profiles, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('id', userId);
+        .eq('id', userId)
+        .maybeSingle();
       
       if (profileError) {
-        console.error("Error fetching user data:", profileError);
+        console.error("Error fetching user profile:", profileError);
         throw profileError;
       }
       
-      const profile = profiles && profiles.length > 0 ? profiles[0] : null;
-      setUserProfile(profile);
-
-      // If profile doesn't exist yet, create default one for this user
-      if (!profile) {
+      // If profile exists, set it - otherwise create a default one
+      if (profiles) {
+        setUserProfile(profiles);
+      } else {
         // Get user details from auth session to create profile
         const { data: { session } } = await supabase.auth.getSession();
         
@@ -78,7 +88,7 @@ const Dashboard = () => {
           const userMetadata = session.user.user_metadata || {};
           
           // Insert a new profile with basic details
-          const { error: insertError } = await supabase
+          const { data: newProfile, error: insertError } = await supabase
             .from('user_profiles')
             .insert({
               id: userId,
@@ -87,30 +97,36 @@ const Dashboard = () => {
               user_type: userMetadata.user_type || 'investor',
               notification_email: true,
               notification_sms: false
-            });
+            })
+            .select()
+            .single();
             
           if (insertError) {
             console.error("Error creating user profile:", insertError);
-            // Continue with app flow even if profile creation fails
+            toast.error("Could not create user profile. Please try refreshing.");
+          } else {
+            setUserProfile(newProfile);
           }
         }
       }
 
-      // Initialize secondary emails array to an empty array by default
-      const secondaryEmails = profile?.secondary_emails || [];
-      // Get email from auth session
+      // Initialize contact information
       const { data: { session } } = await supabase.auth.getSession();
-      const primaryEmail = session?.user?.email || '';
-      
-      // Initialize secondary phones array to an empty array by default
-      const secondaryPhones = profile?.secondary_phones || [];
-      const primaryPhone = profile?.phone || '';
-      
-      // Set contacts with primary and secondary emails
-      setContacts({
-        emails: [primaryEmail, ...secondaryEmails],
-        phones: [primaryPhone, ...secondaryPhones]
-      });
+      if (session) {
+        // Initialize secondary emails array to an empty array by default
+        const secondaryEmails = userProfile?.secondary_emails || [];
+        const primaryEmail = session?.user?.email || '';
+        
+        // Initialize secondary phones array to an empty array by default
+        const secondaryPhones = userProfile?.secondary_phones || [];
+        const primaryPhone = userProfile?.phone || '';
+        
+        // Set contacts with primary and secondary emails
+        setContacts({
+          emails: [primaryEmail, ...secondaryEmails].filter(Boolean),
+          phones: [primaryPhone, ...secondaryPhones].filter(Boolean)
+        });
+      }
 
       // Get territories
       const { data: territoriesData, error: territoriesError } = await supabase
@@ -119,27 +135,31 @@ const Dashboard = () => {
         .eq('user_id', userId)
         .eq('active', true);
       
-      if (territoriesError) throw territoriesError;
-      setTerritories(territoriesData || []);
+      if (territoriesError) {
+        console.error("Error fetching territories:", territoriesError);
+        toast.error("Could not load your territories. Please try refreshing.");
+      } else {
+        setTerritories(territoriesData || []);
 
-      // Calculate subscription info
-      if (territoriesData && territoriesData.length > 0) {
-        // Find earliest next billing date
-        const nextBillingDates = territoriesData
-          .map(t => t.next_billing_date)
-          .filter(date => date) // Filter out null dates
-          .sort();
-          
-        if (nextBillingDates.length > 0) {
-          const nextRenewal = new Date(nextBillingDates[0]);
-          const today = new Date();
-          const daysRemaining = Math.ceil((nextRenewal.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-          
-          setSubscriptionInfo({
-            totalMonthly: territoriesData.length * 99.99, // Assuming $99.99 per territory
-            nextRenewal: nextRenewal,
-            daysRemaining: daysRemaining
-          });
+        // Calculate subscription info
+        if (territoriesData && territoriesData.length > 0) {
+          // Find earliest next billing date
+          const nextBillingDates = territoriesData
+            .map(t => t.next_billing_date)
+            .filter(date => date) // Filter out null dates
+            .sort();
+            
+          if (nextBillingDates.length > 0) {
+            const nextRenewal = new Date(nextBillingDates[0]);
+            const today = new Date();
+            const daysRemaining = Math.ceil((nextRenewal.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            
+            setSubscriptionInfo({
+              totalMonthly: territoriesData.length * 99.99, // Assuming $99.99 per territory
+              nextRenewal: nextRenewal,
+              daysRemaining: daysRemaining
+            });
+          }
         }
       }
 
@@ -151,12 +171,16 @@ const Dashboard = () => {
         .eq('archived', false)
         .order('created_at', { ascending: false });
       
-      if (leadsError) throw leadsError;
-      setLeads(leadsData || []);
+      if (leadsError) {
+        console.error("Error fetching leads:", leadsError);
+        toast.error("Could not load your leads. Please try refreshing.");
+      } else {
+        setLeads(leadsData || []);
+      }
 
     } catch (error) {
       console.error('Error fetching user data:', error);
-      toast.error('Failed to load user data');
+      toast.error('Failed to load user data. Please try refreshing.');
     } finally {
       setIsLoading(false);
     }
@@ -423,6 +447,15 @@ const Dashboard = () => {
               <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
               <p className="text-gray-600">Manage your territories and leads</p>
             </div>
+            {!isLoading && territories.length > 0 && (
+              <Button 
+                onClick={refreshData}
+                variant="outline"
+                className="mt-4 md:mt-0"
+              >
+                Refresh Data
+              </Button>
+            )}
           </div>
           
           <Tabs defaultValue="territories">

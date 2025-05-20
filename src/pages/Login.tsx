@@ -25,10 +25,20 @@ const Login = () => {
   // Check if user is already logged in
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        // If user is already logged in, redirect to dashboard
-        navigate('/dashboard');
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Session check error:", error);
+          return;
+        }
+        
+        if (session) {
+          // If user is already logged in, redirect to dashboard
+          navigate('/dashboard');
+        }
+      } catch (error) {
+        console.error("Auth check error:", error);
       }
     };
     
@@ -58,22 +68,33 @@ const Login = () => {
       if (data.user) {
         toast.success("Login successful!");
         
-        // Check if user is admin
-        const { data: profileData } = await supabase
-          .from('user_profiles')
-          .select('is_admin')
-          .eq('id', data.user.id)
-          .single();
+        try {
+          // Check if user is admin
+          const { data: profileData, error: profileError } = await supabase
+            .from('user_profiles')
+            .select('is_admin')
+            .eq('id', data.user.id)
+            .maybeSingle();
+            
+          if (profileError) {
+            console.error("Error fetching user profile:", profileError);
+          }
           
-        if (profileData?.is_admin) {
-          navigate('/admin');
-        } else {
+          // Redirect based on admin status
+          if (profileData?.is_admin) {
+            navigate('/admin');
+          } else {
+            navigate('/dashboard');
+          }
+        } catch (profileError) {
+          console.error("Profile check error:", profileError);
+          // Default redirect to dashboard if profile check fails
           navigate('/dashboard');
         }
       }
     } catch (error: any) {
       console.error("Login error:", error);
-      toast.error(error.message || "Failed to login");
+      toast.error(error.error_description || error.message || "Failed to login");
     } finally {
       setIsLoading(false);
     }
