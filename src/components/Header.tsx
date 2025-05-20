@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -131,10 +132,10 @@ const Header = () => {
         )}
       </div>
 
-      {/* Mobile menu overlay */}
+      {/* Mobile menu with solid white background */}
       {isMobile && isMobileMenuOpen && (
-        <div className="absolute top-16 left-0 right-0 bottom-0 bg-white z-40">
-          <div className="flex flex-col p-4">
+        <div className="fixed inset-0 top-16 bg-white z-50 shadow-lg">
+          <div className="flex flex-col p-6">
             <Link 
               to="/" 
               className="py-3 px-4 text-lg font-medium text-gray-900 hover:bg-gray-100 rounded-md" 
