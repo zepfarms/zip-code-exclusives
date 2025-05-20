@@ -1,16 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, LogOut } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { LogOut } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -43,48 +39,32 @@ const Header = () => {
       // Otherwise navigate to the check-availability page
       navigate('/check-availability');
     }
-    
-    // Close mobile menu if open
-    if (isMobileMenuOpen) {
-      setIsMobileMenuOpen(false);
-    }
-  };
-
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
-
-  const closeMobileMenu = () => {
-    if (isMobileMenuOpen) {
-      setIsMobileMenuOpen(false);
-    }
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/');
-    closeMobileMenu();
   };
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-sm border-b border-gray-200">
       <div className="container flex items-center justify-between h-16 px-4 md:px-6">
-        <Link to="/" className="flex items-center" onClick={closeMobileMenu}>
+        <Link to="/" className="flex items-center">
           <span className="text-2xl font-bold text-brand-700">LeadXclusive</span>
         </Link>
         
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+        {/* Navigation - Always visible, simplified for mobile */}
+        <nav className="flex items-center gap-3 text-sm font-medium">
           <Link to="/" className="text-gray-600 hover:text-brand-700 transition-colors">
             Home
           </Link>
-          <Link to="/how-it-works" className="text-gray-600 hover:text-brand-700 transition-colors">
+          <Link to="/how-it-works" className="hidden sm:inline text-gray-600 hover:text-brand-700 transition-colors">
             How It Works
           </Link>
-          <Link to="/pricing" className="text-gray-600 hover:text-brand-700 transition-colors">
+          <Link to="/pricing" className="hidden sm:inline text-gray-600 hover:text-brand-700 transition-colors">
             Pricing
           </Link>
-          <Link to="/about" className="text-gray-600 hover:text-brand-700 transition-colors">
+          <Link to="/about" className="hidden sm:inline text-gray-600 hover:text-brand-700 transition-colors">
             About Us
           </Link>
           {user && (
@@ -94,113 +74,35 @@ const Header = () => {
           )}
         </nav>
         
-        {/* Desktop CTA buttons */}
-        <div className="hidden md:flex items-center gap-4">
+        {/* CTA buttons - Simplified for mobile */}
+        <div className="flex items-center gap-2">
           {user ? (
             <Button 
               variant="ghost" 
               className="text-gray-700 hover:text-brand-700"
+              size="sm"
               onClick={handleLogout}
             >
-              <LogOut className="mr-2 h-4 w-4" />
-              Log Out
+              <LogOut className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Log Out</span>
             </Button>
           ) : (
             <Link to="/login">
-              <Button variant="ghost" className="text-gray-700 hover:text-brand-700">
+              <Button variant="ghost" size="sm" className="text-gray-700 hover:text-brand-700">
                 Log In
               </Button>
             </Link>
           )}
           <Button 
             className="bg-accent-600 hover:bg-accent-700"
+            size="sm"
             onClick={handleCheckAvailability}
           >
-            Check Availability
+            <span className="hidden sm:inline">Check Availability</span>
+            <span className="sm:hidden">Check</span>
           </Button>
         </div>
-
-        {/* Mobile menu button */}
-        {isMobile && (
-          <Button variant="ghost" onClick={toggleMobileMenu} className="md:hidden">
-            {isMobileMenuOpen ? (
-              <X className="h-6 w-6" aria-hidden="true" />
-            ) : (
-              <Menu className="h-6 w-6" aria-hidden="true" />
-            )}
-          </Button>
-        )}
       </div>
-
-      {/* Simple Mobile Menu Overlay */}
-      {isMobile && isMobileMenuOpen && (
-        <div className="fixed inset-0 top-16 bg-white z-40">
-          <div className="flex flex-col p-4">
-            <Link 
-              to="/" 
-              className="py-3 px-4 text-lg font-medium text-gray-900 hover:bg-gray-100 rounded-md" 
-              onClick={closeMobileMenu}
-            >
-              Home
-            </Link>
-            <Link 
-              to="/how-it-works" 
-              className="py-3 px-4 text-lg font-medium text-gray-900 hover:bg-gray-100 rounded-md" 
-              onClick={closeMobileMenu}
-            >
-              How It Works
-            </Link>
-            <Link 
-              to="/pricing" 
-              className="py-3 px-4 text-lg font-medium text-gray-900 hover:bg-gray-100 rounded-md" 
-              onClick={closeMobileMenu}
-            >
-              Pricing
-            </Link>
-            <Link 
-              to="/about" 
-              className="py-3 px-4 text-lg font-medium text-gray-900 hover:bg-gray-100 rounded-md" 
-              onClick={closeMobileMenu}
-            >
-              About Us
-            </Link>
-            {user && (
-              <Link 
-                to="/dashboard" 
-                className="py-3 px-4 text-lg font-medium text-gray-900 hover:bg-gray-100 rounded-md" 
-                onClick={closeMobileMenu}
-              >
-                Dashboard
-              </Link>
-            )}
-            
-            <div className="mt-6 space-y-4 px-4">
-              {user ? (
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-center"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Log Out
-                </Button>
-              ) : (
-                <Link to="/login" onClick={closeMobileMenu} className="block w-full">
-                  <Button variant="outline" className="w-full">
-                    Log In
-                  </Button>
-                </Link>
-              )}
-              <Button 
-                className="w-full bg-accent-600 hover:bg-accent-700"
-                onClick={handleCheckAvailability}
-              >
-                Check Availability
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   );
 };
