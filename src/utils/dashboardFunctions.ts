@@ -46,6 +46,12 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
     try {
       console.log("Fetching territories for user:", userId);
       
+      // Check if there's any territory data in sessionStorage (from PaymentSuccess page)
+      const justCreatedTerritory = sessionStorage.getItem('justCreatedTerritory');
+      if (justCreatedTerritory) {
+        console.log("Found recently created territory in sessionStorage:", justCreatedTerritory);
+      }
+      
       const { data: territoriesData, error: territoriesError } = await supabase
         .from('territories')
         .select('*')
@@ -63,7 +69,39 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
         }
       } else {
         console.log("Territories fetched successfully:", territoriesData);
-        setTerritories(territoriesData || []);
+        
+        // If we have data in sessionStorage and failed to fetch territories, use that as a fallback
+        if (justCreatedTerritory && (!territoriesData || territoriesData.length === 0)) {
+          try {
+            const parsedTerritory = JSON.parse(justCreatedTerritory);
+            console.log("Using territory from sessionStorage as fallback");
+            
+            // Create a minimal territory object as fallback
+            const fallbackTerritory = {
+              id: 'pending-' + Date.now(),
+              user_id: userId,
+              zip_code: parsedTerritory.zip_code,
+              lead_type: parsedTerritory.lead_type,
+              active: true,
+              start_date: parsedTerritory.timestamp,
+              next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+              created_at: parsedTerritory.timestamp
+            };
+            
+            setTerritories([fallbackTerritory]);
+            toast.info("Using cached territory data. Refresh the page if details are incomplete.");
+          } catch (e) {
+            console.error("Error parsing sessionStorage territory:", e);
+            setTerritories(territoriesData || []);
+          }
+        } else {
+          setTerritories(territoriesData || []);
+          
+          // If we successfully loaded territories, we can clear sessionStorage
+          if (justCreatedTerritory) {
+            sessionStorage.removeItem('justCreatedTerritory');
+          }
+        }
         
         // Calculate subscription info if territories were loaded successfully
         if (territoriesData && territoriesData.length > 0) {
@@ -121,7 +159,7 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
       // Don't show toast for server errors as they might be temporary
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching user data:', error);
     // Only show general error toast for non-server errors
     if (!error.message?.includes('500')) {

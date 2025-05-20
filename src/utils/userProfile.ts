@@ -38,7 +38,7 @@ export const ensureUserProfile = async (userId: string) => {
       const userMeta = user?.user_metadata || {};
       
       // Create minimal profile
-      const { data: profile, error: insertError } = await supabase
+      const { data: newProfile, error: insertError } = await supabase
         .from('user_profiles')
         .insert({
           id: userId,
@@ -52,7 +52,7 @@ export const ensureUserProfile = async (userId: string) => {
           phone: ''
         })
         .select()
-        .single();
+        .maybeSingle();
         
       if (insertError) {
         // If we can't create a profile, we'll return a minimal placeholder
@@ -60,7 +60,7 @@ export const ensureUserProfile = async (userId: string) => {
         throw insertError;
       }
       
-      return profile;
+      return newProfile;
     } catch (createErr) {
       console.error("Error creating profile:", createErr);
       throw createErr;
