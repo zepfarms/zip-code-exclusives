@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -68,29 +67,9 @@ const Login = () => {
       if (data.user) {
         toast.success("Login successful!");
         
-        try {
-          // Check if user is admin
-          const { data: profileData, error: profileError } = await supabase
-            .from('user_profiles')
-            .select('is_admin')
-            .eq('id', data.user.id)
-            .maybeSingle();
-            
-          if (profileError) {
-            console.error("Error fetching user profile:", profileError);
-          }
-          
-          // Redirect based on admin status
-          if (profileData?.is_admin) {
-            navigate('/admin');
-          } else {
-            navigate('/dashboard');
-          }
-        } catch (profileError) {
-          console.error("Profile check error:", profileError);
-          // Default redirect to dashboard if profile check fails
-          navigate('/dashboard');
-        }
+        // We shouldn't query user_profiles here directly because it's causing 500 errors
+        // Just redirect to dashboard
+        navigate('/dashboard');
       }
     } catch (error: any) {
       console.error("Login error:", error);

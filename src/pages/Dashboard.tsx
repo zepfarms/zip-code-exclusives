@@ -65,86 +65,117 @@ const Dashboard = () => {
     setIsLoading(true);
     
     try {
-      // Get user profile using direct query
-      const { data: profiles, error: profileError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-      
-      if (profileError) {
-        console.error("Error fetching user profile:", profileError);
-        throw profileError;
-      }
-      
-      // If profile exists, set it - otherwise create a default one
-      if (profiles) {
-        setUserProfile(profiles);
-      } else {
-        // Get user details from auth session to create profile
-        const { data: { session } } = await supabase.auth.getSession();
+      // Try to get territories first as these might be available
+      // even if the profile has issues
+      try {
+        const { data: territoriesData, error: territoriesError } = await supabase
+          .from('territories')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('active', true);
         
-        if (session && session.user) {
-          const userMetadata = session.user.user_metadata || {};
+        if (territoriesError) {
+          console.error("Error fetching territories:", territoriesError);
+          toast.error("Could not load your territories. Please try refreshing.");
+        } else {
+          setTerritories(territoriesData || []);
+        }
+      } catch (err) {
+        console.error("Error in territories fetch:", err);
+      }
+
+      // Try to get user profile - this might be failing
+      try {
+        // Check if the user profile exists first with a simple count query
+        const { count, error: countError } = await supabase
+          .from('user_profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('id', userId);
+        
+        if (countError) {
+          console.error("Count query error:", countError);
+          throw countError;
+        }
+
+        // If profile doesn't exist, create it
+        if (count === 0) {
+          console.log("No profile found, creating one");
           
-          // Insert a new profile with basic details
-          const { data: newProfile, error: insertError } = await supabase
-            .from('user_profiles')
-            .insert({
-              id: userId,
-              first_name: userMetadata.first_name || '',
-              last_name: userMetadata.last_name || '',
-              user_type: userMetadata.user_type || 'investor',
-              notification_email: true,
-              notification_sms: false
-            })
-            .select()
-            .single();
+          // Get user details from auth session
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session && session.user) {
+            const userMetadata = session.user.user_metadata || {};
             
-          if (insertError) {
-            console.error("Error creating user profile:", insertError);
-            toast.error("Could not create user profile. Please try refreshing.");
-          } else {
-            setUserProfile(newProfile);
+            // Insert a new profile with basic details
+            const { data: newProfile, error: insertError } = await supabase
+              .from('user_profiles')
+              .insert({
+                id: userId,
+                first_name: userMetadata.first_name || '',
+                last_name: userMetadata.last_name || '',
+                user_type: userMetadata.user_type || 'investor',
+                notification_email: true,
+                notification_sms: false
+              })
+              .select();
+              
+            if (insertError) {
+              console.error("Error creating user profile:", insertError);
+              toast.error("Could not create user profile.");
+            } else if (newProfile && newProfile.length > 0) {
+              setUserProfile(newProfile[0]);
+            }
+          }
+        } else {
+          // Profile exists, fetch it
+          const { data: profiles, error: profileError } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('id', userId)
+            .limit(1);
+          
+          if (profileError) {
+            console.error("Error fetching user profile:", profileError);
+            throw profileError;
+          }
+          
+          if (profiles && profiles.length > 0) {
+            setUserProfile(profiles[0]);
           }
         }
+      } catch (profileError) {
+        console.error("Error fetching user profile:", profileError);
+        toast.error("Could not load your profile. Please try refreshing.");
       }
 
       // Initialize contact information
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        // Initialize secondary emails array to an empty array by default
-        const secondaryEmails = userProfile?.secondary_emails || [];
-        const primaryEmail = session?.user?.email || '';
-        
-        // Initialize secondary phones array to an empty array by default
-        const secondaryPhones = userProfile?.secondary_phones || [];
-        const primaryPhone = userProfile?.phone || '';
-        
-        // Set contacts with primary and secondary emails
-        setContacts({
-          emails: [primaryEmail, ...secondaryEmails].filter(Boolean),
-          phones: [primaryPhone, ...secondaryPhones].filter(Boolean)
-        });
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          // Initialize secondary emails array to an empty array by default
+          const secondaryEmails = userProfile?.secondary_emails || [];
+          const primaryEmail = session?.user?.email || '';
+          
+          // Initialize secondary phones array to an empty array by default
+          const secondaryPhones = userProfile?.secondary_phones || [];
+          const primaryPhone = userProfile?.phone || '';
+          
+          // Set contacts with primary and secondary emails
+          setContacts({
+            emails: [primaryEmail, ...secondaryEmails].filter(Boolean),
+            phones: [primaryPhone, ...secondaryPhones].filter(Boolean)
+          });
+        }
+      } catch (contactError) {
+        console.error("Error setting up contacts:", contactError);
       }
 
-      // Get territories
-      const { data: territoriesData, error: territoriesError } = await supabase
-        .from('territories')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('active', true);
-      
-      if (territoriesError) {
-        console.error("Error fetching territories:", territoriesError);
-        toast.error("Could not load your territories. Please try refreshing.");
-      } else {
-        setTerritories(territoriesData || []);
-
-        // Calculate subscription info
-        if (territoriesData && territoriesData.length > 0) {
+      // Calculate subscription info if territories were loaded successfully
+      if (territories && territories.length > 0) {
+        try {
           // Find earliest next billing date
-          const nextBillingDates = territoriesData
+          const nextBillingDates = territories
             .map(t => t.next_billing_date)
             .filter(date => date) // Filter out null dates
             .sort();
@@ -155,27 +186,33 @@ const Dashboard = () => {
             const daysRemaining = Math.ceil((nextRenewal.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
             
             setSubscriptionInfo({
-              totalMonthly: territoriesData.length * 99.99, // Assuming $99.99 per territory
+              totalMonthly: territories.length * 99.99, // Assuming $99.99 per territory
               nextRenewal: nextRenewal,
               daysRemaining: daysRemaining
             });
           }
+        } catch (subscriptionError) {
+          console.error("Error calculating subscription info:", subscriptionError);
         }
       }
 
-      // Get leads
-      const { data: leadsData, error: leadsError } = await supabase
-        .from('leads')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('archived', false)
-        .order('created_at', { ascending: false });
-      
-      if (leadsError) {
-        console.error("Error fetching leads:", leadsError);
-        toast.error("Could not load your leads. Please try refreshing.");
-      } else {
-        setLeads(leadsData || []);
+      // Try to get leads
+      try {
+        const { data: leadsData, error: leadsError } = await supabase
+          .from('leads')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('archived', false)
+          .order('created_at', { ascending: false });
+        
+        if (leadsError) {
+          console.error("Error fetching leads:", leadsError);
+          toast.error("Could not load your leads. Please try refreshing.");
+        } else {
+          setLeads(leadsData || []);
+        }
+      } catch (leadsError) {
+        console.error("Error in leads fetch:", leadsError);
       }
 
     } catch (error) {
@@ -363,23 +400,49 @@ const Dashboard = () => {
       const secondaryEmails = contacts.emails.slice(1);
       const secondaryPhones = contacts.phones.slice(1);
       
-      // Update profile using direct query
-      const { error: updateError } = await supabase
+      // Check if profile exists before updating
+      const { count } = await supabase
         .from('user_profiles')
-        .update({
-          first_name: values.firstName,
-          last_name: values.lastName,
-          company: values.company,
-          phone: contacts.phones[0], // Primary phone
-          secondary_phones: secondaryPhones, // Additional phones
-          secondary_emails: secondaryEmails, // Additional emails
-          notification_email: values.notificationEmail,
-          notification_sms: values.notificationSms,
-          updated_at: new Date().toISOString() // Convert Date to string
-        })
+        .select('*', { count: 'exact', head: true })
         .eq('id', session.user.id);
-      
-      if (updateError) throw updateError;
+        
+      // If profile doesn't exist, create it first
+      if (count === 0) {
+        const { error: insertError } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: session.user.id,
+            first_name: values.firstName,
+            last_name: values.lastName,
+            company: values.company,
+            phone: contacts.phones[0], // Primary phone
+            secondary_phones: secondaryPhones, // Additional phones
+            secondary_emails: secondaryEmails, // Additional emails
+            notification_email: values.notificationEmail,
+            notification_sms: values.notificationSms,
+            updated_at: new Date().toISOString() // Convert Date to string
+          });
+          
+        if (insertError) throw insertError;
+      } else {
+        // Update existing profile
+        const { error: updateError } = await supabase
+          .from('user_profiles')
+          .update({
+            first_name: values.firstName,
+            last_name: values.lastName,
+            company: values.company,
+            phone: contacts.phones[0], // Primary phone
+            secondary_phones: secondaryPhones, // Additional phones
+            secondary_emails: secondaryEmails, // Additional emails
+            notification_email: values.notificationEmail,
+            notification_sms: values.notificationSms,
+            updated_at: new Date().toISOString() // Convert Date to string
+          })
+          .eq('id', session.user.id);
+        
+        if (updateError) throw updateError;
+      }
       
       // Check if email needs to be updated
       if (values.email !== session.user.email) {
