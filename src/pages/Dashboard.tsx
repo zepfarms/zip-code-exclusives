@@ -18,6 +18,7 @@ import { X, Plus, Loader } from 'lucide-react';
 import AddTerritoryCard from '@/components/dashboard/AddTerritoryCard';
 import { ensureUserProfile, updateUserProfile } from '@/utils/userProfile';
 import { fetchUserData } from '@/utils/dashboardFunctions';
+import DebugPanel from '@/components/dashboard/DebugPanel';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -333,36 +334,43 @@ const Dashboard = () => {
   // Enhanced refresh function with force option and better feedback
   const refreshData = async (force = false) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('You must be logged in to refresh data');
+        return;
+      }
+      
       if (force) {
         setIsLoading(true);
         toast.info("Refreshing your data...");
       }
       
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        console.log("Refreshing data for user:", session.user.id);
-        
-        await fetchUserData(
-          session.user.id, 
-          setUserProfile, 
-          setTerritories, 
-          setLeads, 
-          setContacts, 
-          setSubscriptionInfo, 
-          setIsLoading
-        );
-        
-        if (force) {
-          toast.success("Data refreshed successfully");
-        }
+      console.log("Refreshing data for user:", session.user.id);
+      
+      // Clear any existing data to avoid stale state issues
+      if (force) {
+        setTerritories([]);
+        setLeads([]);
+      }
+      
+      await fetchUserData(
+        session.user.id, 
+        setUserProfile, 
+        setTerritories, 
+        setLeads, 
+        setContacts, 
+        setSubscriptionInfo, 
+        force ? () => {} : setIsLoading // Only update loading state at the end if force=true
+      );
+      
+      if (force) {
+        toast.success("Data refreshed successfully");
+        setIsLoading(false);
       }
     } catch (error) {
       console.error("Error refreshing data:", error);
       if (force) {
         toast.error("Error refreshing data. Please try again.");
-      }
-    } finally {
-      if (force) {
         setIsLoading(false);
       }
     }
@@ -399,18 +407,14 @@ const Dashboard = () => {
             </div>
           </div>
           
+          {/* Advanced Debug Panel */}
           {debugMode && (
-            <div className="mb-6 p-4 border border-gray-300 bg-white rounded-lg text-xs overflow-auto">
-              <h3 className="font-bold mb-2">Debug Information:</h3>
-              <p><strong>User ID:</strong> {userProfile?.id || 'Not loaded'}</p>
-              <p><strong>Territories Count:</strong> {territories?.length || 0}</p>
-              <p><strong>Leads Count:</strong> {leads?.length || 0}</p>
-              <p><strong>Local Storage:</strong></p>
-              <ul className="pl-4">
-                <li>lastZipCode: {localStorage.getItem('lastZipCode') || 'Not set'}</li>
-                <li>lastLeadType: {localStorage.getItem('lastLeadType') || 'Not set'}</li>
-              </ul>
-            </div>
+            <DebugPanel 
+              userId={userProfile?.id || null}
+              territories={territories}
+              leads={leads}
+              refreshData={refreshData}
+            />
           )}
           
           <Tabs defaultValue="territories">

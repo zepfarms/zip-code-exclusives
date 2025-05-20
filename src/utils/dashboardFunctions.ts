@@ -7,8 +7,42 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
   setIsLoading(true);
   
   try {
-    // Try to get territories first as these might be available
-    // even if the profile has issues
+    // Get or create user profile using our utility function
+    let profile = null;
+    try {
+      console.log("Fetching user profile for:", userId);
+      profile = await ensureUserProfile(userId);
+      if (profile) {
+        setUserProfile(profile);
+        
+        // Initialize contact information
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            // Get secondary emails and phones with type safety
+            const secondaryEmails = Array.isArray(profile.secondary_emails) ? profile.secondary_emails : [];
+            const primaryEmail = session?.user?.email || '';
+            
+            // Initialize secondary phones array to an empty array by default
+            const secondaryPhones = Array.isArray(profile.secondary_phones) ? profile.secondary_phones : [];
+            const primaryPhone = typeof profile.phone === 'string' ? profile.phone : '';
+            
+            // Set contacts with primary and secondary emails
+            setContacts({
+              emails: [primaryEmail, ...secondaryEmails].filter(Boolean),
+              phones: [primaryPhone, ...secondaryPhones].filter(Boolean)
+            });
+          }
+        } catch (contactError) {
+          console.error("Error setting up contacts:", contactError);
+        }
+      }
+    } catch (profileError) {
+      console.error("Error with user profile:", profileError);
+      // Don't show error toast as we have a fallback profile
+    }
+
+    // Try to get territories
     try {
       console.log("Fetching territories for user:", userId);
       
@@ -20,8 +54,11 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
       
       if (territoriesError) {
         console.error("Error fetching territories:", territoriesError);
-        // Only show error toast for actual database errors, not empty results
-        if (territoriesError.code !== 'PGRST116') {
+        // Only show error toast for actual database errors, not empty results or auth errors
+        if (territoriesError.code !== 'PGRST116' && 
+            territoriesError.code !== '401' && 
+            territoriesError.code !== '403' &&
+            !territoriesError.message.includes('500')) {
           toast.error("Could not load your territories. Please try refreshing.");
         }
       } else {
@@ -55,39 +92,7 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
       }
     } catch (err) {
       console.error("Error in territories fetch:", err);
-    }
-
-    // Get or create user profile using our utility function
-    try {
-      const profile = await ensureUserProfile(userId);
-      if (profile) {
-        setUserProfile(profile);
-        
-        // Initialize contact information
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            // Get secondary emails and phones with type safety
-            const secondaryEmails = Array.isArray(profile.secondary_emails) ? profile.secondary_emails : [];
-            const primaryEmail = session?.user?.email || '';
-            
-            // Initialize secondary phones array to an empty array by default
-            const secondaryPhones = Array.isArray(profile.secondary_phones) ? profile.secondary_phones : [];
-            const primaryPhone = typeof profile.phone === 'string' ? profile.phone : '';
-            
-            // Set contacts with primary and secondary emails
-            setContacts({
-              emails: [primaryEmail, ...secondaryEmails].filter(Boolean),
-              phones: [primaryPhone, ...secondaryPhones].filter(Boolean)
-            });
-          }
-        } catch (contactError) {
-          console.error("Error setting up contacts:", contactError);
-        }
-      }
-    } catch (profileError) {
-      console.error("Error with user profile:", profileError);
-      toast.error("Could not load your profile data. Some features may be limited.");
+      // Don't show toast for server errors as they might be temporary
     }
 
     // Try to get leads
@@ -101,8 +106,11 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
       
       if (leadsError) {
         console.error("Error fetching leads:", leadsError);
-        // Only show error toast if it's not just a case of no leads found
-        if (leadsError.code !== 'PGRST116') { // Postgres REST error for no rows returned
+        // Only show error toast if it's not just a case of no leads found or auth errors
+        if (leadsError.code !== 'PGRST116' && 
+            leadsError.code !== '401' && 
+            leadsError.code !== '403' &&
+            !leadsError.message.includes('500')) {
           toast.error("Could not load your leads. Please try refreshing.");
         }
       } else {
@@ -110,11 +118,15 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
       }
     } catch (leadsError) {
       console.error("Error in leads fetch:", leadsError);
+      // Don't show toast for server errors as they might be temporary
     }
 
   } catch (error) {
     console.error('Error fetching user data:', error);
-    toast.error('Failed to load user data. Please try refreshing.');
+    // Only show general error toast for non-server errors
+    if (!error.message?.includes('500')) {
+      toast.error('Failed to load user data. Please try refreshing.');
+    }
   } finally {
     setIsLoading(false);
   }
