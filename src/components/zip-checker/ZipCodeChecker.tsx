@@ -15,71 +15,44 @@ import ZipCodeForm from './ZipCodeForm';
 import ZipAvailableSection from './ZipAvailableSection';
 import ZipWaitlistSection from './ZipWaitlistSection';
 
+// Define types to avoid infinite type instantiation
+type AvailabilityStatus = boolean | null;
+
 const ZipCodeChecker = () => {
   const [zipCode, setZipCode] = useState('');
   const [isChecking, setIsChecking] = useState(false);
-  const [investorAvailable, setInvestorAvailable] = useState<boolean | null>(null);
-  const [realtorAvailable, setRealtorAvailable] = useState<boolean | null>(null);
+  const [investorAvailable, setInvestorAvailable] = useState<AvailabilityStatus>(null);
+  const [realtorAvailable, setRealtorAvailable] = useState<AvailabilityStatus>(null);
   const navigate = useNavigate();
 
   const checkZipCodeAvailability = async (zip: string) => {
     setIsChecking(true);
     
     try {
-      // Fetch investor data first
-      const investorResult = await supabase
+      // Fetch zip code data from Supabase
+      const { data, error } = await supabase
         .from('zip_codes')
         .select('is_available')
         .eq('code', zip)
-        .eq('lead_type', 'investor')
-        .single();
-
-      // Fetch realtor data separately
-      const realtorResult = await supabase
-        .from('zip_codes')
-        .select('is_available')
-        .eq('code', zip)
-        .eq('lead_type', 'agent')
-        .single();
-
-      // Process investor availability
-      const investorData = investorResult.data;
-      const investorError = investorResult.error;
+        .maybeSingle();
       
-      if (investorError) {
-        if (investorError.code === 'PGRST116') {
-          // Not found in database
-          setInvestorAvailable(true);
-        } else {
-          console.error("Error checking investor zip:", investorError);
-          setInvestorAvailable(null);
-        }
-      } else {
-        // Data found, use it
-        setInvestorAvailable(investorData?.is_available ?? false);
-      }
-
-      // Process realtor availability 
-      const realtorData = realtorResult.data;
-      const realtorError = realtorResult.error;
-      
-      if (realtorError) {
-        if (realtorError.code === 'PGRST116') {
-          // Not found in database
-          setRealtorAvailable(true);
-        } else {
-          console.error("Error checking realtor zip:", realtorError);
-          setRealtorAvailable(null);
-        }
-      } else {
-        // Data found, use it
-        setRealtorAvailable(realtorData?.is_available ?? false);
-      }
-      
-      // Handle demo case - both not in database
-      if (investorError?.code === 'PGRST116' && realtorError?.code === 'PGRST116') {
+      if (error && error.code !== 'PGRST116') {
+        console.error("Error checking zip code:", error);
+        toast.error("Failed to check zip code: " + error.message);
+        // Set default values on error
         setInvestorAvailable(true);
         setRealtorAvailable(true);
+      } else {
+        // If no data found, the zip code is available
+        if (!data) {
+          setInvestorAvailable(true);
+          setRealtorAvailable(true);
+        } else {
+          // Use data from database
+          const isAvailable = data.is_available ?? false;
+          setInvestorAvailable(isAvailable);
+          setRealtorAvailable(isAvailable);
+        }
       }
     } catch (error: any) {
       console.error("Error checking zip code:", error);

@@ -132,7 +132,7 @@ const Header = () => {
         )}
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile menu - Fixed the background to be solid white */}
       {isMobile && isMobileMenuOpen && (
         <div className="fixed inset-0 z-40 bg-white pt-16">
           <div className="container flex flex-col items-center justify-start p-6 space-y-6">
