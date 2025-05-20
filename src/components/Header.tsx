@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -28,19 +29,6 @@ const Header = () => {
     };
   }, []);
 
-  const handleCheckAvailability = () => {
-    // If we're on the home page, scroll to the form
-    if (location.pathname === '/') {
-      const zipCheckerElement = document.getElementById('zip-checker-section');
-      if (zipCheckerElement) {
-        zipCheckerElement.scrollIntoView({ behavior: 'smooth' });
-      }
-    } else {
-      // Otherwise navigate to the check-availability page
-      navigate('/check-availability');
-    }
-  };
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/');
@@ -53,18 +41,18 @@ const Header = () => {
           <span className="text-2xl font-bold text-brand-700">LeadXclusive</span>
         </Link>
         
-        {/* Navigation - Always visible, simplified for mobile */}
-        <nav className="flex items-center gap-3 text-sm font-medium">
+        {/* Navigation - Desktop only */}
+        <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
           <Link to="/" className="text-gray-600 hover:text-brand-700 transition-colors">
             Home
           </Link>
-          <Link to="/how-it-works" className="hidden sm:inline text-gray-600 hover:text-brand-700 transition-colors">
+          <Link to="/how-it-works" className="text-gray-600 hover:text-brand-700 transition-colors">
             How It Works
           </Link>
-          <Link to="/pricing" className="hidden sm:inline text-gray-600 hover:text-brand-700 transition-colors">
+          <Link to="/pricing" className="text-gray-600 hover:text-brand-700 transition-colors">
             Pricing
           </Link>
-          <Link to="/about" className="hidden sm:inline text-gray-600 hover:text-brand-700 transition-colors">
+          <Link to="/about" className="text-gray-600 hover:text-brand-700 transition-colors">
             About Us
           </Link>
           {user && (
@@ -74,18 +62,25 @@ const Header = () => {
           )}
         </nav>
         
-        {/* CTA buttons - Simplified for mobile */}
+        {/* CTA buttons - Desktop has full buttons, Mobile has only login */}
         <div className="flex items-center gap-2">
           {user ? (
-            <Button 
-              variant="ghost" 
-              className="text-gray-700 hover:text-brand-700"
-              size="sm"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Log Out</span>
-            </Button>
+            <>
+              <Button 
+                variant="ghost" 
+                className="hidden md:flex text-gray-700 hover:text-brand-700"
+                size="sm"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Log Out
+              </Button>
+              <Link to="/dashboard" className="md:hidden">
+                <Button variant="ghost" size="sm" className="text-gray-700 hover:text-brand-700">
+                  Dashboard
+                </Button>
+              </Link>
+            </>
           ) : (
             <Link to="/login">
               <Button variant="ghost" size="sm" className="text-gray-700 hover:text-brand-700">
@@ -93,14 +88,14 @@ const Header = () => {
               </Button>
             </Link>
           )}
-          <Button 
-            className="bg-accent-600 hover:bg-accent-700"
-            size="sm"
-            onClick={handleCheckAvailability}
-          >
-            <span className="hidden sm:inline">Check Availability</span>
-            <span className="sm:hidden">Check</span>
-          </Button>
+          <Link to="/check-availability" className="hidden md:block">
+            <Button 
+              className="bg-accent-600 hover:bg-accent-700"
+              size="sm"
+            >
+              Check Availability
+            </Button>
+          </Link>
         </div>
       </div>
     </header>
