@@ -12,6 +12,7 @@ const PaymentSuccess = () => {
   const [countdown, setCountdown] = useState(5);
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
+  const [territoryCreated, setTerritoryCreated] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -22,64 +23,71 @@ const PaymentSuccess = () => {
   // Automatically redirect to dashboard after checking auth
   useEffect(() => {
     const checkAuth = async () => {
-      // Get session data
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        setUserData(session.user);
+      try {
+        // Get session data
+        const { data: { session } } = await supabase.auth.getSession();
         
-        // If we have a session_id from Stripe, verify and create the territory
-        if (sessionId) {
-          try {
-            // Get lead type from localStorage (set during checkout)
-            const leadType = localStorage.getItem('lastLeadType') || 'investor';
-            const zipCode = localStorage.getItem('lastZipCode');
-            
-            if (zipCode) {
-              // Create territory record in database
-              const { error: territoryError } = await supabase
-                .from('territories')
-                .insert({
-                  user_id: session.user.id,
-                  zip_code: zipCode,
-                  lead_type: leadType,
-                  active: true,
-                  start_date: new Date().toISOString(),
-                  next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
-                });
-                
-              if (territoryError) {
-                console.error("Error creating territory:", territoryError);
-                toast.error("There was an issue adding your territory. Please contact support.");
-              } else {
-                toast.success(`Territory ${zipCode} added successfully!`);
-                // Clear the localStorage values after successful territory creation
-                localStorage.removeItem('lastZipCode');
-                localStorage.removeItem('lastLeadType');
+        if (session) {
+          setUserData(session.user);
+          
+          // If we have a session_id from Stripe, verify and create the territory
+          if (sessionId) {
+            try {
+              // Get lead type from localStorage (set during checkout)
+              const leadType = localStorage.getItem('lastLeadType') || 'investor';
+              const zipCode = localStorage.getItem('lastZipCode');
+              
+              if (zipCode) {
+                // Create territory record in database
+                const { data, error: territoryError } = await supabase
+                  .from('territories')
+                  .insert({
+                    user_id: session.user.id,
+                    zip_code: zipCode,
+                    lead_type: leadType,
+                    active: true,
+                    start_date: new Date().toISOString(),
+                    next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
+                  })
+                  .select();
+                  
+                if (territoryError) {
+                  console.error("Error creating territory:", territoryError);
+                  toast.error("There was an issue adding your territory. Please contact support.");
+                } else {
+                  setTerritoryCreated(true);
+                  toast.success(`Territory ${zipCode} added successfully!`);
+                  // Clear the localStorage values after successful territory creation
+                  localStorage.removeItem('lastZipCode');
+                  localStorage.removeItem('lastLeadType');
+                }
               }
+            } catch (error) {
+              console.error("Error processing payment success:", error);
             }
-          } catch (error) {
-            console.error("Error processing payment success:", error);
           }
+          
+          setIsLoading(false);
+          
+          // Start countdown
+          const timer = setInterval(() => {
+            setCountdown(prev => {
+              if (prev <= 1) {
+                clearInterval(timer);
+                navigate('/dashboard');
+                return 0;
+              }
+              return prev - 1;
+            });
+          }, 1000);
+          
+          return () => clearInterval(timer);
+        } else {
+          // If not logged in, redirect to login
+          setIsLoading(false);
         }
-        
-        setIsLoading(false);
-        
-        // Start countdown
-        const timer = setInterval(() => {
-          setCountdown(prev => {
-            if (prev <= 1) {
-              clearInterval(timer);
-              navigate('/dashboard');
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-        
-        return () => clearInterval(timer);
-      } else {
-        // If not logged in, redirect to login
+      } catch (error) {
+        console.error("Authentication error:", error);
         setIsLoading(false);
       }
     };

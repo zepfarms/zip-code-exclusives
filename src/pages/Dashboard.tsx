@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { X, Plus, Loader } from 'lucide-react';
 import AddTerritoryCard from '@/components/dashboard/AddTerritoryCard';
 import { ensureUserProfile, updateUserProfile } from '@/utils/userProfile';
+import { fetchUserData } from '@/utils/dashboardFunctions';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -51,7 +52,15 @@ const Dashboard = () => {
         }
 
         // Load user data
-        await fetchUserData(session.user.id);
+        await fetchUserData(
+          session.user.id, 
+          setUserProfile, 
+          setTerritories, 
+          setLeads, 
+          setContacts, 
+          setSubscriptionInfo, 
+          setIsLoading
+        );
       } catch (error) {
         console.error("Authentication error:", error);
         toast.error('Authentication error. Please try logging in again.');
@@ -61,114 +70,6 @@ const Dashboard = () => {
 
     checkAuth();
   }, [navigate]);
-
-  const fetchUserData = async (userId) => {
-    setIsLoading(true);
-    
-    try {
-      // Try to get territories first as these might be available
-      // even if the profile has issues
-      try {
-        const { data: territoriesData, error: territoriesError } = await supabase
-          .from('territories')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('active', true);
-        
-        if (territoriesError) {
-          console.error("Error fetching territories:", territoriesError);
-          toast.error("Could not load your territories. Please try refreshing.");
-        } else {
-          setTerritories(territoriesData || []);
-        }
-      } catch (err) {
-        console.error("Error in territories fetch:", err);
-      }
-
-      // Get or create user profile using our utility function
-      try {
-        const profile = await ensureUserProfile(userId);
-        if (profile) {
-          setUserProfile(profile);
-        }
-      } catch (profileError) {
-        console.error("Error with user profile:", profileError);
-        toast.error("Could not load your profile data. Some features may be limited.");
-      }
-
-      // Initialize contact information
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          // Get profile data that we just loaded
-          const secondaryEmails = userProfile?.secondary_emails || [];
-          const primaryEmail = session?.user?.email || '';
-          
-          // Initialize secondary phones array to an empty array by default
-          const secondaryPhones = userProfile?.secondary_phones || [];
-          const primaryPhone = userProfile?.phone || '';
-          
-          // Set contacts with primary and secondary emails
-          setContacts({
-            emails: [primaryEmail, ...secondaryEmails].filter(Boolean),
-            phones: [primaryPhone, ...secondaryPhones].filter(Boolean)
-          });
-        }
-      } catch (contactError) {
-        console.error("Error setting up contacts:", contactError);
-      }
-
-      // Calculate subscription info if territories were loaded successfully
-      if (territories && territories.length > 0) {
-        try {
-          // Find earliest next billing date
-          const nextBillingDates = territories
-            .map(t => t.next_billing_date)
-            .filter(date => date) // Filter out null dates
-            .sort();
-            
-          if (nextBillingDates.length > 0) {
-            const nextRenewal = new Date(nextBillingDates[0]);
-            const today = new Date();
-            const daysRemaining = Math.ceil((nextRenewal.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-            
-            setSubscriptionInfo({
-              totalMonthly: territories.length * 99.99, // Assuming $99.99 per territory
-              nextRenewal: nextRenewal,
-              daysRemaining: daysRemaining
-            });
-          }
-        } catch (subscriptionError) {
-          console.error("Error calculating subscription info:", subscriptionError);
-        }
-      }
-
-      // Try to get leads
-      try {
-        const { data: leadsData, error: leadsError } = await supabase
-          .from('leads')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('archived', false)
-          .order('created_at', { ascending: false });
-        
-        if (leadsError) {
-          console.error("Error fetching leads:", leadsError);
-          toast.error("Could not load your leads. Please try refreshing.");
-        } else {
-          setLeads(leadsData || []);
-        }
-      } catch (leadsError) {
-        console.error("Error in leads fetch:", leadsError);
-      }
-
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-      toast.error('Failed to load user data. Please try refreshing.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleAddArea = () => {
     navigate('/add-territory');
@@ -373,7 +274,15 @@ const Dashboard = () => {
       toast.success('Profile updated successfully');
       
       // Refresh user data
-      fetchUserData(session.user.id);
+      await fetchUserData(
+        session.user.id, 
+        setUserProfile, 
+        setTerritories, 
+        setLeads, 
+        setContacts, 
+        setSubscriptionInfo, 
+        setIsLoading
+      );
     } catch (error) {
       console.error('Error updating profile:', error);
       toast.error('Failed to update profile');
@@ -411,7 +320,15 @@ const Dashboard = () => {
   const refreshData = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      fetchUserData(session.user.id);
+      await fetchUserData(
+        session.user.id, 
+        setUserProfile, 
+        setTerritories, 
+        setLeads, 
+        setContacts, 
+        setSubscriptionInfo, 
+        setIsLoading
+      );
     }
   };
 
@@ -426,7 +343,7 @@ const Dashboard = () => {
               <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
               <p className="text-gray-600">Manage your territories and leads</p>
             </div>
-            {!isLoading && territories.length > 0 && (
+            {!isLoading && (
               <Button 
                 onClick={refreshData}
                 variant="outline"
