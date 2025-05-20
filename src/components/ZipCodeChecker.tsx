@@ -14,11 +14,14 @@ import { supabase } from '@/integrations/supabase/client';
 import ZipCodeForm from './zip-checker/ZipCodeForm';
 import { Button } from './ui/button';
 
+// Define explicit types for our state to avoid deep instantiation
+type AvailabilityState = boolean | null;
+
 const ZipCodeChecker = () => {
   const [zipCode, setZipCode] = useState('');
   const [isChecking, setIsChecking] = useState(false);
-  const [investorAvailable, setInvestorAvailable] = useState<boolean | null>(null);
-  const [realtorAvailable, setRealtorAvailable] = useState<boolean | null>(null);
+  const [investorAvailable, setInvestorAvailable] = useState<AvailabilityState>(null);
+  const [realtorAvailable, setRealtorAvailable] = useState<AvailabilityState>(null);
   const navigate = useNavigate();
 
   // Function to check zip code availability
@@ -26,23 +29,25 @@ const ZipCodeChecker = () => {
     setIsChecking(true);
     
     try {
-      // Fetch investor data
-      const { data: investorData, error: investorError } = await supabase
+      // Simplified query approach to avoid complex type nesting
+      const investorQuery = await supabase
         .from('zip_codes')
         .select('is_available')
         .eq('code', zip)
         .eq('lead_type', 'investor')
         .single();
 
-      // Fetch realtor data
-      const { data: realtorData, error: realtorError } = await supabase
+      const realtorQuery = await supabase
         .from('zip_codes')
         .select('is_available')
         .eq('code', zip)
         .eq('lead_type', 'agent')
         .single();
       
-      // Process investor result
+      // Handle investor data
+      const investorError = investorQuery.error;
+      const investorData = investorQuery.data;
+      
       if (investorError) {
         if (investorError.code === 'PGRST116') {
           // ZIP code not found for investor
@@ -55,7 +60,10 @@ const ZipCodeChecker = () => {
         setInvestorAvailable(investorData?.is_available ?? false);
       }
       
-      // Process realtor result
+      // Handle realtor data
+      const realtorError = realtorQuery.error;
+      const realtorData = realtorQuery.data;
+      
       if (realtorError) {
         if (realtorError.code === 'PGRST116') {
           // ZIP code not found for realtor
@@ -68,8 +76,12 @@ const ZipCodeChecker = () => {
         setRealtorAvailable(realtorData?.is_available ?? false);
       }
       
-      // Demo mode handling
-      if (investorError?.code === 'PGRST116' && realtorError?.code === 'PGRST116') {
+      // Demo mode handling - simplified condition
+      const bothNotFound = 
+        investorError?.code === 'PGRST116' && 
+        realtorError?.code === 'PGRST116';
+        
+      if (bothNotFound) {
         setInvestorAvailable(true);
         setRealtorAvailable(true);
       }
@@ -90,7 +102,7 @@ const ZipCodeChecker = () => {
     navigate('/register', { state: { scrollToTop: true } });
   };
 
-  // Determine if either lead type is available - calculated directly from state
+  // Determine availability with explicit boolean comparison
   const atLeastOneAvailable = investorAvailable === true || realtorAvailable === true;
   const noneAvailable = investorAvailable === false && realtorAvailable === false;
   
