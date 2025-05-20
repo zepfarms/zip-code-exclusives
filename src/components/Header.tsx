@@ -132,10 +132,10 @@ const Header = () => {
         )}
       </div>
 
-      {/* Mobile menu with solid white background */}
+      {/* Simple Mobile Menu Overlay */}
       {isMobile && isMobileMenuOpen && (
-        <div className="fixed inset-0 top-16 bg-white z-50 shadow-lg">
-          <div className="flex flex-col p-6">
+        <div className="fixed inset-0 top-16 bg-white z-40">
+          <div className="flex flex-col p-4">
             <Link 
               to="/" 
               className="py-3 px-4 text-lg font-medium text-gray-900 hover:bg-gray-100 rounded-md" 
@@ -174,7 +174,7 @@ const Header = () => {
               </Link>
             )}
             
-            <div className="mt-6 space-y-3">
+            <div className="mt-6 space-y-4 px-4">
               {user ? (
                 <Button 
                   variant="outline" 
