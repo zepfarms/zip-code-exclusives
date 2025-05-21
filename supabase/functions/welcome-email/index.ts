@@ -14,7 +14,6 @@ interface UserDetails {
   first_name?: string;
   last_name?: string;
   zip_code: string;
-  lead_type: string;
 }
 
 serve(async (req) => {
@@ -24,9 +23,9 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, zipCode, leadType } = await req.json();
+    const { userId, zipCode } = await req.json();
     
-    if (!userId || !zipCode || !leadType) {
+    if (!userId || !zipCode) {
       throw new Error("Missing required parameters");
     }
     
@@ -64,8 +63,7 @@ serve(async (req) => {
       email: userData.user.email || "",
       first_name: profileData?.first_name || "",
       last_name: profileData?.last_name || "",
-      zip_code: zipCode,
-      lead_type: leadType
+      zip_code: zipCode
     };
     
     // Send welcome email via email service
@@ -115,13 +113,12 @@ serve(async (req) => {
 
 function generateWelcomeEmailHtml(user: UserDetails): string {
   const firstName = user.first_name || "there";
-  const leadTypeText = user.lead_type === 'investor' ? 'Investor' : 'Real Estate Agent';
   
   return `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
       <h1>Welcome to LeadXclusive, ${firstName}!</h1>
       
-      <p>Thank you for subscribing to our exclusive ${leadTypeText} leads service! We're excited to have you on board.</p>
+      <p>Thank you for subscribing to our exclusive real estate leads service! We're excited to have you on board.</p>
       
       <h2>What Happens Next?</h2>
       
@@ -130,7 +127,7 @@ function generateWelcomeEmailHtml(user: UserDetails): string {
       <ol>
         <li><strong>Setup Period (7 Days):</strong> We're now setting up your exclusive territory for zip code ${user.zip_code}. During this time, we'll be configuring our systems to start delivering leads directly to you.</li>
         
-        <li><strong>First Leads:</strong> You'll start receiving leads in as little as 7 days. These leads will be high-quality ${leadTypeText.toLowerCase()} leads with no competition.</li>
+        <li><strong>First Leads:</strong> You'll start receiving leads in as little as 7 days. These leads will be high-quality leads with no competition.</li>
         
         <li><strong>Ongoing Service:</strong> After your first leads arrive, you'll continue to receive exclusive leads in your territory as they become available.</li>
       </ol>
@@ -139,7 +136,6 @@ function generateWelcomeEmailHtml(user: UserDetails): string {
       
       <ul>
         <li><strong>Territory:</strong> Zip Code ${user.zip_code}</li>
-        <li><strong>Lead Type:</strong> ${leadTypeText} Leads</li>
         <li><strong>Monthly Subscription:</strong> $199.00</li>
         <li><strong>First Leads Expected:</strong> In approximately 7 days</li>
       </ul>

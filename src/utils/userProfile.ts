@@ -36,7 +36,7 @@ export const ensureUserProfile = async (userId: string) => {
       const { data: { user } } = await supabase.auth.getUser();
       const userMeta = user?.user_metadata || {};
       
-      // Create minimal profile with seller user type
+      // All users are now 'seller' type by default
       const { data: newProfile, error: insertError } = await supabase
         .from('user_profiles')
         .insert({
