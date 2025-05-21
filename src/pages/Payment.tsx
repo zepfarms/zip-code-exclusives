@@ -75,20 +75,23 @@ const Payment = () => {
         return;
       }
 
+      // Save zipCode to localStorage to use after successful payment
+      localStorage.setItem('lastZipCode', zipCode);
+      console.log("Saved to localStorage:", zipCode);
+      
       // Call Stripe checkout function
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { zipCode }
+        body: { zipCode, leadType: 'seller' }
       });
 
       if (error) {
-        throw new Error(error.message);
+        console.error("Payment error:", error);
+        throw new Error(error.message || "Failed to create checkout");
       }
 
       // Redirect to Stripe checkout
       if (data?.url) {
-        // Save zipCode to localStorage to use after successful payment redirect
-        localStorage.setItem('lastZipCode', zipCode);
-        console.log("Saved to localStorage:", zipCode);
+        console.log("Redirecting to checkout URL:", data.url);
         window.location.href = data.url;
       } else {
         throw new Error("No checkout URL received");

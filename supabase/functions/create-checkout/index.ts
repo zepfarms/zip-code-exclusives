@@ -15,6 +15,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Create-checkout function called");
+    
     // Create a client with the supabase-js library using service role key
     // This bypasses RLS and ensures the function works regardless of auth state
     const supabaseAdmin = createClient(
@@ -30,6 +32,8 @@ serve(async (req) => {
     // If there's an auth header, try to get the user from it
     if (authHeader) {
       const token = authHeader.replace("Bearer ", "");
+      console.log("Attempting to authenticate user with token");
+      
       const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
       
       if (userError) {
@@ -38,6 +42,8 @@ serve(async (req) => {
         userId = user.id;
         console.log("Authenticated user found:", userId);
       }
+    } else {
+      console.log("No Authorization header found in request");
     }
     
     // If we couldn't get a user ID, return unauthorized
@@ -50,9 +56,13 @@ serve(async (req) => {
     }
 
     // Extract the zipCode from the request
-    const { zipCode, leadType } = await req.json();
+    const requestData = await req.json();
+    const { zipCode, leadType } = requestData;
+    
+    console.log("Request data:", JSON.stringify(requestData));
     
     if (!zipCode) {
+      console.error("Missing zipCode parameter");
       return new Response(
         JSON.stringify({ error: "Missing zipCode parameter" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -60,6 +70,7 @@ serve(async (req) => {
     }
 
     // Check zip code availability
+    console.log("Checking zip code availability for:", zipCode);
     const { data: zipData, error: zipError } = await supabaseAdmin
       .from("zip_codes")
       .select("*")
@@ -74,7 +85,17 @@ serve(async (req) => {
       );
     }
     
-    if (!zipData || !zipData.available) {
+    if (!zipData) {
+      console.log("Zip code not found in database, creating new record");
+      const { error: insertError } = await supabaseAdmin
+        .from("zip_codes")
+        .insert({ zip_code: zipCode, available: true });
+        
+      if (insertError) {
+        console.error("Failed to create zip code record:", insertError);
+      }
+    } else if (!zipData.available) {
+      console.error("Zip code is not available:", zipCode);
       return new Response(
         JSON.stringify({ error: "Zip code is not available" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -82,6 +103,7 @@ serve(async (req) => {
     }
     
     // Check if user already has this territory
+    console.log("Checking if user already has this territory");
     const { data: existingTerritory, error: territoryError } = await supabaseAdmin
       .from("territories")
       .select("*")
@@ -98,6 +120,7 @@ serve(async (req) => {
     }
     
     if (existingTerritory) {
+      console.error("Territory already taken:", zipCode);
       return new Response(
         JSON.stringify({ error: "This territory is already taken" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -105,20 +128,20 @@ serve(async (req) => {
     }
 
     // Generate a success URL with zip code parameter
-    const successUrl = new URL(req.url);
-    successUrl.pathname = "/payment-success";
+    const origin = req.headers.get("origin") || "https://ietvubimwsfugzkiycus.supabase.co";
+    const successUrl = new URL("/payment-success", origin);
     successUrl.searchParams.set("zip_code", zipCode);
     
     // Generate a cancel URL that goes back to payment page with zip code
-    const cancelUrl = new URL(req.url);
-    cancelUrl.pathname = "/payment";
+    const cancelUrl = new URL("/payment", origin);
     cancelUrl.searchParams.set("zip_code", zipCode);
 
     // Save checkout details for admin notification
     try {
+      const userEmail = await getUserEmail(supabaseAdmin, userId);
       await supabaseAdmin.from("territory_requests").insert({
         user_id: userId,
-        user_email: await getUserEmail(supabaseAdmin, userId),
+        user_email: userEmail,
         zip_code: zipCode,
         status: 'pending',
         created_at: new Date().toISOString()
@@ -135,11 +158,12 @@ serve(async (req) => {
     console.log("Creating FREE test checkout session for zip code:", zipCode);
     
     // Create a simulated checkout URL
-    const checkoutUrl = new URL(successUrl);
+    const checkoutUrl = successUrl.toString();
+    console.log("Generated checkout URL:", checkoutUrl);
     
     // Return the direct success URL instead of a Stripe checkout
     return new Response(
-      JSON.stringify({ success: true, url: checkoutUrl.toString() }),
+      JSON.stringify({ success: true, url: checkoutUrl }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
@@ -154,18 +178,9 @@ serve(async (req) => {
 // Helper function to get user email
 async function getUserEmail(supabaseClient, userId) {
   try {
-    const { data: userData, error: userError } = await supabaseClient
-      .from("auth.users")
-      .select("email")
-      .eq("id", userId)
-      .single();
-      
-    if (userError || !userData) {
-      const { data: user } = await supabaseClient.auth.admin.getUserById(userId);
-      return user?.email || "unknown-email";
-    }
-    
-    return userData.email;
+    // Try to get user from auth.users table using admin API
+    const { data: user } = await supabaseClient.auth.admin.getUserById(userId);
+    return user?.email || "unknown-email";
   } catch (error) {
     console.error("Error getting user email:", error);
     return "unknown-email";

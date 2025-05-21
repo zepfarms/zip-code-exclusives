@@ -14,6 +14,7 @@ serve(async (req) => {
     const { zipCode, userId, leadType } = await req.json();
     
     if (!zipCode || !userId) {
+      console.error("Missing required parameters:", { zipCode, userId });
       return new Response(
         JSON.stringify({ error: "Missing required parameters" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -31,6 +32,7 @@ serve(async (req) => {
     );
 
     // First, check if the zip code is available
+    console.log(`Checking availability for zip code ${zipCode}`);
     const { data: zipData, error: zipError } = await supabaseAdmin
       .from("zip_codes")
       .select("*")
@@ -68,6 +70,7 @@ serve(async (req) => {
     }
 
     // Check if the territory is already assigned
+    console.log(`Checking if territory ${zipCode} is already assigned`);
     const { data: existingTerritory, error: territoryError } = await supabaseAdmin
       .from("territories")
       .select("*")
@@ -119,6 +122,7 @@ serve(async (req) => {
     }
     
     // Mark the zip code as no longer available
+    console.log(`Marking zip code ${zipCode} as unavailable`);
     const { error: updateError } = await supabaseAdmin
       .from("zip_codes")
       .update({ 
@@ -136,6 +140,7 @@ serve(async (req) => {
 
     // Update any territory request to mark it as processed
     try {
+      console.log(`Updating territory request for user ${userId}, zip code ${zipCode}`);
       await supabaseAdmin
         .from("territory_requests")
         .update({ 
@@ -146,8 +151,6 @@ serve(async (req) => {
         .eq("zip_code", zipCode)
         .eq("user_id", userId)
         .eq("status", "pending");
-      
-      console.log(`Updated territory request for user ${userId}, zip code ${zipCode}`);
     } catch (error) {
       console.error("Error updating territory request:", error);
       // Continue even if updating the request fails

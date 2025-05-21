@@ -57,9 +57,9 @@ const AddTerritoryCard = ({ onTerritoryAdded }: { onTerritoryAdded: () => void }
   };
   
   const handlePurchaseTerritory = async () => {
-    setIsAdding(true);
-    
     try {
+      setIsAdding(true);
+      
       // Ensure user is authenticated
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -101,6 +101,7 @@ const AddTerritoryCard = ({ onTerritoryAdded }: { onTerritoryAdded: () => void }
     } catch (error: any) {
       console.error("Payment error:", error);
       toast.error("Failed to process payment: " + (error.message || "Unknown error"));
+    } finally {
       setIsAdding(false);
     }
   };
