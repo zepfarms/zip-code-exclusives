@@ -78,10 +78,10 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
         }
       }
       
-      // Try using the function to fetch territories (bypasses RLS issues)
+      // Use a direct RPC call to the secure function
       const { data: territoriesData, error: territoriesError } = await supabase.rpc('get_user_territories', {
         user_id_param: userId
-      }).select('*');
+      });
       
       if (territoriesError) {
         console.error("Error fetching territories via RPC:", territoriesError);
@@ -130,8 +130,9 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
           
           // Calculate subscription info
           try {
+            const territories = directTerritoriesData || [];
             // Find earliest next billing date
-            const nextBillingDates = (directTerritoriesData || [])
+            const nextBillingDates = territories
               .map(t => t.next_billing_date)
               .filter(date => date) // Filter out null dates
               .sort();
@@ -142,7 +143,7 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
               const daysRemaining = Math.ceil((nextRenewal.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
               
               setSubscriptionInfo({
-                totalMonthly: (directTerritoriesData || []).length * 99.99, // Assuming $99.99 per territory
+                totalMonthly: territories.length * 0, // $0.00 per territory for testing
                 nextRenewal: nextRenewal,
                 daysRemaining: daysRemaining
               });
@@ -162,8 +163,9 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
         
         // Calculate subscription info
         try {
+          const territories = territoriesData || [];
           // Find earliest next billing date
-          const nextBillingDates = (territoriesData || [])
+          const nextBillingDates = territories
             .map(t => t.next_billing_date)
             .filter(date => date) // Filter out null dates
             .sort();
@@ -174,7 +176,7 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
             const daysRemaining = Math.ceil((nextRenewal.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
             
             setSubscriptionInfo({
-              totalMonthly: (territoriesData || []).length * 99.99, // Assuming $99.99 per territory
+              totalMonthly: territories.length * 0, // $0.00 per territory for testing
               nextRenewal: nextRenewal,
               daysRemaining: daysRemaining
             });
@@ -190,10 +192,10 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
 
     // Try to get leads
     try {
-      // Try using an RPC function first to bypass RLS issues
+      // Use a direct RPC call to the secure function
       const { data: leadsData, error: leadsError } = await supabase.rpc('get_user_leads', {
         user_id_param: userId
-      }).select('*');
+      });
       
       if (leadsError) {
         console.error("Error fetching leads via RPC:", leadsError);
@@ -231,3 +233,4 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
     setIsLoading(false);
   }
 };
+
