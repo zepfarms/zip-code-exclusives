@@ -12,7 +12,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { zipCode, leadType = 'investor' } = body;
+    const { zipCode } = body;
     
     if (!zipCode) {
       throw new Error("Zip code is required");
@@ -70,10 +70,10 @@ serve(async (req) => {
           price_data: {
             currency: "usd",
             product_data: {
-              name: `Exclusive ${leadType === 'investor' ? 'Investor' : 'Realtor'} Leads - Zip Code ${zipCode}`,
-              description: `Monthly subscription for exclusive ${leadType === 'investor' ? 'investor' : 'realtor'} leads in zip code ${zipCode}`,
+              name: `Exclusive Seller Leads - Zip Code ${zipCode}`,
+              description: `Monthly subscription for exclusive seller leads in zip code ${zipCode}`,
             },
-            unit_amount: 100, // Changed from 19900 to 100 (=$1.00) for testing
+            unit_amount: 100, // $1.00 for testing
             recurring: {
               interval: "month",
             },
@@ -82,14 +82,13 @@ serve(async (req) => {
         },
       ],
       mode: "subscription",
-      success_url: `${req.headers.get("origin")}/payment-success`,
-      cancel_url: `${req.headers.get("origin")}/payment?cancelled=true&zip_code=${zipCode}&lead_type=${leadType}`,
+      success_url: `${req.headers.get("origin")}/payment-success?zip_code=${zipCode}`,
+      cancel_url: `${req.headers.get("origin")}/payment?cancelled=true&zip_code=${zipCode}`,
       payment_method_types: ["card"],
       billing_address_collection: "auto",
       metadata: {
         user_id: user.id,
-        zip_code: zipCode,
-        lead_type: leadType,
+        zip_code: zipCode
       },
     });
 

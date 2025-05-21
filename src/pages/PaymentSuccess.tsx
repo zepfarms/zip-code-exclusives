@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Loader } from "lucide-react";
+import { CheckCircle, Loader, XCircle } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "sonner";
 import Header from '@/components/Header';
@@ -14,19 +14,20 @@ const PaymentSuccess = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
   const [territoryCreated, setTerritoryCreated] = useState(false);
-  const [territoryCreationAttempted, setTerritoryCreationAttempted] = useState(false);
   const [territoryCreationError, setTerritoryCreationError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   
   // Extract query parameters from URL
   const queryParams = new URLSearchParams(location.search);
-  const sessionId = queryParams.get('session_id');
+  const zipCode = queryParams.get('zip_code');
   
   // Automatically redirect to dashboard after checking auth
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        console.log("Processing payment success with zip code:", zipCode);
+        
         // Get session data
         const { data: { session } } = await supabase.auth.getSession();
         
@@ -40,21 +41,10 @@ const PaymentSuccess = () => {
             console.error("Failed to ensure user profile:", profileError);
           }
           
-          // If we have a session_id from Stripe, verify and create the territory
-          if (sessionId && !territoryCreationAttempted) {
-            setTerritoryCreationAttempted(true);
+          // If we have a zip code from query params, create the territory
+          if (zipCode) {
             try {
-              console.log("Processing successful payment with session ID:", sessionId);
-              
-              // Get lead type and zip code from localStorage (set during checkout)
-              const leadType = localStorage.getItem('lastLeadType') || 'investor';
-              const zipCode = localStorage.getItem('lastZipCode');
-              
-              console.log("Creating territory with zip:", zipCode, "and lead type:", leadType);
-              
-              if (!zipCode) {
-                throw new Error("No zip code found in localStorage");
-              }
+              console.log("Creating territory with zip:", zipCode);
               
               // Check if territory already exists to prevent duplicate entries
               const { data: existingTerritories, error: checkError } = await supabase
@@ -79,7 +69,7 @@ const PaymentSuccess = () => {
                   .insert({
                     user_id: session.user.id,
                     zip_code: zipCode,
-                    lead_type: leadType,
+                    lead_type: 'seller', // Simplified to just 'seller' leads
                     active: true,
                     start_date: new Date().toISOString(),
                     next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
@@ -97,10 +87,9 @@ const PaymentSuccess = () => {
                 setTerritoryCreated(true);
                 toast.success(`Territory ${zipCode} added successfully!`);
                 
-                // Save territory data to sessionStorage to make sure it's immediately available when redirected
+                // Save territory data to sessionStorage for immediate access
                 sessionStorage.setItem('justCreatedTerritory', JSON.stringify({
                   zip_code: zipCode,
-                  lead_type: leadType,
                   timestamp: new Date().toISOString()
                 }));
               } else {
@@ -108,11 +97,6 @@ const PaymentSuccess = () => {
                 setTerritoryCreated(true);
                 toast.success("Your territory was already active");
               }
-              
-              // Clear the localStorage values after successful territory creation
-              localStorage.removeItem('lastZipCode');
-              localStorage.removeItem('lastLeadType');
-              
             } catch (error: any) {
               console.error("Error processing payment success:", error);
               setTerritoryCreationError(error.message || "Unknown error");
@@ -151,7 +135,7 @@ const PaymentSuccess = () => {
     };
     
     checkAuth();
-  }, [navigate, sessionId, territoryCreationAttempted, location, territoryCreated]);
+  }, [navigate, zipCode, location]);
   
   const handleGoToDashboard = () => {
     // Add query parameters to signal the dashboard to force refresh data

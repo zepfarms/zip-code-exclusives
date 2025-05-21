@@ -83,6 +83,14 @@ const DebugPanel = ({ userId, territories, leads, refreshData }: {
     }
   };
 
+  const clearSessionStorage = () => {
+    sessionStorage.removeItem('justCreatedTerritory');
+    setApiResponses(prev => ({
+      ...prev,
+      sessionStorage: { cleared: true }
+    }));
+  };
+
   const testAll = async () => {
     await testUserProfile();
     await testTerritories();
@@ -115,7 +123,12 @@ const DebugPanel = ({ userId, territories, leads, refreshData }: {
                 <strong>Local Storage:</strong>
                 <ul className="pl-4">
                   <li>lastZipCode: {localStorage.getItem('lastZipCode') || 'Not set'}</li>
-                  <li>lastLeadType: {localStorage.getItem('lastLeadType') || 'Not set'}</li>
+                </ul>
+              </li>
+              <li>
+                <strong>Session Storage:</strong>
+                <ul className="pl-4">
+                  <li>justCreatedTerritory: {sessionStorage.getItem('justCreatedTerritory') || 'Not set'}</li>
                 </ul>
               </li>
             </ul>
@@ -138,6 +151,9 @@ const DebugPanel = ({ userId, territories, leads, refreshData }: {
               </Button>
               <Button size="sm" variant="outline" onClick={() => refreshData(true)} disabled={isLoading}>
                 Force Refresh Data
+              </Button>
+              <Button size="sm" variant="outline" onClick={clearSessionStorage} disabled={isLoading}>
+                Clear Session Storage
               </Button>
             </div>
           </div>

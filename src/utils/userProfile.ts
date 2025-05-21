@@ -22,7 +22,6 @@ export const ensureUserProfile = async (userId: string) => {
         return profile;
       }
       
-      // If we got a 500 error or no profile was found, we'll try to create one
       console.log("No profile found or error occurred, will try to create one");
     } catch (fetchErr) {
       console.error("Error fetching profile:", fetchErr);
@@ -37,14 +36,14 @@ export const ensureUserProfile = async (userId: string) => {
       const { data: { user } } = await supabase.auth.getUser();
       const userMeta = user?.user_metadata || {};
       
-      // Create minimal profile
+      // Create minimal profile with simplified user type (no agent/investor distinction)
       const { data: newProfile, error: insertError } = await supabase
         .from('user_profiles')
         .insert({
           id: userId,
           first_name: userMeta.first_name || '',
           last_name: userMeta.last_name || '',
-          user_type: userMeta.user_type || 'investor',
+          user_type: 'seller', // Simplified to just 'seller' leads
           notification_email: true,
           notification_sms: false,
           secondary_emails: [],
@@ -55,7 +54,6 @@ export const ensureUserProfile = async (userId: string) => {
         .maybeSingle();
         
       if (insertError) {
-        // If we can't create a profile, we'll return a minimal placeholder
         console.error('Failed to create profile:', insertError);
         throw insertError;
       }
@@ -72,7 +70,7 @@ export const ensureUserProfile = async (userId: string) => {
       id: userId,
       notification_email: true,
       notification_sms: false,
-      user_type: 'investor',
+      user_type: 'seller', // Simplified user type
       secondary_emails: [],
       secondary_phones: [],
       phone: '',

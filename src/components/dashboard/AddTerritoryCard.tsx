@@ -19,7 +19,6 @@ const AddTerritoryCard = ({ onTerritoryAdded }: { onTerritoryAdded: () => void }
   const [isChecking, setIsChecking] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [checkResult, setCheckResult] = useState<{available: boolean, checked: boolean}>({ available: false, checked: false });
-  const [leadType, setLeadType] = useState('investor');
   
   const checkZipCodeAvailability = async () => {
     if (!zipCode || zipCode.length !== 5 || !/^\d+$/.test(zipCode)) {
@@ -61,13 +60,12 @@ const AddTerritoryCard = ({ onTerritoryAdded }: { onTerritoryAdded: () => void }
     setIsAdding(true);
     
     try {
-      // Store zipCode and leadType in localStorage to use after successful payment
+      // Store zipCode in localStorage to use after successful payment
       localStorage.setItem('lastZipCode', zipCode);
-      localStorage.setItem('lastLeadType', leadType);
       
       // Create Stripe checkout session
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { zipCode, leadType }
+        body: { zipCode }
       });
       
       if (error) {
@@ -138,25 +136,7 @@ const AddTerritoryCard = ({ onTerritoryAdded }: { onTerritoryAdded: () => void }
             </div>
             
             {checkResult.available && (
-              <div className="mt-4 space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Lead Type</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div 
-                      className={`p-3 border rounded-md cursor-pointer flex items-center justify-center ${leadType === 'investor' ? 'bg-brand-50 border-brand-200' : 'hover:bg-gray-50'}`}
-                      onClick={() => setLeadType('investor')}
-                    >
-                      <span className="font-medium">Investor Leads</span>
-                    </div>
-                    <div 
-                      className={`p-3 border rounded-md cursor-pointer flex items-center justify-center ${leadType === 'agent' ? 'bg-brand-50 border-brand-200' : 'hover:bg-gray-50'}`}
-                      onClick={() => setLeadType('agent')}
-                    >
-                      <span className="font-medium">Agent Leads</span>
-                    </div>
-                  </div>
-                </div>
-                
+              <div className="mt-4">
                 <Button 
                   onClick={handlePurchaseTerritory}
                   className="w-full"
