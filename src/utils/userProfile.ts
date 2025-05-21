@@ -40,8 +40,7 @@ export const ensureUserProfile = async (userId: string) => {
       phone: ''
     };
     
-    // Insert with single() can fail if the profile already exists but wasn't found
-    // Let's use upsert instead to be safer
+    // Use upsert for more reliable operation
     const { data: newProfile, error: upsertError } = await supabase
       .from('user_profiles')
       .upsert(newProfileData)
@@ -50,9 +49,11 @@ export const ensureUserProfile = async (userId: string) => {
       
     if (upsertError) {
       console.error('Failed to create/update profile:', upsertError);
+      toast.error('Failed to create user profile. Please try refreshing the page.');
       throw upsertError;
     }
     
+    console.log('Successfully created/updated profile:', newProfile);
     return newProfile;
   } catch (error) {
     console.error('Profile operation failed:', error);
@@ -85,6 +86,8 @@ export const updateUserProfile = async (userId: string, profileData: any) => {
     // Make sure user_type is always 'seller'
     profileData.user_type = 'seller';
     
+    console.log('Updating profile with data:', profileData);
+    
     // Update the profile
     const { data, error } = await supabase
       .from('user_profiles')
@@ -94,12 +97,15 @@ export const updateUserProfile = async (userId: string, profileData: any) => {
       
     if (error) {
       console.error('Error updating profile:', error);
+      toast.error('Failed to update profile. Please try again.');
       throw error;
     }
     
+    toast.success('Profile updated successfully!');
     return data;
   } catch (error) {
     console.error('Failed to update profile:', error);
+    toast.error('Failed to update profile. Please try again.');
     throw error;
   }
 };
