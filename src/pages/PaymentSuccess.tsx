@@ -63,13 +63,13 @@ const PaymentSuccess = () => {
               if (!existingTerritories || existingTerritories.length === 0) {
                 console.log("No existing territory found, creating new one");
                 
-                // Create territory record in database
+                // Create territory record in database - explicitly setting lead_type to 'seller'
                 const { data, error: territoryError } = await supabase
                   .from('territories')
                   .insert({
                     user_id: session.user.id,
                     zip_code: zipCode,
-                    lead_type: 'seller', // Simplified to just 'seller' leads
+                    lead_type: 'seller', // Using 'seller' as the lead_type
                     active: true,
                     start_date: new Date().toISOString(),
                     next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now

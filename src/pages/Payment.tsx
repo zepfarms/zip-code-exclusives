@@ -23,7 +23,6 @@ const Payment = () => {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [user, setUser] = useState<any>(null);
   const zipCode = location.state?.zipCode || new URLSearchParams(location.search).get('zip_code') || 'your selected area';
-  const leadType = location.state?.leadType || 'investor'; // Default to investor if not specified
 
   // Check if zipCode is valid (5-digit number)
   const isValidZipCode = /^\d{5}$/.test(zipCode);
@@ -38,7 +37,7 @@ const Payment = () => {
           // Store current path and parameters for redirect after login
           localStorage.setItem('redirectAfterAuth', JSON.stringify({
             path: '/payment',
-            state: { zipCode, leadType }
+            state: { zipCode }
           }));
           
           // If not authenticated, redirect to registration
@@ -46,7 +45,6 @@ const Payment = () => {
           navigate('/register', { 
             state: { 
               zipCode, 
-              leadType, 
               redirectTo: '/payment' 
             },
             replace: true // Use replace instead of push to avoid browser history issues
@@ -63,7 +61,7 @@ const Payment = () => {
     };
 
     checkAuthStatus();
-  }, [zipCode, leadType, navigate]);
+  }, [zipCode, navigate]);
 
   const handlePayment = async () => {
     try {
@@ -73,13 +71,13 @@ const Payment = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast.info("Please sign in to continue");
-        navigate('/register', { state: { redirectTo: '/payment', zipCode, leadType } });
+        navigate('/register', { state: { redirectTo: '/payment', zipCode } });
         return;
       }
 
       // Call Stripe checkout function
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { zipCode, leadType }
+        body: { zipCode }
       });
 
       if (error) {
@@ -88,10 +86,9 @@ const Payment = () => {
 
       // Redirect to Stripe checkout
       if (data?.url) {
-        // Save zipCode AND leadType to localStorage to use after successful payment redirect
+        // Save zipCode to localStorage to use after successful payment redirect
         localStorage.setItem('lastZipCode', zipCode);
-        localStorage.setItem('lastLeadType', leadType);
-        console.log("Saved to localStorage:", zipCode, leadType);
+        console.log("Saved to localStorage:", zipCode);
         window.location.href = data.url;
       } else {
         throw new Error("No checkout URL received");
@@ -126,7 +123,7 @@ const Payment = () => {
             <CardTitle className="text-2xl">Complete Your Purchase</CardTitle>
             <CardDescription>
               {isValidZipCode 
-                ? `Secure exclusive rights to receive ${leadType === 'investor' ? 'investor' : 'realtor'} leads in zip code ${zipCode}`
+                ? `Secure exclusive rights to receive seller leads in zip code ${zipCode}`
                 : "Complete your subscription purchase"}
             </CardDescription>
           </CardHeader>
@@ -138,7 +135,7 @@ const Payment = () => {
               </div>
               <div className="flex justify-between mb-2">
                 <span className="font-medium">Lead Type:</span>
-                <span>{leadType === 'investor' ? 'Investor Leads' : 'Real Estate Agent Leads'}</span>
+                <span>Seller Leads</span>
               </div>
               <div className="flex justify-between mb-4 pb-4 border-b border-gray-200">
                 <span className="font-medium">Monthly Subscription:</span>
