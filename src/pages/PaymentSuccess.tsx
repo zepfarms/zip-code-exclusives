@@ -34,9 +34,18 @@ const PaymentSuccess = () => {
         if (session) {
           setUserData(session.user);
           
-          // Ensure user profile exists
+          // Ensure user profile exists - use Service Role key in edge function to bypass RLS issues
           try {
-            await ensureUserProfile(session.user.id);
+            // Instead of directly calling ensureUserProfile, use a more reliable approach
+            const { data: profileData, error: profileError } = await supabase.functions.invoke('ensure-profile', {
+              body: { userId: session.user.id }
+            });
+            
+            if (profileError) {
+              console.error("Error from ensure-profile function:", profileError);
+            } else {
+              console.log("Profile ensured successfully:", profileData);
+            }
           } catch (profileError) {
             console.error("Failed to ensure user profile:", profileError);
           }
@@ -46,44 +55,20 @@ const PaymentSuccess = () => {
             try {
               console.log("Creating territory with zip:", zipCode);
               
-              // Check if territory already exists to prevent duplicate entries
-              const { data: existingTerritories, error: checkError } = await supabase
-                .from('territories')
-                .select('*')
-                .eq('user_id', session.user.id)
-                .eq('zip_code', zipCode)
-                .eq('active', true);
-              
-              if (checkError) {
-                console.error("Error checking for existing territories:", checkError);
-                throw new Error(`Failed to check existing territories: ${checkError.message}`);
-              }
-              
-              // Only create if no active territory exists with this zip
-              if (!existingTerritories || existingTerritories.length === 0) {
-                console.log("No existing territory found, creating new one");
-                
-                // Create territory record in database with lead_type always set to 'seller'
-                const { data, error: territoryError } = await supabase
-                  .from('territories')
-                  .insert({
-                    user_id: session.user.id,
-                    zip_code: zipCode,
-                    lead_type: 'seller', // Explicitly set to 'seller'
-                    active: true,
-                    start_date: new Date().toISOString(),
-                    next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
-                  })
-                  .select()
-                  .single();
-                
-                if (territoryError) {
-                  console.error("Error creating territory:", territoryError);
-                  setTerritoryCreationError(territoryError.message);
-                  throw new Error(`Failed to create territory: ${territoryError.message}`);
+              const { data: territoryData, error: territoryError } = await supabase.functions.invoke('create-territory', {
+                body: { 
+                  zipCode, 
+                  userId: session.user.id, 
+                  leadType: 'seller' 
                 }
-                
-                console.log("Territory created successfully:", data);
+              });
+              
+              if (territoryError) {
+                console.error("Error creating territory via function:", territoryError);
+                setTerritoryCreationError(territoryError.message || "Unknown error");
+                throw new Error(territoryError.message);
+              } else {
+                console.log("Territory created successfully:", territoryData);
                 setTerritoryCreated(true);
                 toast.success(`Territory ${zipCode} added successfully!`);
                 
@@ -92,10 +77,6 @@ const PaymentSuccess = () => {
                   zip_code: zipCode,
                   timestamp: new Date().toISOString()
                 }));
-              } else {
-                console.log("Territory already exists, not creating duplicate");
-                setTerritoryCreated(true);
-                toast.success("Your territory was already active");
               }
             } catch (error: any) {
               console.error("Error processing payment success:", error);

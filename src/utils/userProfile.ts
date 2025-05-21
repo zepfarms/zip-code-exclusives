@@ -9,10 +9,6 @@ export const ensureUserProfile = async (userId: string) => {
   try {
     console.log("Ensuring user profile for:", userId);
     
-    // Get user details from auth
-    const { data: { user } } = await supabase.auth.getUser();
-    const userMeta = user?.user_metadata || {};
-    
     // Try to get the profile directly first
     const { data: profile, error: fetchError } = await supabase
       .from('user_profiles')
@@ -26,6 +22,10 @@ export const ensureUserProfile = async (userId: string) => {
     }
     
     console.log("No profile found or error occurred, will try to create one");
+    
+    // Get user details from auth
+    const { data: { user } } = await supabase.auth.getUser();
+    const userMeta = user?.user_metadata || {};
     
     // Create new profile with simplified approach - ensuring seller type is used
     const newProfileData = {
