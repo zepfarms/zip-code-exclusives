@@ -139,11 +139,11 @@ const Payment = () => {
               </div>
               <div className="flex justify-between mb-4 pb-4 border-b border-gray-200">
                 <span className="font-medium">Monthly Subscription:</span>
-                <span>$1.00</span>
+                <span>$0.00</span>
               </div>
               <div className="flex justify-between text-lg font-semibold">
                 <span>Total Today:</span>
-                <span>$1.00</span>
+                <span>$0.00</span>
               </div>
               <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded text-sm text-blue-700">
                 <p className="font-medium mb-1">Important Information:</p>
@@ -168,7 +168,7 @@ const Payment = () => {
                   </>
                 ) : (
                   <>
-                    Subscribe Now - $1/month (Testing)
+                    Subscribe Now - FREE (Testing)
                   </>
                 )}
               </Button>
@@ -186,7 +186,7 @@ const Payment = () => {
           </CardContent>
           <CardFooter className="text-xs text-gray-500 text-center">
             By completing your purchase, you agree to our Terms of Service and Privacy Policy.
-            Your subscription will automatically renew each month (at $1/month).
+            Your subscription will automatically renew each month (at $0/month during testing).
           </CardFooter>
         </Card>
       </main>

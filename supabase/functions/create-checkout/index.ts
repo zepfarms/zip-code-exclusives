@@ -73,7 +73,7 @@ serve(async (req) => {
               name: `Exclusive Seller Leads - Zip Code ${zipCode}`,
               description: `Monthly subscription for exclusive seller leads in zip code ${zipCode}`,
             },
-            unit_amount: 100, // $1.00 for testing
+            unit_amount: 0, // FREE for testing (was 100 cents or $1.00)
             recurring: {
               interval: "month",
             },
