@@ -78,83 +78,42 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
         }
       }
       
-      // Use a direct RPC call to the secure function
-      const { data: territoriesData, error: territoriesError } = await supabase.rpc('get_user_territories', {
-        user_id_param: userId
-      });
+      // Use direct query to fetch territories
+      const { data: directTerritoriesData, error: directTerritoriesError } = await supabase
+        .from('territories')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('active', true);
       
-      if (territoriesError) {
-        console.error("Error fetching territories via RPC:", territoriesError);
+      if (directTerritoriesError) {
+        console.error("Error fetching territories directly:", directTerritoriesError);
+        if (directTerritoriesError.code !== 'PGRST116' && 
+            directTerritoriesError.code !== '401' && 
+            directTerritoriesError.code !== '403') {
+          toast.error("Could not load your territories. Please try refreshing.");
+        }
         
-        // Fall back to direct query
-        const { data: directTerritoriesData, error: directTerritoriesError } = await supabase
-          .from('territories')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('active', true);
-        
-        if (directTerritoriesError) {
-          console.error("Error fetching territories directly:", directTerritoriesError);
-          if (directTerritoriesError.code !== 'PGRST116' && 
-              directTerritoriesError.code !== '401' && 
-              directTerritoriesError.code !== '403') {
-            toast.error("Could not load your territories. Please try refreshing.");
-          }
+        // Use sessionStorage as fallback if available
+        if (justCreatedTerritory) {
+          const fallbackTerritory = {
+            id: 'pending-' + Date.now(),
+            user_id: userId,
+            zip_code: justCreatedTerritory.zip_code,
+            lead_type: 'seller',
+            active: true,
+            start_date: justCreatedTerritory.timestamp,
+            next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            created_at: justCreatedTerritory.timestamp
+          };
           
-          // Use sessionStorage as fallback if available
-          if (justCreatedTerritory) {
-            const fallbackTerritory = {
-              id: 'pending-' + Date.now(),
-              user_id: userId,
-              zip_code: justCreatedTerritory.zip_code,
-              lead_type: 'seller',
-              active: true,
-              start_date: justCreatedTerritory.timestamp,
-              next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-              created_at: justCreatedTerritory.timestamp
-            };
-            
-            setTerritories([fallbackTerritory]);
-            toast.info("Using cached territory data. The dashboard will update with your full territory information shortly.");
-          } else {
-            setTerritories([]);
-          }
+          setTerritories([fallbackTerritory]);
+          toast.info("Using cached territory data. The dashboard will update with your full territory information shortly.");
         } else {
-          console.log("Territories fetched directly:", directTerritoriesData);
-          setTerritories(directTerritoriesData || []);
-          
-          // Clear sessionStorage after successful fetch
-          if (justCreatedTerritory) {
-            sessionStorage.removeItem('justCreatedTerritory');
-          }
-          
-          // Calculate subscription info
-          try {
-            const territories = directTerritoriesData || [];
-            // Find earliest next billing date
-            const nextBillingDates = territories
-              .map(t => t.next_billing_date)
-              .filter(date => date) // Filter out null dates
-              .sort();
-              
-            if (nextBillingDates.length > 0) {
-              const nextRenewal = new Date(nextBillingDates[0]);
-              const today = new Date();
-              const daysRemaining = Math.ceil((nextRenewal.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-              
-              setSubscriptionInfo({
-                totalMonthly: territories.length * 0, // $0.00 per territory for testing
-                nextRenewal: nextRenewal,
-                daysRemaining: daysRemaining
-              });
-            }
-          } catch (subscriptionError) {
-            console.error("Error calculating subscription info:", subscriptionError);
-          }
+          setTerritories([]);
         }
       } else {
-        console.log("Territories fetched via RPC:", territoriesData);
-        setTerritories(territoriesData || []);
+        console.log("Territories fetched directly:", directTerritoriesData);
+        setTerritories(directTerritoriesData || []);
         
         // Clear sessionStorage after successful fetch
         if (justCreatedTerritory) {
@@ -163,11 +122,11 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
         
         // Calculate subscription info
         try {
-          const territories = territoriesData || [];
+          const territories = directTerritoriesData || [];
           // Find earliest next billing date
           const nextBillingDates = territories
             .map(t => t.next_billing_date)
-            .filter(date => date) // Filter out null dates
+            .filter(Boolean) // Filter out null dates
             .sort();
             
           if (nextBillingDates.length > 0) {
@@ -192,35 +151,24 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
 
     // Try to get leads
     try {
-      // Use a direct RPC call to the secure function
-      const { data: leadsData, error: leadsError } = await supabase.rpc('get_user_leads', {
-        user_id_param: userId
-      });
+      // Use direct query to fetch leads
+      const { data: directLeadsData, error: directLeadsError } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('archived', false)
+        .order('created_at', { ascending: false });
       
-      if (leadsError) {
-        console.error("Error fetching leads via RPC:", leadsError);
-        
-        // Fall back to direct query
-        const { data: directLeadsData, error: directLeadsError } = await supabase
-          .from('leads')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('archived', false)
-          .order('created_at', { ascending: false });
-        
-        if (directLeadsError) {
-          console.error("Error fetching leads directly:", directLeadsError);
-          if (directLeadsError.code !== 'PGRST116' && 
-              directLeadsError.code !== '401' && 
-              directLeadsError.code !== '403') {
-            toast.error("Could not load your leads. Please try refreshing.");
-          }
-          setLeads([]);
-        } else {
-          setLeads(directLeadsData || []);
+      if (directLeadsError) {
+        console.error("Error fetching leads directly:", directLeadsError);
+        if (directLeadsError.code !== 'PGRST116' && 
+            directLeadsError.code !== '401' && 
+            directLeadsError.code !== '403') {
+          toast.error("Could not load your leads. Please try refreshing.");
         }
+        setLeads([]);
       } else {
-        setLeads(leadsData || []);
+        setLeads(directLeadsData || []);
       }
     } catch (leadsError) {
       console.error("Error in leads fetch:", leadsError);
@@ -233,4 +181,3 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
     setIsLoading(false);
   }
 };
-
