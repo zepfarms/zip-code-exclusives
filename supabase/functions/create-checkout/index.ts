@@ -99,6 +99,28 @@ serve(async (req) => {
     cancelUrl.pathname = "/payment";
     cancelUrl.searchParams.set("zip_code", zipCode);
 
+    // Save checkout details for admin notification
+    try {
+      const adminServiceClient = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+        { auth: { persistSession: false } }
+      );
+      
+      await adminServiceClient.from("territory_requests").insert({
+        user_id: session.user.id,
+        user_email: session.user.email,
+        zip_code: zipCode,
+        status: 'pending',
+        created_at: new Date().toISOString()
+      });
+      
+      console.log("Territory request recorded for admin notification");
+    } catch (error) {
+      console.error("Error recording territory request:", error);
+      // Continue with checkout even if recording fails
+    }
+
     // For testing purposes - FREE checkout with redirect
     // This simulates a successful checkout without charging
     console.log("Creating FREE test checkout session for zip code:", zipCode);
@@ -111,42 +133,6 @@ serve(async (req) => {
       JSON.stringify({ success: true, url: checkoutUrl.toString() }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-    
-    // COMMENTED OUT THE REAL STRIPE CHECKOUT FOR TESTING
-    /*
-    // Create Stripe checkout session
-    const stripeSession = await fetch(stripe.url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${stripe.apiKey}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        "success_url": successUrl.toString(),
-        "cancel_url": cancelUrl.toString(),
-        "mode": "subscription",
-        "client_reference_id": session.user.id,
-        "customer_email": session.user.email,
-        "line_items[0][price]": "price_XYZ", // Replace with your actual price ID
-        "line_items[0][quantity]": "1",
-        "metadata[zip_code]": zipCode,
-      }),
-    }).then(r => r.json());
-    
-    if (!stripeSession.url) {
-      console.error("Stripe session creation failed:", stripeSession);
-      return new Response(
-        JSON.stringify({ error: "Failed to create checkout session" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    return new Response(
-      JSON.stringify({ success: true, url: stripeSession.url }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-    */
-    
   } catch (error) {
     console.error("Error in create-checkout function:", error);
     return new Response(

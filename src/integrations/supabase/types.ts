@@ -120,6 +120,39 @@ export type Database = {
         }
         Relationships: []
       }
+      territory_requests: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          id: string
+          processed_at: string | null
+          status: string
+          user_email: string
+          user_id: string
+          zip_code: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          processed_at?: string | null
+          status?: string
+          user_email: string
+          user_id: string
+          zip_code: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          processed_at?: string | null
+          status?: string
+          user_email?: string
+          user_id?: string
+          zip_code?: string
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           company: string | null

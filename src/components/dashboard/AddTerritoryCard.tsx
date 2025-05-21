@@ -33,8 +33,8 @@ const AddTerritoryCard = ({ onTerritoryAdded }: { onTerritoryAdded: () => void }
       // Check if the zip code exists in our database
       const { data, error } = await supabase
         .from('zip_codes')
-        .select('is_available')
-        .eq('code', zipCode)
+        .select('available, zip_code')
+        .eq('zip_code', zipCode)
         .maybeSingle();
       
       if (error && error.code !== 'PGRST116') {
@@ -42,7 +42,7 @@ const AddTerritoryCard = ({ onTerritoryAdded }: { onTerritoryAdded: () => void }
       }
       
       // If not found in the database or is available
-      const isAvailable = !data || data.is_available;
+      const isAvailable = !data || data.available;
       setCheckResult({ available: isAvailable, checked: true });
       
       if (!isAvailable) {
