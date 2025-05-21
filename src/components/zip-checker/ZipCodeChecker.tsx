@@ -25,8 +25,8 @@ const ZipCodeChecker = () => {
 
   const checkZipCodeAvailability = async (zip: string) => {
     const cleanZip = zip.trim();
-    console.log("Checking zip:", cleanZip);
     setIsChecking(true);
+    console.log("Checking zip:", cleanZip);
 
     try {
       const { data, error } = await supabase
@@ -38,12 +38,12 @@ const ZipCodeChecker = () => {
       console.log("Zip check result:", data, error);
 
       if (error && error.code !== 'PGRST116') {
+        console.error("Error checking zip code:", error);
         toast.error("Failed to check zip code: " + error.message);
         setInvestorAvailable(true);
         setRealtorAvailable(true);
       } else {
         const isAvailable = data?.available ?? false;
-        console.log("Is available:", isAvailable);
         setInvestorAvailable(isAvailable);
         setRealtorAvailable(isAvailable);
       }
