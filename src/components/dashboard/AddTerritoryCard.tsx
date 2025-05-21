@@ -60,8 +60,20 @@ const AddTerritoryCard = ({ onTerritoryAdded }: { onTerritoryAdded: () => void }
     setIsAdding(true);
     
     try {
+      // Ensure user is authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast.error("You must be logged in to purchase a territory");
+        // Redirect to login
+        window.location.href = `/login?redirect=/dashboard?action=add-territory&zip=${zipCode}`;
+        return;
+      }
+      
       // Store zipCode in localStorage to use after successful payment
       localStorage.setItem('lastZipCode', zipCode);
+      
+      console.log("Creating checkout for zip code:", zipCode);
       
       // Create Stripe checkout session with explicit lead_type
       const { data, error } = await supabase.functions.invoke('create-checkout', {
@@ -69,11 +81,19 @@ const AddTerritoryCard = ({ onTerritoryAdded }: { onTerritoryAdded: () => void }
       });
       
       if (error) {
-        throw new Error(error.message);
+        console.error("Error creating checkout:", error);
+        throw new Error(error.message || "Failed to create checkout");
       }
       
+      if (!data) {
+        throw new Error("No response received from checkout function");
+      }
+      
+      console.log("Checkout response:", data);
+      
       // Redirect to Stripe checkout
-      if (data?.url) {
+      if (data.url) {
+        console.log("Redirecting to checkout URL:", data.url);
         window.location.href = data.url;
       } else {
         throw new Error("No checkout URL received");

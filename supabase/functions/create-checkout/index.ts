@@ -15,27 +15,42 @@ serve(async (req) => {
   }
 
   try {
-    // Get the current user from the request
-    const supabaseClient = createClient(
+    // Create a client with the supabase-js library using service role key
+    // This bypasses RLS and ensures the function works regardless of auth state
+    const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: { headers: { Authorization: req.headers.get("Authorization")! } },
-        auth: { persistSession: false }
-      }
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
     );
-
-    const { data: { session } } = await supabaseClient.auth.getSession();
-
-    if (!session) {
+    
+    // Extract the authorization header from the request if it exists
+    const authHeader = req.headers.get("Authorization");
+    let userId = null;
+    
+    // If there's an auth header, try to get the user from it
+    if (authHeader) {
+      const token = authHeader.replace("Bearer ", "");
+      const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+      
+      if (userError) {
+        console.error("Error getting authenticated user:", userError);
+      } else if (user) {
+        userId = user.id;
+        console.log("Authenticated user found:", userId);
+      }
+    }
+    
+    // If we couldn't get a user ID, return unauthorized
+    if (!userId) {
+      console.error("No authenticated user found");
       return new Response(
-        JSON.stringify({ error: "Not authenticated" }),
+        JSON.stringify({ error: "Authentication required" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // Extract the zipCode from the request
-    const { zipCode } = await req.json();
+    const { zipCode, leadType } = await req.json();
     
     if (!zipCode) {
       return new Response(
@@ -45,13 +60,13 @@ serve(async (req) => {
     }
 
     // Check zip code availability
-    const { data: zipData, error: zipError } = await supabaseClient
+    const { data: zipData, error: zipError } = await supabaseAdmin
       .from("zip_codes")
       .select("*")
       .eq("zip_code", zipCode)
-      .single();
+      .maybeSingle();
       
-    if (zipError && zipError.code !== "PGRST116") {
+    if (zipError) {
       console.error("Error checking zip code:", zipError);
       return new Response(
         JSON.stringify({ error: "Error checking zip code availability" }),
@@ -67,7 +82,7 @@ serve(async (req) => {
     }
     
     // Check if user already has this territory
-    const { data: existingTerritory, error: territoryError } = await supabaseClient
+    const { data: existingTerritory, error: territoryError } = await supabaseAdmin
       .from("territories")
       .select("*")
       .eq("zip_code", zipCode)
@@ -101,15 +116,9 @@ serve(async (req) => {
 
     // Save checkout details for admin notification
     try {
-      const adminServiceClient = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-        { auth: { persistSession: false } }
-      );
-      
-      await adminServiceClient.from("territory_requests").insert({
-        user_id: session.user.id,
-        user_email: session.user.email,
+      await supabaseAdmin.from("territory_requests").insert({
+        user_id: userId,
+        user_email: await getUserEmail(supabaseAdmin, userId),
         zip_code: zipCode,
         status: 'pending',
         created_at: new Date().toISOString()
@@ -141,3 +150,24 @@ serve(async (req) => {
     );
   }
 });
+
+// Helper function to get user email
+async function getUserEmail(supabaseClient, userId) {
+  try {
+    const { data: userData, error: userError } = await supabaseClient
+      .from("auth.users")
+      .select("email")
+      .eq("id", userId)
+      .single();
+      
+    if (userError || !userData) {
+      const { data: user } = await supabaseClient.auth.admin.getUserById(userId);
+      return user?.email || "unknown-email";
+    }
+    
+    return userData.email;
+  } catch (error) {
+    console.error("Error getting user email:", error);
+    return "unknown-email";
+  }
+}

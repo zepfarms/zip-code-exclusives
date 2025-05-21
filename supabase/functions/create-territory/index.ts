@@ -20,6 +20,9 @@ serve(async (req) => {
       );
     }
 
+    // Log request details for debugging
+    console.log(`Creating territory for user ${userId} with zip code ${zipCode} and lead type ${leadType || 'seller'}`);
+
     // Initialize the admin service client to bypass RLS
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -42,7 +45,22 @@ serve(async (req) => {
       );
     }
     
-    if (!zipData || !zipData.available) {
+    // If zip code not found, create it and mark as available
+    if (!zipData) {
+      console.log(`Zip code ${zipCode} not found, creating new record`);
+      const { error: insertZipError } = await supabaseAdmin
+        .from("zip_codes")
+        .insert({ zip_code: zipCode, available: true });
+        
+      if (insertZipError) {
+        console.error("Error creating zip code record:", insertZipError);
+        return new Response(
+          JSON.stringify({ error: "Failed to create zip code record" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else if (!zipData.available) {
+      console.log(`Zip code ${zipCode} is not available`);
       return new Response(
         JSON.stringify({ error: "Zip code is not available" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -66,6 +84,7 @@ serve(async (req) => {
     }
     
     if (existingTerritory) {
+      console.log(`Territory ${zipCode} is already taken`);
       return new Response(
         JSON.stringify({ error: "This territory is already taken" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -77,6 +96,7 @@ serve(async (req) => {
     const thirtySevenDaysLater = new Date(now);
     thirtySevenDaysLater.setDate(now.getDate() + 37); // 30 days + 7 days initial lead delivery period
     
+    console.log(`Creating new territory for user ${userId} with zip code ${zipCode}`);
     const { data: territory, error: insertError } = await supabaseAdmin
       .from("territories")
       .insert({
@@ -126,11 +146,14 @@ serve(async (req) => {
         .eq("zip_code", zipCode)
         .eq("user_id", userId)
         .eq("status", "pending");
+      
+      console.log(`Updated territory request for user ${userId}, zip code ${zipCode}`);
     } catch (error) {
       console.error("Error updating territory request:", error);
       // Continue even if updating the request fails
     }
 
+    console.log(`Territory creation successful for user ${userId}, zip code ${zipCode}`);
     return new Response(
       JSON.stringify({ success: true, territory }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
