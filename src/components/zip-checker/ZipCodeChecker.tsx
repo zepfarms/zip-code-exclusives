@@ -38,7 +38,6 @@ const ZipCodeChecker = () => {
       console.log("Zip check result:", data, error);
 
       if (error && error.code !== 'PGRST116') {
-        console.error("Error checking zip code:", error);
         toast.error("Failed to check zip code: " + error.message);
         setInvestorAvailable(true);
         setRealtorAvailable(true);
