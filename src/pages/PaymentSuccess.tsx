@@ -69,7 +69,7 @@ const PaymentSuccess = () => {
                   .insert({
                     user_id: session.user.id,
                     zip_code: zipCode,
-                    lead_type: 'seller',
+                    lead_type: 'seller', // Explicitly set to 'seller'
                     active: true,
                     start_date: new Date().toISOString(),
                     next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now

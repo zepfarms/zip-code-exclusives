@@ -88,7 +88,8 @@ serve(async (req) => {
       billing_address_collection: "auto",
       metadata: {
         user_id: user.id,
-        zip_code: zipCode
+        zip_code: zipCode,
+        lead_type: 'seller' // Ensuring this is explicitly set
       },
     });
 
