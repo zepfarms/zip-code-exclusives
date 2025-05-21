@@ -200,28 +200,25 @@ export type Database = {
       }
       zip_codes: {
         Row: {
-          city: string | null
-          code: string
-          created_at: string
-          id: number
-          is_available: boolean | null
-          state: string | null
+          available: boolean | null
+          claimed_at: string | null
+          id: string
+          user_id: string | null
+          zip_code: string
         }
         Insert: {
-          city?: string | null
-          code: string
-          created_at?: string
-          id?: number
-          is_available?: boolean | null
-          state?: string | null
+          available?: boolean | null
+          claimed_at?: string | null
+          id?: string
+          user_id?: string | null
+          zip_code: string
         }
         Update: {
-          city?: string | null
-          code?: string
-          created_at?: string
-          id?: number
-          is_available?: boolean | null
-          state?: string | null
+          available?: boolean | null
+          claimed_at?: string | null
+          id?: string
+          user_id?: string | null
+          zip_code?: string
         }
         Relationships: []
       }

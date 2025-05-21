@@ -48,7 +48,7 @@ serve(async (req) => {
     const { data: zipData, error: zipError } = await supabaseClient
       .from("zip_codes")
       .select("*")
-      .eq("code", zipCode)
+      .eq("zip_code", zipCode)
       .single();
       
     if (zipError && zipError.code !== "PGRST116") {
@@ -59,7 +59,7 @@ serve(async (req) => {
       );
     }
     
-    if (!zipData || !zipData.is_available) {
+    if (!zipData || !zipData.available) {
       return new Response(
         JSON.stringify({ error: "Zip code is not available" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }

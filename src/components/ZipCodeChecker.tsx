@@ -29,8 +29,8 @@ const ZipCodeChecker = () => {
       // Check if the zip code exists in our database
       const zipCodeQuery = await supabase
         .from('zip_codes')
-        .select('is_available, code')
-        .eq('code', zip)
+        .select('available, zip_code')
+        .eq('zip_code', zip)
         .maybeSingle();
       
       console.log("Zip code query result:", zipCodeQuery);
@@ -42,8 +42,8 @@ const ZipCodeChecker = () => {
 
       // If zip code is found in the database
       if (zipCodeQuery.data) {
-        // Use the is_available flag from the database
-        setIsAvailable(zipCodeQuery.data.is_available ?? false);
+        // Use the available flag from the database
+        setIsAvailable(zipCodeQuery.data.available ?? false);
       } else {
         // Zip code not found in database - assume it's available
         setIsAvailable(true);
