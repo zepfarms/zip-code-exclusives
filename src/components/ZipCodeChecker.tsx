@@ -62,6 +62,7 @@ const ZipCodeChecker = () => {
 
   const handleCreateAccount = () => {
     localStorage.setItem('checkedZipCode', zipCode);
+    // No longer storing lead type as we'll always use 'seller'
     navigate('/register', { state: { scrollToTop: true } });
   };
 

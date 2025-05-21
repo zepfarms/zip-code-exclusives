@@ -1,8 +1,7 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Loader, XCircle } from "lucide-react";
+import { CheckCircle, Loader } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "sonner";
 import Header from '@/components/Header';
@@ -63,7 +62,7 @@ const PaymentSuccess = () => {
               if (!existingTerritories || existingTerritories.length === 0) {
                 console.log("No existing territory found, creating new one");
                 
-                // Create territory record in database - explicitly setting lead_type to 'seller'
+                // Create territory record in database with lead_type always set to 'seller'
                 const { data, error: territoryError } = await supabase
                   .from('territories')
                   .insert({

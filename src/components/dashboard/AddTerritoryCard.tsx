@@ -63,9 +63,9 @@ const AddTerritoryCard = ({ onTerritoryAdded }: { onTerritoryAdded: () => void }
       // Store zipCode in localStorage to use after successful payment
       localStorage.setItem('lastZipCode', zipCode);
       
-      // Create Stripe checkout session
+      // Create Stripe checkout session with explicit lead_type
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { zipCode }
+        body: { zipCode, leadType: 'seller' }
       });
       
       if (error) {

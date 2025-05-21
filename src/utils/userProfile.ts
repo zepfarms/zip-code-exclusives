@@ -27,7 +27,7 @@ export const ensureUserProfile = async (userId: string) => {
     
     console.log("No profile found or error occurred, will try to create one");
     
-    // Create new profile with simplified approach
+    // Create new profile with simplified approach - ensuring seller type is used
     const newProfileData = {
       id: userId,
       first_name: userMeta.first_name || '',
@@ -40,29 +40,17 @@ export const ensureUserProfile = async (userId: string) => {
       phone: ''
     };
     
-    const { data: newProfile, error: insertError } = await supabase
+    // Insert with single() can fail if the profile already exists but wasn't found
+    // Let's use upsert instead to be safer
+    const { data: newProfile, error: upsertError } = await supabase
       .from('user_profiles')
-      .insert(newProfileData)
+      .upsert(newProfileData)
       .select()
-      .single();
+      .maybeSingle();
       
-    if (insertError) {
-      console.error('Failed to create profile:', insertError);
-      
-      // As a fallback, try to update if insert fails (in case profile exists but select failed)
-      const { data: updatedProfile, error: updateError } = await supabase
-        .from('user_profiles')
-        .update(newProfileData)
-        .eq('id', userId)
-        .select()
-        .single();
-        
-      if (updateError) {
-        console.error('Failed to update profile as fallback:', updateError);
-        throw updateError;
-      }
-      
-      return updatedProfile;
+    if (upsertError) {
+      console.error('Failed to create/update profile:', upsertError);
+      throw upsertError;
     }
     
     return newProfile;
@@ -93,6 +81,9 @@ export const updateUserProfile = async (userId: string, profileData: any) => {
   try {
     // Ensure the profile exists first
     await ensureUserProfile(userId);
+    
+    // Make sure user_type is always 'seller'
+    profileData.user_type = 'seller';
     
     // Update the profile
     const { data, error } = await supabase
