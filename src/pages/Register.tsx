@@ -16,6 +16,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { supabase } from "@/integrations/supabase/client";
 import { Loader } from 'lucide-react';
+import { Checkbox } from "@/components/ui/checkbox";
 
 const Register = () => {
   // Form state
@@ -24,6 +25,7 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   
   // UI state
   const [isLoading, setIsLoading] = useState(false);
@@ -36,6 +38,11 @@ const Register = () => {
     // Basic validation
     if (!email || !password || !confirmPassword || !firstName || !lastName) {
       toast.error("Please fill in all required fields");
+      return;
+    }
+    
+    if (!agreedToTerms) {
+      toast.error("You must agree to the Terms of Service");
       return;
     }
     
@@ -54,7 +61,9 @@ const Register = () => {
         options: {
           data: {
             first_name: firstName,
-            last_name: lastName
+            last_name: lastName,
+            agreed_to_terms: true,
+            terms_agreement_date: new Date().toISOString()
           }
         }
       });
@@ -186,11 +195,32 @@ const Register = () => {
                 />
               </div>
               
+              <div className="flex items-start space-x-2 pt-2">
+                <Checkbox 
+                  id="terms" 
+                  checked={agreedToTerms}
+                  onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
+                  required
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <label
+                    htmlFor="terms"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    I have read and agree to the{" "}
+                    <Link to="/terms-of-service" target="_blank" className="text-brand-700 hover:underline">
+                      Terms of Service
+                    </Link>
+                    <span className="text-red-500 ml-1">*</span>
+                  </label>
+                </div>
+              </div>
+              
               <div className="pt-2">
                 <Button 
                   type="submit" 
                   className="w-full bg-accent-600 hover:bg-accent-700"
-                  disabled={isLoading}
+                  disabled={isLoading || !agreedToTerms}
                 >
                   {isLoading ? (
                     <>

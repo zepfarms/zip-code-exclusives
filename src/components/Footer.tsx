@@ -61,9 +61,6 @@ const Footer = () => {
               <li className="text-gray-600">
                 <strong>Email:</strong> help@leadxclusive.com
               </li>
-              <li className="text-gray-600">
-                <strong>Phone:</strong> 405-481-3651
-              </li>
               <li>
                 <Link to="/terms-of-service" className="text-gray-600 hover:text-brand-700 transition-colors">
                   Terms of Service
