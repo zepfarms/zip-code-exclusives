@@ -15,63 +15,70 @@ serve(async (req) => {
   }
 
   try {
-    // Get the current user's session
+    logStep("Starting admin leads function");
+    
+    // Get the authorization header from the request
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      logStep("Missing authorization header");
+      throw new Error("Missing authorization header");
+    }
+    
+    // Create a Supabase client with the auth header
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
-        global: { headers: { Authorization: req.headers.get('Authorization')! } },
+        global: { headers: { Authorization: authHeader } },
         auth: { persistSession: false }
       }
     );
 
     // Check if the user is authenticated
     const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
-
     if (sessionError || !session) {
-      logStep("Error authenticating user", sessionError);
+      logStep("Auth error or no session", { error: sessionError?.message });
       throw new Error("Not authenticated");
     }
 
     const userId = session.user.id;
-    logStep("Got authenticated user", userId);
+    logStep("User authenticated", { userId });
 
-    // Check if the user is an admin
+    // Create admin client with service role key to bypass RLS
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: { persistSession: false }
-      }
+      { auth: { persistSession: false } }
     );
 
-    // Check if user is admin via direct profile query
+    // Check if user is admin
     const { data: userProfile, error: profileError } = await supabaseAdmin
       .from('user_profiles')
       .select('is_admin')
       .eq('id', userId)
       .single();
-
+      
     if (profileError) {
-      logStep("Error fetching user profile", profileError);
+      logStep("Error checking admin status", { error: profileError.message });
       throw new Error("Error checking admin status");
     }
 
+    // Allow access if user is admin or has the special admin email
     if (!userProfile?.is_admin && session.user.email !== 'zepfarms@gmail.com') {
-      logStep("User is not an admin", userId);
-      throw new Error("Unauthorized - admin access required");
+      logStep("Access denied - not an admin", { userId, email: session.user.email });
+      throw new Error("Unauthorized: Admin access required");
     }
 
-    logStep("Admin status confirmed");
+    logStep("Admin access granted");
 
-    // Get all leads
+    // Get all leads with service role
     const { data: leads, error: leadsError } = await supabaseAdmin
       .from('leads')
       .select('*')
       .order('created_at', { ascending: false });
 
     if (leadsError) {
-      logStep("Error fetching leads", leadsError);
+      logStep("Error fetching leads", { error: leadsError.message });
       throw leadsError;
     }
 
@@ -80,24 +87,14 @@ serve(async (req) => {
       .from('user_profiles')
       .select('id, first_name, last_name');
 
-    if (userProfilesError) {
-      logStep("Error fetching user profiles", userProfilesError);
-      // Continue without user profiles
-    }
-
-    // Get all users from auth
+    // Get auth users for email info
     const { data: { users: authUsers }, error: authUsersError } = await supabaseAdmin.auth.admin.listUsers();
 
-    if (authUsersError) {
-      logStep("Error fetching auth users", authUsersError);
-      // Continue without auth users
-    }
-
-    // Join leads with user information
+    // Join leads with user info
     const processedLeads = leads.map(lead => {
       const userProfile = userProfiles?.find(profile => profile.id === lead.user_id);
       const authUser = authUsers?.find(user => user.id === lead.user_id);
-
+      
       return {
         ...lead,
         user_info: userProfile ? {
@@ -112,22 +109,23 @@ serve(async (req) => {
       };
     });
 
-    logStep(`Successfully fetched ${processedLeads.length} leads`);
+    logStep("Success", { leadCount: processedLeads.length });
 
     return new Response(JSON.stringify({
       leads: processedLeads,
       fetchedAt: new Date().toISOString()
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
+      status: 200
     });
   } catch (error: any) {
-    logStep("Error in get-admin-leads function", { message: error.message });
+    logStep("Error processing request", { message: error.message });
+    
     return new Response(JSON.stringify({
-      error: error.message
+      error: error.message || "Unknown error occurred"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      status: 401
     });
   }
 });

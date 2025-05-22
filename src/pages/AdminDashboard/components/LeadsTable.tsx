@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -84,103 +83,61 @@ const LeadsTable = () => {
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [isNotifying, setIsNotifying] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   // Fetch leads
   useEffect(() => {
     const fetchLeads = async () => {
       try {
         setIsLoading(true);
+        setErrorMessage(null);
         
-        // Get current user session to match with email later
+        // Get current user session
         const { data: { session } } = await supabase.auth.getSession();
-        const currentUserEmail = session?.user?.email || '';
-        
-        // Try the admin-specific edge function approach first - this is more reliable with RLS
-        try {
-          console.log("Attempting to fetch all leads via admin edge function");
-          const { data: adminLeadsData, error: adminLeadsError } = await supabase.functions.invoke('get-admin-leads');
-          
-          if (!adminLeadsError && adminLeadsData?.leads) {
-            console.log(`Successfully fetched ${adminLeadsData.leads.length} leads via admin edge function`);
-            
-            // Process leads with user info if available
-            const processedLeads = adminLeadsData.leads.map((lead: any) => {
-              return {
-                ...lead,
-                user_info: lead.user_info || undefined
-              };
-            });
-            
-            setLeads(processedLeads);
-            setIsLoading(false);
-            return;
-          } else {
-            console.error("Admin leads edge function failed or not found:", adminLeadsError);
-          }
-        } catch (adminFnError) {
-          console.error("Error using admin leads edge function:", adminFnError);
+        if (!session) {
+          setErrorMessage("Authentication session not found");
+          setIsLoading(false);
+          return;
         }
         
-        // Fall back to direct fetch with service role approach
-        console.log("Falling back to direct fetch approach");
+        console.log("Attempting to fetch all leads via admin edge function");
         
-        // Fetch all leads directly (don't try to join with user_profiles)
-        const { data, error } = await supabase
-          .from('leads')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.error("Error fetching leads:", error);
-          throw error;
+        // Call the edge function with proper authorization header
+        const { data: adminLeadsData, error: adminLeadsError } = await supabase.functions.invoke('get-admin-leads');
+        
+        if (adminLeadsError) {
+          console.error("Admin leads edge function failed:", adminLeadsError);
+          setErrorMessage("Failed to load leads: " + adminLeadsError.message);
+          setLeads([]);
+          setIsLoading(false);
+          return;
         }
         
-        // Fetch user profiles separately to get names
-        const { data: userProfiles, error: userProfilesError } = await supabase
-          .from('user_profiles')
-          .select('id, first_name, last_name');
-          
-        if (userProfilesError) {
-          console.error("Error fetching user profiles:", userProfilesError);
-        }
-
-        // Get all users from authentication system
-        const { data: allUsers, error: allUsersError } = await supabase.functions.invoke('get-all-users');
-        
-        if (allUsersError) {
-          console.error("Error fetching all users:", allUsersError);
-        } else if (allUsers) {
-          setUsers(allUsers);
+        if (!adminLeadsData?.leads) {
+          console.error("No leads data returned", adminLeadsData);
+          setErrorMessage("No leads data returned from server");
+          setLeads([]);
+          setIsLoading(false);
+          return;
         }
         
-        // Map user profiles to leads
-        const processedLeads = data.map((lead: any) => {
-          const userProfile = userProfiles?.find((profile: any) => profile.id === lead.user_id);
-          
-          // Also try to get email from auth users if available
-          const userAuth = allUsers?.find((user: any) => user.id === lead.user_id);
-          
+        console.log(`Successfully fetched ${adminLeadsData.leads.length} leads via admin edge function`);
+        
+        // Process leads with user info if available
+        const processedLeads = adminLeadsData.leads.map((lead: any) => {
           return {
             ...lead,
-            user_info: userProfile ? {
-              first_name: userProfile.first_name,
-              last_name: userProfile.last_name,
-              // Add email from auth system if available
-              email: userAuth?.email || (lead.user_id === session?.user?.id ? currentUserEmail : undefined)
-            } : userAuth ? {
-              // If no profile but we have auth user
-              first_name: userAuth.user_metadata?.first_name || null,
-              last_name: userAuth.user_metadata?.last_name || null,
-              email: userAuth.email
-            } : undefined
+            user_info: lead.user_info || undefined
           };
         });
         
         setLeads(processedLeads);
-        setIsLoading(false);
-      } catch (error) {
+        setErrorMessage(null);
+      } catch (error: any) {
         console.error("Error fetching leads:", error);
-        toast.error("Failed to load leads");
+        setErrorMessage("Failed to load leads: " + error.message);
+        setLeads([]);
+      } finally {
         setIsLoading(false);
       }
     };
@@ -209,31 +166,6 @@ const LeadsTable = () => {
     }
   };
 
-  const filteredLeads = leads.filter(lead => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      (lead.name?.toLowerCase().includes(searchLower) || false) ||
-      (lead.email?.toLowerCase().includes(searchLower) || false) ||
-      (lead.phone?.includes(searchTerm) || false) ||
-      (lead.address?.toLowerCase().includes(searchLower) || false) ||
-      lead.territory_zip_code.includes(searchTerm) ||
-      (lead.status?.toLowerCase().includes(searchLower) || false)
-    );
-  });
-
-  const handleEditNotes = (lead: Lead) => {
-    setSelectedLead(lead);
-    setLeadNotes(lead.notes || '');
-    setIsDialogOpen(true);
-  };
-
-  const handleAssignLead = (lead: Lead) => {
-    setSelectedLead(lead);
-    setSelectedUserId(lead.user_id || '');
-    setIsAssignDialogOpen(true);
-    fetchUsers(); // Ensure users are loaded
-  };
-
   const updateLeadNotes = async () => {
     if (!selectedLead) return;
     
@@ -260,6 +192,31 @@ const LeadsTable = () => {
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const filteredLeads = leads.filter(lead => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      (lead.name?.toLowerCase().includes(searchLower) || false) ||
+      (lead.email?.toLowerCase().includes(searchLower) || false) ||
+      (lead.phone?.includes(searchTerm) || false) ||
+      (lead.address?.toLowerCase().includes(searchLower) || false) ||
+      lead.territory_zip_code.includes(searchTerm) ||
+      (lead.status?.toLowerCase().includes(searchLower) || false)
+    );
+  });
+
+  const handleEditNotes = (lead: Lead) => {
+    setSelectedLead(lead);
+    setLeadNotes(lead.notes || '');
+    setIsDialogOpen(true);
+  };
+
+  const handleAssignLead = (lead: Lead) => {
+    setSelectedLead(lead);
+    setSelectedUserId(lead.user_id || '');
+    setIsAssignDialogOpen(true);
+    fetchUsers(); // Ensure users are loaded
   };
 
   const handleResendNotification = async (lead: Lead) => {
@@ -421,6 +378,18 @@ const LeadsTable = () => {
         <div className="flex justify-center items-center py-12">
           <Loader className="h-8 w-8 animate-spin text-brand-600" />
           <span className="ml-2">Loading leads...</span>
+        </div>
+      ) : errorMessage ? (
+        <div className="text-center py-8 bg-red-50 rounded-lg border border-red-100">
+          <h3 className="text-lg font-medium text-red-800 mb-2">Error Loading Leads</h3>
+          <p className="text-red-600">{errorMessage}</p>
+          <Button 
+            className="mt-4" 
+            variant="outline" 
+            onClick={() => window.location.reload()}
+          >
+            Try Again
+          </Button>
         </div>
       ) : filteredLeads.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
