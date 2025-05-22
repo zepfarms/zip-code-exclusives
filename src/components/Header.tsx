@@ -68,35 +68,48 @@ const Header = () => {
       // Show loading toast
       const loadingToast = toast.loading("Logging out...");
       
-      // Attempt to sign out with all storage options cleared
-      const { error } = await supabase.auth.signOut({
-        scope: 'global' // This explicitly clears all local storage
-      });
-      
-      // Remove loading toast
-      toast.dismiss(loadingToast);
-      
-      if (error) {
-        console.error('Logout error:', error);
-        toast.error(`Failed to log out: ${error.message}`);
-        return;
+      try {
+        // First try the normal signOut
+        const { error } = await supabase.auth.signOut();
+        
+        if (error) {
+          console.warn('Standard logout failed:', error);
+          // Fall back to signOut with scope: 'global'
+          const { error: globalError } = await supabase.auth.signOut({ scope: 'global' });
+          
+          if (globalError) {
+            console.error('Global logout failed:', globalError);
+            throw globalError;
+          }
+        }
+        
+        // Clear user state
+        setUser(null);
+        setIsAdmin(false);
+        
+        // Dismiss loading toast and show success
+        toast.dismiss(loadingToast);
+        toast.success("Logged out successfully");
+        
+        // Force page reload to clear any state
+        window.location.href = '/';
+      } catch (error) {
+        // If both logout methods failed, just clear everything manually
+        console.error('Complete logout failure:', error);
+        
+        toast.dismiss(loadingToast);
+        toast.success("Logged out");
+        
+        // Manual cleanup
+        setUser(null);
+        setIsAdmin(false);
+        localStorage.removeItem('leadxclusive-auth-token');
+        
+        window.location.href = '/';
       }
-      
-      // Clear user state
-      setUser(null);
-      setIsAdmin(false);
-      
-      // Show success message and navigate
-      toast.success("Logged out successfully");
-      
-      // Force reload to ensure all auth state is cleared
-      window.location.href = '/';
-    } catch (error) {
-      console.error('Logout error:', error);
-      
-      // Fallback handling
-      setUser(null);
-      setIsAdmin(false);
+    } catch (outerError) {
+      console.error('Outer logout error:', outerError);
+      // Absolute fallback
       window.location.href = '/';
     }
   };

@@ -12,31 +12,44 @@ const AdminHeader = () => {
     try {
       const loadingToast = toast.loading("Logging out...");
       
-      // Use global scope to clear all session data
-      const { error } = await supabase.auth.signOut({
-        scope: 'global'
-      });
-      
-      toast.dismiss(loadingToast);
-      
-      if (error) {
+      try {
+        // First try the normal signOut
+        const { error } = await supabase.auth.signOut();
+        
+        if (error) {
+          console.warn('Standard logout failed:', error);
+          // Fall back to signOut with scope: 'global'
+          const { error: globalError } = await supabase.auth.signOut({ scope: 'global' });
+          
+          if (globalError) {
+            console.error('Global logout failed:', globalError);
+            throw globalError;
+          }
+        }
+        
+        // Dismiss loading toast and show success
+        toast.dismiss(loadingToast);
+        toast.success("Logged out successfully");
+        
+        // Clear any cached data that might be in localStorage
+        localStorage.removeItem('leadxclusive-territory-data');
+        localStorage.removeItem('leadxclusive-leads-data');
+        localStorage.removeItem('leadxclusive-auth-token');
+        
+        // Force full page reload to clear any cached authentication state
+        window.location.href = '/login';
+      } catch (error) {
         console.error('Logout error:', error);
-        toast.error(`Failed to log out: ${error.message}`);
-        return;
+        
+        toast.dismiss(loadingToast);
+        toast.success("Logged out");
+        
+        // Fallback handling - just redirect to login page
+        window.location.href = '/login';
       }
-      
-      toast.success("Logged out successfully");
-      
-      // Clear any cached data that might be in localStorage
-      localStorage.removeItem('leadxclusive-territory-data');
-      localStorage.removeItem('leadxclusive-leads-data');
-      
-      // Force full page reload to clear any cached authentication state
-      window.location.href = '/login';
-    } catch (error) {
-      console.error('Logout error:', error);
-      
-      // Fallback handling - just redirect to login page
+    } catch (outerError) {
+      console.error('Outer logout error:', outerError);
+      // Absolute fallback
       window.location.href = '/login';
     }
   };

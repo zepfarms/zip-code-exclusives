@@ -15,6 +15,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
     storageKey: 'leadxclusive-auth-token',
     storage: localStorage,
-    flowType: 'pkce' // Use PKCE flow for enhanced security
+    flowType: 'pkce', // Use PKCE flow for enhanced security
+    detectSessionInUrl: false, // Don't detect session in URL (can cause issues)
+    debug: process.env.NODE_ENV === 'development' // Enable debug in dev mode only
   }
 });
