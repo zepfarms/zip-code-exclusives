@@ -22,13 +22,8 @@ const Footer = () => {
             <h3 className="text-lg font-semibold text-gray-900">Services</h3>
             <ul className="space-y-2">
               <li>
-                <Link to="/investor-leads" className="text-gray-600 hover:text-brand-700 transition-colors">
-                  Investor Leads
-                </Link>
-              </li>
-              <li>
-                <Link to="/realtor-leads" className="text-gray-600 hover:text-brand-700 transition-colors">
-                  Realtor Leads
+                <Link to="/seller-leads" className="text-gray-600 hover:text-brand-700 transition-colors">
+                  Seller Leads
                 </Link>
               </li>
               <li>

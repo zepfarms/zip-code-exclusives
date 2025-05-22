@@ -7,29 +7,17 @@ import { Link } from 'react-router-dom';
 const LeadTypes = () => {
   const leadTypes = [
     {
-      title: "Investor Leads",
-      description: "Perfect for real estate investors looking for off-market properties to wholesale or flip.",
+      title: "Seller Leads",
+      description: "Perfect for real estate professionals looking for exclusive seller leads in their territory.",
       features: [
-        "Motivated sellers looking for quick cash offers",
-        "Properties that may need repairs or renovations",
-        "Sellers wanting to avoid the traditional listing process",
-        "Potential for significant ROI on purchases",
+        "Motivated sellers actively looking to sell their property",
+        "Properties ranging from distressed homes to well-maintained listings",
+        "Sellers open to various transaction types",
+        "Opportunity for investors and agents alike",
         "Exclusive Territory"
       ],
-      cta: "Perfect For Real Estate Investors",
-      link: "/investor-leads"
-    },
-    {
-      title: "Realtor Leads",
-      description: "Ideal for real estate agents seeking homeowners ready to list their property on the MLS.",
-      features: [
-        "Homeowners planning to sell in the traditional market",
-        "Sellers looking for full market value for their home",
-        "Clients who need agent representation and guidance",
-        "Opportunity for listing and potentially buyer commissions"
-      ],
-      cta: "Perfect For Licensed Real Estate Agents",
-      link: "/realtor-leads"
+      cta: "Perfect For All Real Estate Professionals",
+      link: "/seller-leads"
     }
   ];
 
@@ -37,13 +25,13 @@ const LeadTypes = () => {
     <div className="py-12 bg-gray-50">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Choose Your Lead Type</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Exclusive Lead Generation</h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            We offer two distinct types of real estate leads to match your business strategy and goals.
+            We offer premium real estate leads with exclusive zip code territories to increase your closing rate.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="max-w-3xl mx-auto">
           {leadTypes.map((type, index) => (
             <div key={index} className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100">
               <div className="p-6 border-b border-gray-100">
