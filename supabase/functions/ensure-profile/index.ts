@@ -24,10 +24,10 @@ serve(async (req) => {
     logStep("Processing request for user", userId);
 
     // Initialize Supabase client with service role key to bypass RLS
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
 
     // Get user data
     const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
@@ -71,7 +71,7 @@ serve(async (req) => {
       });
     }
 
-    // Create new profile - using 'investor' since it appears to be a valid value
+    // Create new profile with userData metadata
     const newProfile = {
       id: userId,
       first_name: userMeta.first_name || '',

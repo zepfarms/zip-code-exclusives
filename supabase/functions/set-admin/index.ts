@@ -1,77 +1,88 @@
 
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { corsHeaders } from "../_shared/cors.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+// Helper for logging steps in the function execution
+const logStep = (step: string, details?: any) => {
+  console.log(`[SET-ADMIN] ${step}${details ? `: ${JSON.stringify(details)}` : ''}`);
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  // Handle CORS
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // Initialize Supabase admin client
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    const { userId, isAdmin, requesterUserId } = await req.json();
     
-    // Find user by email
-    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.listUsers();
-    
-    if (userError) {
-      throw new Error(`Error fetching users: ${userError.message}`);
+    if (!userId || isAdmin === undefined || !requesterUserId) {
+      throw new Error("userId, isAdmin, and requesterUserId are required");
     }
+
+    logStep("Processing request to set admin status", { userId, isAdmin, requesterUserId });
+
+    // Initialize Supabase client with service role key to bypass RLS
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     
-    const targetEmail = "zepfarms@gmail.com";
-    const user = userData.users.find(u => u.email === targetEmail);
-    
-    if (!user) {
-      throw new Error(`User with email ${targetEmail} not found`);
-    }
-    
-    // Update user profile to set them as admin
-    const { error: updateError } = await supabaseAdmin
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+    // Check if requester is an admin
+    const { data: requesterData, error: requesterError } = await supabaseAdmin
       .from('user_profiles')
-      .update({ is_admin: true })
-      .eq('id', user.id);
-      
-    if (updateError) {
-      throw new Error(`Error updating user profile: ${updateError.message}`);
+      .select('is_admin')
+      .eq('id', requesterUserId)
+      .single();
+    
+    if (requesterError) {
+      logStep("Error checking requester admin status", requesterError);
+      throw new Error("Failed to verify requester admin status");
     }
     
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: `User ${targetEmail} has been set as admin`,
-      }),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          ...corsHeaders,
-        },
-      }
-    );
-  } catch (error) {
-    console.error("Error in set-admin function:", error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        message: error.message,
-      }),
-      {
-        status: 400,
-        headers: {
-          "Content-Type": "application/json",
-          ...corsHeaders,
-        },
-      }
-    );
+    if (!requesterData?.is_admin) {
+      logStep("Unauthorized request", { requesterUserId });
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "You don't have permission to set admin status" 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 403,
+      });
+    }
+
+    // Update the user's admin status
+    const { data, error } = await supabaseAdmin
+      .from('user_profiles')
+      .update({ is_admin: isAdmin })
+      .eq('id', userId)
+      .select()
+      .single();
+    
+    if (error) {
+      logStep("Error updating admin status", error);
+      throw new Error(`Failed to update admin status: ${error.message}`);
+    }
+    
+    logStep("Successfully updated admin status", { userId, isAdmin });
+    
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: `User ${isAdmin ? 'is now' : 'is no longer'} an admin`, 
+      user: data 
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
+  } catch (error: any) {
+    logStep("Error in set-admin function", { message: error.message });
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: error.message 
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
   }
 });
