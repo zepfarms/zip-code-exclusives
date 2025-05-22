@@ -22,7 +22,11 @@ interface User {
   last_name?: string | null;
 }
 
-const AddTerritoryForm = () => {
+interface AddTerritoryFormProps {
+  onTerritoryAdded?: () => void;
+}
+
+const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
   const [zipCode, setZipCode] = useState('');
   const [userId, setUserId] = useState('');
   const [isAdding, setIsAdding] = useState(false);
@@ -45,8 +49,14 @@ const AddTerritoryForm = () => {
         if (profilesError) throw profilesError;
         
         // Get emails from auth.users
-        const authData = await supabase.auth.admin.listUsers();
-        const authUsers = authData.data?.users || [];
+        const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+        
+        if (authError) {
+          console.error("Error fetching auth users:", authError);
+          throw authError;
+        }
+        
+        const authUsers = authData?.users || [];
         
         // Combine the data
         const combinedUsers = profiles.map(profile => {
@@ -81,27 +91,43 @@ const AddTerritoryForm = () => {
     setCheckResult({ available: false, checked: false });
     
     try {
-      // Check if the zip code exists in our database
-      const { data, error } = await supabase
+      // Check if the zip code already exists in territories
+      const { data: existingTerritories, error: territoryError } = await supabase
+        .from('territories')
+        .select('id')
+        .eq('zip_code', zipCode);
+      
+      if (territoryError) throw territoryError;
+      
+      // Check if the zip code exists in zip_codes table
+      const { data: zipCodeData, error: zipCodeError } = await supabase
         .from('zip_codes')
-        .select('available, zip_code')
+        .select('available')
         .eq('zip_code', zipCode)
         .maybeSingle();
       
-      if (error && error.code !== 'PGRST116') {
-        throw error;
+      if (zipCodeError && zipCodeError.code !== 'PGRST116') {
+        throw zipCodeError;
       }
       
-      // If not found in the database or is available
-      const isAvailable = !data || data.available;
+      // If territory already exists, it's not available
+      if (existingTerritories && existingTerritories.length > 0) {
+        setCheckResult({ available: false, checked: true });
+        toast.error(`Zip code ${zipCode} is already assigned to a user`);
+        setIsChecking(false);
+        return;
+      }
+      
+      // If not found in zip_codes or is available
+      const isAvailable = !zipCodeData || zipCodeData.available;
       setCheckResult({ available: isAvailable, checked: true });
       
       if (!isAvailable) {
         toast.error(`Zip code ${zipCode} is not available for subscription`);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error checking zip code:", error);
-      toast.error("Failed to check zip code: " + (error.message || "Unknown error"));
+      toast.error("Failed to check zip code availability");
     } finally {
       setIsChecking(false);
     }
@@ -131,16 +157,34 @@ const AddTerritoryForm = () => {
     setIsAdding(true);
     
     try {
-      // Call the create-territory function
-      const { data, error } = await supabase.functions.invoke('create-territory', {
-        body: { 
-          zipCode, 
-          userId,
-          leadType: 'investor' // Default to 'investor' since we're removing the option
-        }
-      });
+      // Add the territory directly to the territories table
+      const { data, error } = await supabase
+        .from('territories')
+        .insert({
+          zip_code: zipCode,
+          user_id: userId,
+          active: true,
+          lead_type: 'investor', // Default to 'investor' since we're removing the option
+          start_date: new Date().toISOString(),
+          next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
+        })
+        .select();
       
       if (error) throw error;
+      
+      // If we have zip_codes table, update the availability
+      const { error: zipCodeError } = await supabase
+        .from('zip_codes')
+        .upsert({
+          zip_code: zipCode,
+          available: false,
+          claimed_at: new Date().toISOString(),
+          user_id: userId
+        });
+      
+      if (zipCodeError) {
+        console.error("Warning: Could not update zip_codes table:", zipCodeError);
+      }
       
       toast.success(`Territory ${zipCode} successfully assigned to user`);
       
@@ -148,6 +192,11 @@ const AddTerritoryForm = () => {
       setZipCode('');
       setUserId('');
       setCheckResult({ available: false, checked: false });
+      
+      // Notify parent component that a territory was added
+      if (onTerritoryAdded) {
+        onTerritoryAdded();
+      }
       
     } catch (error: any) {
       console.error("Error adding territory:", error);

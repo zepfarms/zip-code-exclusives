@@ -50,8 +50,7 @@ const TerritoriesTable = () => {
       try {
         setIsLoading(true);
         
-        // Use RPC function to get territories with user info
-        // This is a placeholder - in reality, you would create a Supabase function
+        // Get territories with user info
         const { data, error } = await supabase
           .from('territories')
           .select(`
@@ -72,17 +71,18 @@ const TerritoriesTable = () => {
         if (error) {
           throw error;
         }
+        
+        // Get user emails
+        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+        
+        if (authError) {
+          console.error("Error fetching auth users:", authError);
+        }
 
-        // For demo purposes, simulate the join with user email
-        // In production, you would handle this through Supabase functions
-        const authData = await supabase.auth.admin.listUsers();
-        const authUsers = authData.data?.users || [];
-
-        // Handle the data safely considering the types
+        // Process the data combining territory info with user details
         const processedData = data.map((territory: any) => {
-          const authUser = authUsers.find(u => u.id === territory.user_id);
+          const authUser = authUsers?.users?.find(u => u.id === territory.user_id);
           
-          // Safe access to nested properties
           const userProfiles = territory.user_profiles;
           const firstName = userProfiles && typeof userProfiles === 'object' ? userProfiles.first_name : null;
           const lastName = userProfiles && typeof userProfiles === 'object' ? userProfiles.last_name : null;
@@ -97,7 +97,7 @@ const TerritoriesTable = () => {
           };
         });
         
-        setTerritories(processedData as Territory[]);
+        setTerritories(processedData);
         setIsLoading(false);
       } catch (error) {
         console.error("Error fetching territories:", error);
@@ -230,10 +230,69 @@ const TerritoriesTable = () => {
       </div>
       
       <div className="md:col-span-1">
-        <AddTerritoryForm />
+        <AddTerritoryForm onTerritoryAdded={() => {
+          // Refresh the territories list when a new territory is added
+          setIsLoading(true);
+          fetchTerritories();
+        }} />
       </div>
     </div>
   );
 };
+
+// Function to fetch territories (extracted for reuse)
+async function fetchTerritories() {
+  try {
+    // Get territories with user info
+    const { data, error } = await supabase
+      .from('territories')
+      .select(`
+        id,
+        zip_code,
+        user_id,
+        active,
+        start_date,
+        next_billing_date,
+        lead_type,
+        created_at,
+        user_profiles:user_id (
+          first_name,
+          last_name
+        )
+      `);
+
+    if (error) {
+      throw error;
+    }
+    
+    // Get user emails
+    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+    
+    if (authError) {
+      console.error("Error fetching auth users:", authError);
+    }
+
+    // Process the data
+    return data.map((territory: any) => {
+      const authUser = authUsers?.users?.find(u => u.id === territory.user_id);
+      
+      const userProfiles = territory.user_profiles;
+      const firstName = userProfiles && typeof userProfiles === 'object' ? userProfiles.first_name : null;
+      const lastName = userProfiles && typeof userProfiles === 'object' ? userProfiles.last_name : null;
+      
+      return {
+        ...territory,
+        user_profile: {
+          first_name: firstName,
+          last_name: lastName,
+          email: authUser?.email || 'N/A'
+        }
+      };
+    });
+  } catch (error) {
+    console.error("Error fetching territories:", error);
+    throw error;
+  }
+}
 
 export default TerritoriesTable;

@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,7 +15,7 @@ const Register = lazy(() => import("./pages/Register"));
 const Payment = lazy(() => import("./pages/Payment"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard/index.tsx")); // Make sure you set the path to the correct AdminDashboard component
 const NotFound = lazy(() => import("./pages/NotFound"));
 const HowItWorksPage = lazy(() => import("./pages/HowItWorksPage"));
 const PricingPage = lazy(() => import("./pages/PricingPage"));

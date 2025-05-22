@@ -27,12 +27,9 @@ interface UserProfile {
   first_name: string;
   last_name: string;
   is_admin: boolean;
-  email: string; // from auth.users
+  email: string;
   company: string | null;
   phone: string | null;
-  user_type: string;
-  license_state: string | null;
-  license_number: string | null;
   created_at: string;
 }
 
@@ -59,14 +56,15 @@ const UsersTable = () => {
           throw error;
         }
 
-        // For each profile, get the email from auth.users
-        // In a production app, this would ideally be done on the backend
-        // Here we're simulating it by assuming emails are available from auth providers
-        // This is a simplification - in production, use an RPC function on Supabase
-
-        // Get emails from auth (for demo purposes - in production, use server-side)
-        const authData = await supabase.auth.admin.listUsers();
-        const authUsers = authData.data?.users || [];
+        // Get emails from auth
+        const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+        
+        if (authError) {
+          console.error("Error fetching auth users:", authError);
+          throw authError;
+        }
+        
+        const authUsers = authData?.users || [];
 
         // Combine the data
         const combinedData = profiles.map(profile => {
@@ -158,7 +156,6 @@ const UsersTable = () => {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
-                <TableHead>Type</TableHead>
                 <TableHead>Joined</TableHead>
                 <TableHead>Admin</TableHead>
                 <TableHead>Actions</TableHead>
@@ -174,7 +171,6 @@ const UsersTable = () => {
                     </TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>{user.phone || 'N/A'}</TableCell>
-                    <TableCell className="capitalize">{user.user_type}</TableCell>
                     <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
                     <TableCell>
                       {user.is_admin ? 
@@ -205,7 +201,7 @@ const UsersTable = () => {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-4">
+                  <TableCell colSpan={6} className="text-center py-4">
                     No users found matching your search.
                   </TableCell>
                 </TableRow>
@@ -245,20 +241,8 @@ const UsersTable = () => {
                   <p>{selectedUser.company || 'N/A'}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500">User Type</h4>
-                  <p className="capitalize">{selectedUser.user_type}</p>
-                </div>
-                <div>
                   <h4 className="text-sm font-medium text-gray-500">Admin Status</h4>
                   <p>{selectedUser.is_admin ? 'Admin' : 'Regular User'}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">License State</h4>
-                  <p>{selectedUser.license_state || 'N/A'}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">License Number</h4>
-                  <p>{selectedUser.license_number || 'N/A'}</p>
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-gray-500">Joined</h4>
