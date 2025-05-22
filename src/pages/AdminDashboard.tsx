@@ -23,8 +23,18 @@ const AdminDashboard = () => {
           navigate('/login', { state: { redirectTo: '/admin' } });
           return;
         }
+        
+        console.log("Checking admin access for:", session.user.email);
+        
+        // Special case for zepfarms@gmail.com - grant admin access
+        if (session.user.email === 'zepfarms@gmail.com') {
+          console.log("Admin access granted for zepfarms@gmail.com");
+          setIsAdmin(true);
+          setIsLoading(false);
+          return;
+        }
 
-        // Check if user has admin privileges
+        // Regular check for other users
         const { data: userProfile, error } = await supabase
           .from('user_profiles')
           .select('is_admin')

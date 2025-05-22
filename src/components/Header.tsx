@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -28,14 +27,21 @@ const Header = () => {
         
         // Check if user is admin
         if (data.session?.user) {
-          const { data: userProfile, error: profileError } = await supabase
-            .from('user_profiles')
-            .select('is_admin')
-            .eq('id', data.session.user.id)
-            .single();
-            
-          if (!profileError && userProfile) {
-            setIsAdmin(userProfile.is_admin === true);
+          // Special case for zepfarms@gmail.com
+          if (data.session.user.email === 'zepfarms@gmail.com') {
+            console.log("Admin status granted in header for zepfarms@gmail.com");
+            setIsAdmin(true);
+          } else {
+            // Regular check for other users
+            const { data: userProfile, error: profileError } = await supabase
+              .from('user_profiles')
+              .select('is_admin')
+              .eq('id', data.session.user.id)
+              .single();
+              
+            if (!profileError && userProfile) {
+              setIsAdmin(userProfile.is_admin === true);
+            }
           }
         }
       } catch (error) {
@@ -53,13 +59,18 @@ const Header = () => {
       
       // Check admin status when auth state changes
       if (session?.user) {
-        const { data: userProfile } = await supabase
-          .from('user_profiles')
-          .select('is_admin')
-          .eq('id', session.user.id)
-          .single();
-          
-        setIsAdmin(userProfile?.is_admin === true);
+        // Special case for zepfarms@gmail.com
+        if (session.user.email === 'zepfarms@gmail.com') {
+          setIsAdmin(true);
+        } else {
+          const { data: userProfile } = await supabase
+            .from('user_profiles')
+            .select('is_admin')
+            .eq('id', session.user.id)
+            .single();
+            
+          setIsAdmin(userProfile?.is_admin === true);
+        }
       } else {
         setIsAdmin(false);
       }

@@ -30,6 +30,16 @@ const AdminDashboard = () => {
           navigate('/login', { state: { redirectTo: '/admin' } });
           return;
         }
+        
+        console.log("Inner admin check for:", session.user.email);
+        
+        // Special case for zepfarms@gmail.com - grant admin access
+        if (session.user.email === 'zepfarms@gmail.com') {
+          console.log("Admin access granted for zepfarms@gmail.com in inner component");
+          setIsAdmin(true);
+          setIsLoading(false);
+          return;
+        }
 
         // Check if user has admin privileges
         const { data: userProfile, error } = await supabase
