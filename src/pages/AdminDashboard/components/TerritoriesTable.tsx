@@ -45,25 +45,32 @@ const TerritoriesTable = () => {
     try {
       setIsLoading(true);
       
-      // Get territories with no filtering (get ALL territories)
-      const { data: territoriesData, error: territoriesError } = await supabase
-        .from('territories')
-        .select(`
-          id,
-          zip_code,
-          user_id,
-          active,
-          start_date,
-          next_billing_date,
-          lead_type,
-          created_at
-        `);
-
-      if (territoriesError) {
-        throw territoriesError;
+      // Get current user session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Not authenticated");
       }
 
-      console.log(`Fetched ${territoriesData.length} total territories`); 
+      // Use the enhanced edge function to get all territories as admin
+      const { data: territoriesData, error: territoriesError } = await supabase.functions.invoke('get-user-territories', {
+        body: { 
+          userId: session.user.id, 
+          includeInactive: true, 
+          getAllForAdmin: true 
+        }
+      });
+
+      if (territoriesError) {
+        console.error("Error from edge function:", territoriesError);
+        throw new Error("Failed to fetch territories via edge function");
+      }
+
+      if (!territoriesData || !territoriesData.territories) {
+        console.error("Invalid response format from edge function:", territoriesData);
+        throw new Error("Invalid response format from territories edge function");
+      }
+
+      console.log(`Fetched ${territoriesData.territories.length} total territories from edge function`); 
       
       // Get user profiles
       const { data: userProfilesData, error: profilesError } = await supabase
@@ -94,7 +101,7 @@ const TerritoriesTable = () => {
       }
       
       // Combine territory data with user profiles and emails
-      const enhancedTerritories = territoriesData.map((territory: any) => {
+      const enhancedTerritories = territoriesData.territories.map((territory: any) => {
         // Find the auth user that matches this territory's user_id
         const authUser = usersList?.find((u: any) => u.id === territory.user_id);
         const userProfile = userProfilesMap.get(territory.user_id) || {};

@@ -15,13 +15,13 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, includeInactive } = await req.json();
+    const { userId, includeInactive, getAllForAdmin } = await req.json();
     
     if (!userId) {
       throw new Error("userId is required");
     }
 
-    logStep("Fetching territories for user", { userId, includeInactive });
+    logStep("Fetching territories", { userId, includeInactive, getAllForAdmin });
 
     // Initialize Supabase client with service role key to bypass RLS
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
@@ -33,6 +33,62 @@ serve(async (req) => {
       }
     });
 
+    // Check if user is admin when getAllForAdmin is true
+    if (getAllForAdmin) {
+      logStep("Checking admin status for user requesting all territories");
+      const { data: adminCheck, error: adminCheckError } = await supabaseAdmin
+        .from('user_profiles')
+        .select('is_admin')
+        .eq('id', userId)
+        .single();
+      
+      if (adminCheckError) {
+        logStep("Error checking admin status", adminCheckError);
+        throw new Error("Failed to verify admin status");
+      }
+      
+      if (!adminCheck?.is_admin) {
+        logStep("Unauthorized: User is not an admin");
+        return new Response(JSON.stringify({ 
+          error: "You don't have permission to access all territories" 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 403,
+        });
+      }
+      
+      logStep("Admin verified, fetching all territories");
+      
+      // Get all territories for admin
+      let query = supabaseAdmin
+        .from('territories')
+        .select('*');
+      
+      // Filter by active status if requested
+      if (!includeInactive) {
+        query = query.eq('active', true);
+      }
+      
+      // Execute the query
+      const { data: territories, error } = await query;
+      
+      if (error) {
+        logStep("Error fetching all territories", error);
+        throw error;
+      }
+      
+      logStep(`Successfully fetched ${territories.length} territories for admin`);
+      
+      return new Response(JSON.stringify({ 
+        territories,
+        fetchedAt: new Date().toISOString()
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    // Standard request - get territories for a specific user
     // Prepare query to get territories for the user
     let query = supabaseAdmin
       .from('territories')
@@ -45,7 +101,7 @@ serve(async (req) => {
     }
 
     // Execute the query
-    logStep("Executing territories query");
+    logStep("Executing territories query for user");
     const { data: territories, error } = await query;
     
     if (error) {

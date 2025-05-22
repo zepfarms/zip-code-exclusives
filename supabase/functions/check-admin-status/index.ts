@@ -33,8 +33,7 @@ serve(async (req) => {
       }
     });
 
-    // Check if user is admin by directly querying the user_profiles table
-    // We're using service role key so RLS doesn't apply
+    // Use a direct query with the service role key to bypass RLS
     const { data, error } = await supabaseAdmin
       .from('user_profiles')
       .select('is_admin')
