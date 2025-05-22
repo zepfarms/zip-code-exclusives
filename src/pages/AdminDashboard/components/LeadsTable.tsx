@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -261,6 +260,27 @@ const LeadsTable = () => {
           } : undefined
         };
       }));
+      
+      // Send notification if assigning to a user (not unassigning)
+      if (selectedUserId) {
+        try {
+          console.log("Sending notification for lead:", selectedLead.id, "to user:", selectedUserId);
+          const { data: notificationResult, error: notificationError } = await supabase.functions.invoke('notify-lead', {
+            body: {
+              leadId: selectedLead.id,
+              userId: selectedUserId
+            }
+          });
+
+          if (notificationError) {
+            console.error("Error sending lead notification:", notificationError);
+          } else {
+            console.log("Notification result:", notificationResult);
+          }
+        } catch (notifyError) {
+          console.error("Failed to send lead notification:", notifyError);
+        }
+      }
       
       toast.success(selectedUserId 
         ? `Lead assigned to ${assignedUser?.email}` 

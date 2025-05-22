@@ -227,6 +227,44 @@ const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
         console.error("Warning: Could not update zip_codes table:", zipCodeError);
       }
       
+      // Create a sample lead for this territory to trigger notifications
+      const { data: leadData, error: leadError } = await supabase
+        .from('leads')
+        .insert({
+          name: 'Welcome Lead',
+          territory_zip_code: zipCode,
+          user_id: userId,
+          status: 'New',
+          notes: 'This is a welcome lead created when the territory was assigned.',
+          address: `Zip Code: ${zipCode}`,
+          phone: '',
+          email: ''
+        })
+        .select();
+
+      if (leadError) {
+        console.error("Error creating welcome lead:", leadError);
+      } else if (leadData && leadData[0]) {
+        // Trigger lead notification
+        try {
+          console.log("Sending notification for new lead:", leadData[0].id, "to user:", userId);
+          const { data: notificationResult, error: notificationError } = await supabase.functions.invoke('notify-lead', {
+            body: {
+              leadId: leadData[0].id,
+              userId: userId
+            }
+          });
+
+          if (notificationError) {
+            console.error("Error sending lead notification:", notificationError);
+          } else {
+            console.log("Notification result:", notificationResult);
+          }
+        } catch (notifyError) {
+          console.error("Failed to send lead notification:", notifyError);
+        }
+      }
+      
       toast.success(`Territory ${zipCode} successfully assigned to user`);
       
       // Reset the form

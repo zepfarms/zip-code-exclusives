@@ -40,7 +40,7 @@ async function sendEmail(emails: string[], lead: any) {
 
   const msg = {
     to: validEmails,
-    from: "leads@leadxclusive.com", // Use your verified sender
+    from: "leads@leadxclusive.com", // Using your domain email
     subject: "New Lead Notification",
     html: `
       <h2>New Lead Assigned</h2>
@@ -53,6 +53,7 @@ async function sendEmail(emails: string[], lead: any) {
         <li><strong>Zip Code:</strong> ${lead.territory_zip_code}</li>
       </ul>
       <p>Log in to your dashboard to manage this lead.</p>
+      <p><a href="https://www.leadxclusive.com/dashboard">Go to Dashboard</a></p>
     `,
   };
 
@@ -111,9 +112,9 @@ async function sendSms(phones: string[], lead: any) {
       for (const carrier of carriers) {
         const smsMsg = {
           to: `${cleanPhone}@${carrier}`,
-          from: "leads@leadxclusive.com", // Use your verified sender
+          from: "leads@leadxclusive.com", // Using your domain email
           subject: "New Lead",
-          text: `New lead: ${lead.name || 'Unknown'} - ${lead.phone || 'No phone'} - Zip: ${lead.territory_zip_code}`,
+          text: `New Lead: ${lead.name || 'Unknown'} - ${lead.phone || 'No phone'} - Zip: ${lead.territory_zip_code}`,
         };
         
         smsPromises.push(SendGrid.send(smsMsg).catch(err => {
@@ -147,6 +148,8 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing required parameters");
     }
     
+    console.log(`Processing notification for lead: ${leadId} to user: ${userId}`);
+    
     // Get the lead data
     const { data: lead, error: leadError } = await supabase
       .from("leads")
@@ -155,6 +158,7 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
     
     if (leadError || !lead) {
+      console.error("Lead not found:", leadError);
       throw new Error("Lead not found");
     }
     
@@ -166,6 +170,7 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
     
     if (profileError || !userProfile) {
+      console.error("User profile not found:", profileError);
       throw new Error("User profile not found");
     }
     
@@ -173,6 +178,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(userId);
     
     if (userError || !user) {
+      console.error("User not found:", userError);
       throw new Error("User not found");
     }
     
@@ -193,6 +199,13 @@ const handler = async (req: Request): Promise<Response> => {
       ...(userProfile.secondary_phones || [])
     ].filter(Boolean);
     
+    console.log("Notification preferences:", { 
+      email: userProfile.notification_email, 
+      sms: userProfile.notification_sms,
+      emails: allEmails,
+      phones: allPhones
+    });
+    
     // Send email notification if enabled
     if (userProfile.notification_email && allEmails.length > 0) {
       notificationResults.email = await sendEmail(allEmails, lead);
@@ -202,6 +215,8 @@ const handler = async (req: Request): Promise<Response> => {
     if (userProfile.notification_sms && allPhones.length > 0) {
       notificationResults.sms = await sendSms(allPhones, lead);
     }
+    
+    console.log("Notification results:", notificationResults);
     
     return new Response(JSON.stringify({
       success: true,
