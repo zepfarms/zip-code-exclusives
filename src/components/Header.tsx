@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { LogOut } from 'lucide-react';
+import { LogOut, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -10,6 +10,7 @@ const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -24,6 +25,19 @@ const Header = () => {
         }
         
         setUser(data.session?.user || null);
+        
+        // Check if user is admin
+        if (data.session?.user) {
+          const { data: userProfile, error: profileError } = await supabase
+            .from('user_profiles')
+            .select('is_admin')
+            .eq('id', data.session.user.id)
+            .single();
+            
+          if (!profileError && userProfile) {
+            setIsAdmin(userProfile.is_admin === true);
+          }
+        }
       } catch (error) {
         console.error('Authentication error:', error);
       } finally {
@@ -34,8 +48,21 @@ const Header = () => {
     getUser();
 
     // Listen for auth changes with cleaner subscription handling
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user || null);
+      
+      // Check admin status when auth state changes
+      if (session?.user) {
+        const { data: userProfile } = await supabase
+          .from('user_profiles')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .single();
+          
+        setIsAdmin(userProfile?.is_admin === true);
+      } else {
+        setIsAdmin(false);
+      }
     });
 
     return () => {
@@ -85,6 +112,11 @@ const Header = () => {
               Dashboard
             </Link>
           )}
+          {isAdmin && (
+            <Link to="/admin" className="text-gray-600 hover:text-brand-700 transition-colors font-semibold">
+              Admin
+            </Link>
+          )}
         </nav>
         
         {/* Mobile only shows login button */}
@@ -101,6 +133,14 @@ const Header = () => {
                   <LogOut className="h-4 w-4 mr-2" />
                   Log Out
                 </Button>
+                {isAdmin && (
+                  <Link to="/admin" className="md:hidden">
+                    <Button variant="ghost" size="sm" className="text-gray-700 hover:text-brand-700">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Admin
+                    </Button>
+                  </Link>
+                )}
                 <Link to="/dashboard" className="md:hidden">
                   <Button variant="ghost" size="sm" className="text-gray-700 hover:text-brand-700">
                     Dashboard
