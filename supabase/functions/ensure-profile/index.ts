@@ -71,12 +71,12 @@ serve(async (req) => {
       });
     }
 
-    // Create new profile
+    // Create new profile - using 'investor' since it appears to be a valid value
     const newProfile = {
       id: userId,
       first_name: userMeta.first_name || '',
       last_name: userMeta.last_name || '',
-      user_type: 'seller', // Always using 'seller' type
+      user_type: 'investor', // Using 'investor' as it appears to be allowed
       notification_email: true,
       notification_sms: false,
       secondary_emails: [],

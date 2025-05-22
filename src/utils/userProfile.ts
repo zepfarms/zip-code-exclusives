@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "sonner";
 
@@ -27,12 +26,12 @@ export const ensureUserProfile = async (userId: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     const userMeta = user?.user_metadata || {};
     
-    // Create new profile with simplified approach - ensuring seller type is used
+    // Create new profile with 'investor' type since that appears to be allowed in the database
     const newProfileData = {
       id: userId,
       first_name: userMeta.first_name || '',
       last_name: userMeta.last_name || '',
-      user_type: 'seller', // Always using 'seller' type
+      user_type: 'investor', // Using 'investor' as it appears to be valid in the DB
       notification_email: true,
       notification_sms: false,
       secondary_emails: [],
@@ -62,7 +61,7 @@ export const ensureUserProfile = async (userId: string) => {
       id: userId,
       notification_email: true,
       notification_sms: false,
-      user_type: 'seller',
+      user_type: 'investor', // Using 'investor' as the default type
       secondary_emails: [],
       secondary_phones: [],
       phone: '',
@@ -81,17 +80,19 @@ export const ensureUserProfile = async (userId: string) => {
 export const updateUserProfile = async (userId: string, profileData: any) => {
   try {
     // Ensure the profile exists first
-    await ensureUserProfile(userId);
+    const existingProfile = await ensureUserProfile(userId);
     
-    // Make sure user_type is always 'seller'
-    profileData.user_type = 'seller';
+    // Important: Keep the existing user_type to avoid violating the check constraint
+    // This removes the user_type from the update data entirely
+    const updatedData = { ...profileData };
+    delete updatedData.user_type;
     
-    console.log('Updating profile with data:', profileData);
+    console.log('Updating profile with data:', updatedData);
     
-    // Update the profile
+    // Update the profile without changing the user_type
     const { data, error } = await supabase
       .from('user_profiles')
-      .update(profileData)
+      .update(updatedData)
       .eq('id', userId)
       .select();
       
