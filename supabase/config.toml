@@ -187,6 +187,9 @@ port = 9999
 [functions.get-user-leads]
 verify_jwt = true
 
+[functions.get-user-territories]
+verify_jwt = true
+
 [functions.check-admin-status]
 verify_jwt = true
 

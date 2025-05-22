@@ -79,6 +79,26 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
         }
       }
       
+      // Try edge function approach first to bypass RLS issues
+      try {
+        const { data: edgeFunctionTerritories, error: edgeFunctionError } = await supabase.functions.invoke('get-user-territories', {
+          body: { userId }
+        });
+        
+        if (!edgeFunctionError && edgeFunctionTerritories?.territories && Array.isArray(edgeFunctionTerritories.territories)) {
+          console.log("Territories fetched via edge function:", edgeFunctionTerritories.territories.length);
+          setTerritories(edgeFunctionTerritories.territories);
+          
+          // Calculate subscription info
+          calculateSubscriptionInfo(edgeFunctionTerritories.territories, setSubscriptionInfo);
+          return;
+        } else {
+          console.log("Edge function approach failed for territories, falling back to standard query");
+        }
+      } catch (edgeError) {
+        console.error("Edge function error for territories:", edgeError);
+      }
+      
       // Explicitly filter by user_id to ensure we get the right data
       const { data: territories, error: territoriesError } = await supabase
         .from('territories')
@@ -118,27 +138,7 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
         }
         
         // Calculate subscription info
-        try {
-          // Find earliest next billing date
-          const nextBillingDates = territories
-            ?.map(t => t.next_billing_date)
-            .filter(Boolean) // Filter out null dates
-            .sort();
-            
-          if (nextBillingDates && nextBillingDates.length > 0) {
-            const nextRenewal = new Date(nextBillingDates[0]);
-            const today = new Date();
-            const daysRemaining = Math.ceil((nextRenewal.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-            
-            setSubscriptionInfo({
-              totalMonthly: territories.length * 0, // $0.00 per territory for testing
-              nextRenewal: nextRenewal,
-              daysRemaining: daysRemaining
-            });
-          }
-        } catch (subscriptionError) {
-          console.error("Error calculating subscription info:", subscriptionError);
-        }
+        calculateSubscriptionInfo(territories || [], setSubscriptionInfo);
       }
     } catch (err) {
       console.error("Error in territories fetch:", err);
@@ -149,20 +149,19 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
     try {
       console.log("Fetching leads for user:", userId);
       
-      // First try with the RPC function which should bypass RLS issues
+      // Try edge function as first approach
       try {
-        const { data: rlsDebugInfo } = await supabase.rpc('debug_utils', {
-          p_action: 'get_user_leads',
-          p_user_id: userId
+        const { data: edgeFunctionLeads, error: edgeFunctionError } = await supabase.functions.invoke('get-user-leads', {
+          body: { userId }
         });
         
-        if (rlsDebugInfo?.leads && Array.isArray(rlsDebugInfo.leads)) {
-          console.log("Leads fetched via RPC:", rlsDebugInfo.leads.length);
-          setLeads(rlsDebugInfo.leads);
+        if (!edgeFunctionError && edgeFunctionLeads?.leads) {
+          console.log("Leads fetched via edge function:", edgeFunctionLeads.leads.length);
+          setLeads(edgeFunctionLeads.leads);
           return; // Exit early if this method works
         }
-      } catch (rpcError) {
-        console.log("RPC method unavailable, falling back to standard query:", rpcError);
+      } catch (edgeError) {
+        console.error("Edge function error for leads:", edgeError);
       }
       
       // Standard approach - explicitly filter by user_id to ensure we get the right data
@@ -175,25 +174,8 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
       
       if (leadsError) {
         console.error("Error fetching leads:", leadsError);
-        
-        // Try edge function as last resort
-        try {
-          const { data: edgeFunctionLeads, error: edgeFunctionError } = await supabase.functions.invoke('get-user-leads', {
-            body: { userId }
-          });
-          
-          if (!edgeFunctionError && edgeFunctionLeads?.leads) {
-            console.log("Leads fetched via edge function:", edgeFunctionLeads.leads.length);
-            setLeads(edgeFunctionLeads.leads);
-          } else {
-            toast.error("Could not load your leads. Please try refreshing.");
-            setLeads([]);
-          }
-        } catch (edgeError) {
-          console.error("Edge function error:", edgeError);
-          toast.error("Could not load your leads. Please try refreshing.");
-          setLeads([]);
-        }
+        toast.error("Could not load your leads. Please try refreshing.");
+        setLeads([]);
       } else {
         console.log("Leads fetched:", leads?.length || 0);
         setLeads(leads || []);
@@ -207,5 +189,30 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
     console.error('Error fetching user data:', error);
   } finally {
     setIsLoading(false);
+  }
+};
+
+// Helper function to calculate subscription information based on territories
+const calculateSubscriptionInfo = (territories: any[], setSubscriptionInfo: any) => {
+  try {
+    // Find earliest next billing date
+    const nextBillingDates = territories
+      .map(t => t.next_billing_date)
+      .filter(Boolean) // Filter out null dates
+      .sort();
+      
+    if (nextBillingDates && nextBillingDates.length > 0) {
+      const nextRenewal = new Date(nextBillingDates[0]);
+      const today = new Date();
+      const daysRemaining = Math.ceil((nextRenewal.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      
+      setSubscriptionInfo({
+        totalMonthly: territories.length * 0, // $0.00 per territory for testing
+        nextRenewal: nextRenewal,
+        daysRemaining: daysRemaining
+      });
+    }
+  } catch (subscriptionError) {
+    console.error("Error calculating subscription info:", subscriptionError);
   }
 };
