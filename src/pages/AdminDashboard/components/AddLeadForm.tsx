@@ -230,6 +230,14 @@ const AddLeadForm = () => {
 
       setIsSubmitting(true);
       
+      // Get current user session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Not authenticated");
+        setIsSubmitting(false);
+        return;
+      }
+      
       // Prepare lead data
       const leadData = {
         name: formData.name,
@@ -246,13 +254,24 @@ const AddLeadForm = () => {
       
       console.log("Submitting lead data:", leadData);
       
-      // Insert lead into database
-      const { data, error } = await supabase
-        .from('leads')
-        .insert(leadData)
-        .select();
+      // Use admin edge function to create the lead to bypass RLS
+      const { data: createdLead, error } = await supabase.functions.invoke('create-admin-lead', {
+        body: { 
+          leadData, 
+          adminUserId: session.user.id 
+        }
+      });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error creating lead via edge function:", error);
+        throw new Error("Failed to create lead: " + error.message);
+      }
+      
+      if (!createdLead) {
+        throw new Error("No lead data returned from create function");
+      }
+      
+      console.log("Lead created successfully:", createdLead);
       
       // Notify the user if a territory match was found
       if (territoryMatch?.user_id) {
@@ -260,7 +279,7 @@ const AddLeadForm = () => {
           // Invoke notification edge function if we have a user to notify
           await supabase.functions.invoke('notify-lead', {
             body: { 
-              leadId: data[0].id, 
+              leadId: createdLead.id, 
               userId: territoryMatch.user_id 
             }
           });
@@ -277,9 +296,9 @@ const AddLeadForm = () => {
       setHasCheckedTerritory(false);
       setTerritoryMatch(null);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating lead:", error);
-      toast.error("Failed to create lead");
+      toast.error(`Failed to create lead: ${error.message || "Unknown error"}`);
     } finally {
       setIsSubmitting(false);
     }
