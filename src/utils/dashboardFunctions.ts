@@ -99,7 +99,7 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
             id: 'pending-' + Date.now(),
             user_id: userId,
             zip_code: justCreatedTerritory.zip_code,
-            lead_type: 'seller',
+            lead_type: justCreatedTerritory.lead_type || 'investor',
             active: true,
             start_date: justCreatedTerritory.timestamp,
             next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),

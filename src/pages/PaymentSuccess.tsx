@@ -21,12 +21,13 @@ const PaymentSuccess = () => {
   // Extract query parameters from URL
   const queryParams = new URLSearchParams(location.search);
   const zipCode = queryParams.get('zip_code');
+  const leadType = queryParams.get('lead_type') || 'investor'; // Default to investor if not specified
   
   // Automatically redirect to dashboard after checking auth
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log("Processing payment success with zip code:", zipCode);
+        console.log("Processing payment success with zip code:", zipCode, "and lead type:", leadType);
         
         // Get session data
         const { data: { session } } = await supabase.auth.getSession();
@@ -53,13 +54,13 @@ const PaymentSuccess = () => {
           // If we have a zip code from query params, create the territory
           if (zipCode) {
             try {
-              console.log("Creating territory with zip:", zipCode);
+              console.log("Creating territory with zip:", zipCode, "and lead type:", leadType);
               
               const { data: territoryData, error: territoryError } = await supabase.functions.invoke('create-territory', {
                 body: { 
                   zipCode, 
                   userId: session.user.id, 
-                  leadType: 'seller' 
+                  leadType: leadType 
                 }
               });
               
@@ -75,6 +76,7 @@ const PaymentSuccess = () => {
                 // Save territory data to sessionStorage for immediate access
                 sessionStorage.setItem('justCreatedTerritory', JSON.stringify({
                   zip_code: zipCode,
+                  lead_type: leadType,
                   timestamp: new Date().toISOString()
                 }));
               }
@@ -116,7 +118,7 @@ const PaymentSuccess = () => {
     };
     
     checkAuth();
-  }, [navigate, zipCode, location]);
+  }, [navigate, zipCode, leadType, location]);
   
   const handleGoToDashboard = () => {
     // Add query parameters to signal the dashboard to force refresh data

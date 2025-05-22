@@ -132,6 +132,10 @@ serve(async (req) => {
     const successUrl = new URL("/payment-success", origin);
     successUrl.searchParams.set("zip_code", zipCode);
     
+    // Normalize the lead type for success URL
+    const normalizedLeadType = leadType === 'agent' ? 'agent' : 'investor';
+    successUrl.searchParams.set("lead_type", normalizedLeadType);
+    
     // Generate a cancel URL that goes back to payment page with zip code
     const cancelUrl = new URL("/payment", origin);
     cancelUrl.searchParams.set("zip_code", zipCode);

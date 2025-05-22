@@ -22,7 +22,7 @@ serve(async (req) => {
     }
 
     // Log request details for debugging
-    console.log(`Creating territory for user ${userId} with zip code ${zipCode} and lead type ${leadType || 'seller'}`);
+    console.log(`Creating territory for user ${userId} with zip code ${zipCode} and lead type ${leadType || 'investor'}`);
 
     // Initialize the admin service client to bypass RLS
     const supabaseAdmin = createClient(
@@ -99,13 +99,17 @@ serve(async (req) => {
     const thirtySevenDaysLater = new Date(now);
     thirtySevenDaysLater.setDate(now.getDate() + 37); // 30 days + 7 days initial lead delivery period
     
-    console.log(`Creating new territory for user ${userId} with zip code ${zipCode}`);
+    // Convert the leadType to match database constraints (only 'investor' or 'agent' is allowed)
+    // Default to 'investor' if the leadType is not valid
+    const validLeadType = leadType === 'agent' ? 'agent' : 'investor';
+    
+    console.log(`Creating new territory for user ${userId} with zip code ${zipCode} and normalized lead type ${validLeadType}`);
     const { data: territory, error: insertError } = await supabaseAdmin
       .from("territories")
       .insert({
         user_id: userId,
         zip_code: zipCode,
-        lead_type: leadType || "seller",
+        lead_type: validLeadType,
         active: true,
         start_date: now.toISOString(),
         next_billing_date: thirtySevenDaysLater.toISOString()
@@ -116,7 +120,7 @@ serve(async (req) => {
     if (insertError) {
       console.error("Error creating territory:", insertError);
       return new Response(
-        JSON.stringify({ error: "Failed to create territory" }),
+        JSON.stringify({ error: "Failed to create territory: " + insertError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

@@ -76,8 +76,10 @@ const AddTerritoryCard = ({ onTerritoryAdded }: { onTerritoryAdded: () => void }
       console.log("Creating checkout for zip code:", zipCode);
       
       // Create Stripe checkout session with explicit lead_type
+      // Note: We're using 'investor' as the default lead type since the database only accepts 'investor' or 'agent'
+      const leadType = 'investor';
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { zipCode, leadType: 'seller' }
+        body: { zipCode, leadType }
       });
       
       if (error) {
