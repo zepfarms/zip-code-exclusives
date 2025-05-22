@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Loader, Search, Edit, UserPlus } from 'lucide-react';
+import { Loader, Search, Edit, UserPlus, Bell } from 'lucide-react';
 
 interface Lead {
   id: string;
@@ -82,6 +82,7 @@ const LeadsTable = () => {
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isNotifying, setIsNotifying] = useState(false);
   
   // Fetch leads
   useEffect(() => {
@@ -227,6 +228,42 @@ const LeadsTable = () => {
       toast.error("Failed to update lead notes");
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleResendNotification = async (lead: Lead) => {
+    if (!lead.user_id) {
+      toast.error("This lead is not assigned to any user");
+      return;
+    }
+    
+    try {
+      setIsNotifying(true);
+      console.log("Sending notification for lead:", lead.id, "to user:", lead.user_id);
+      
+      const { data: notificationResult, error: notificationError } = await supabase.functions.invoke('notify-lead', {
+        body: {
+          leadId: lead.id,
+          userId: lead.user_id
+        }
+      });
+
+      if (notificationError) {
+        console.error("Error sending lead notification:", notificationError);
+        toast.error("Failed to send notification");
+      } else {
+        console.log("Notification result:", notificationResult);
+        if (notificationResult.notificationResults.email) {
+          toast.success("Notification sent successfully");
+        } else {
+          toast.warning("Notification partially sent or failed");
+        }
+      }
+    } catch (error) {
+      console.error("Failed to send lead notification:", error);
+      toast.error("Failed to send notification");
+    } finally {
+      setIsNotifying(false);
     }
   };
 
@@ -417,6 +454,18 @@ const LeadsTable = () => {
                       >
                         <Edit className="h-4 w-4 mr-1" /> Notes
                       </Button>
+                      {lead.user_id && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleResendNotification(lead)}
+                          disabled={isNotifying}
+                          title="Resend notification to assigned user"
+                        >
+                          <Bell className="h-4 w-4 mr-1" />
+                          Notify
+                        </Button>
+                      )}
                       <Button
                         variant={lead.archived ? "outline" : "secondary"}
                         size="sm"

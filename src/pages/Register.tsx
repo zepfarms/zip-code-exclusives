@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -75,6 +74,22 @@ const Register = () => {
       }
 
       toast.success("Account created and logged in successfully!");
+
+      // Ensure user profile creation by calling the ensure-profile function
+      try {
+        const userId = signInData.user?.id;
+        if (userId) {
+          const { data: profileData, error: profileError } = await supabase.functions.invoke('ensure-profile', {
+            body: { userId }
+          });
+          
+          if (profileError) {
+            console.error("Error ensuring user profile:", profileError);
+          }
+        }
+      } catch (profileError) {
+        console.error("Failed to ensure user profile:", profileError);
+      }
 
       // Navigate to dashboard
       navigate('/dashboard');

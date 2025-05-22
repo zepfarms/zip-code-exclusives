@@ -1,6 +1,17 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
+import { Resend } from "https://esm.sh/resend@1.0.0";
+
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+
+// Initialize Resend
+const resend = new Resend(RESEND_API_KEY);
+
+// Initialize Supabase client
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,26 +40,15 @@ serve(async (req) => {
       throw new Error("Missing required parameters");
     }
     
-    // Initialize Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
-        },
-      }
-    );
-    
     // Get user details
-    const { data: userData, error: userError } = await supabaseClient.auth.admin.getUserById(userId);
+    const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
     
     if (userError || !userData.user) {
       throw new Error(`Error fetching user: ${userError?.message || "User not found"}`);
     }
     
     // Get user profile
-    const { data: profileData, error: profileError } = await supabaseClient
+    const { data: profileData, error: profileError } = await supabase
       .from('user_profiles')
       .select('first_name, last_name')
       .eq('id', userId)
@@ -66,24 +66,23 @@ serve(async (req) => {
       zip_code: zipCode
     };
     
-    // Send welcome email via email service
-    // In a real application, you'd use a service like SendGrid, Mailgun, etc.
-    // For now, we'll just log that we would send an email
-
-    console.log(`Welcome email would be sent to ${userDetails.email} with the following details:`, userDetails);
+    // Send welcome email
+    const { data, error } = await resend.emails.send({
+      from: "LeadXclusive <help@leadxclusive.com>",
+      to: userDetails.email,
+      subject: "Welcome to LeadXclusive!",
+      html: generateWelcomeEmailHtml(userDetails)
+    });
     
-    // In a real implementation, you would add code to send an email here
-    // For example:
-    // const emailResponse = await sendEmailViaYourService({
-    //   to: userDetails.email,
-    //   subject: "Welcome to LeadXclusive!",
-    //   html: generateWelcomeEmailHtml(userDetails)
-    // });
+    if (error) {
+      console.error("Error sending welcome email:", error);
+      throw new Error(`Failed to send welcome email: ${error.message}`);
+    }
     
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Welcome email has been queued for sending",
+        message: "Welcome email sent successfully",
       }),
       {
         status: 200,
@@ -93,7 +92,7 @@ serve(async (req) => {
         },
       }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in welcome-email function:", error);
     return new Response(
       JSON.stringify({

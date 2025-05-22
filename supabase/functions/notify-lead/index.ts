@@ -1,14 +1,13 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import * as SendGrid from "https://esm.sh/@sendgrid/mail@7.7.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
+import { Resend } from "https://esm.sh/resend@1.0.0";
 
-const SENDGRID_API_KEY = Deno.env.get("SENDGRID_API_KEY") || "";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
-// Initialize SendGrid
-SendGrid.setApiKey(SENDGRID_API_KEY);
+// Initialize Resend
+const resend = new Resend(RESEND_API_KEY);
 
 // Initialize Supabase client
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -38,27 +37,35 @@ async function sendEmail(emails: string[], lead: any) {
     return false;
   }
 
-  const msg = {
-    to: validEmails,
-    from: "leads@leadxclusive.com", // Using your domain email
-    subject: "New Lead Notification",
-    html: `
-      <h2>New Lead Assigned</h2>
-      <p>A new lead has been assigned to you:</p>
-      <ul>
-        <li><strong>Name:</strong> ${lead.name || 'Not provided'}</li>
-        <li><strong>Email:</strong> ${lead.email || 'Not provided'}</li>
-        <li><strong>Phone:</strong> ${lead.phone || 'Not provided'}</li>
-        <li><strong>Address:</strong> ${lead.address || 'Not provided'}</li>
-        <li><strong>Zip Code:</strong> ${lead.territory_zip_code}</li>
-      </ul>
-      <p>Log in to your dashboard to manage this lead.</p>
-      <p><a href="https://www.leadxclusive.com/dashboard">Go to Dashboard</a></p>
-    `,
-  };
-
   try {
-    await SendGrid.send(msg);
+    const { data, error } = await resend.emails.send({
+      from: "LeadXclusive <help@leadxclusive.com>",
+      to: validEmails,
+      subject: "New Lead Notification",
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">New Lead Assigned</h2>
+          <p>A new lead has been assigned to you:</p>
+          <div style="background-color: #f5f5f5; border-radius: 5px; padding: 15px; margin: 20px 0;">
+            <p><strong>Name:</strong> ${lead.name || 'Not provided'}</p>
+            <p><strong>Email:</strong> ${lead.email || 'Not provided'}</p>
+            <p><strong>Phone:</strong> ${lead.phone || 'Not provided'}</p>
+            <p><strong>Address:</strong> ${lead.address || 'Not provided'}</p>
+            <p><strong>Zip Code:</strong> ${lead.territory_zip_code}</p>
+            <p><strong>Notes:</strong> ${lead.notes || 'None'}</p>
+          </div>
+          <p>Log in to your dashboard to manage this lead:</p>
+          <p><a href="https://www.leadxclusive.com/dashboard" style="background-color: #4a6cf7; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; display: inline-block;">Go to Dashboard</a></p>
+          <p style="color: #777; font-size: 13px; margin-top: 30px;">This email was sent from LeadXclusive lead notification system.</p>
+        </div>
+      `,
+    });
+    
+    if (error) {
+      console.error("Error sending email notification:", error);
+      return false;
+    }
+    
     console.log("Email notification sent successfully to", validEmails);
     return true;
   } catch (error) {
@@ -68,71 +75,10 @@ async function sendEmail(emails: string[], lead: any) {
 }
 
 async function sendSms(phones: string[], lead: any) {
-  if (!phones || phones.length === 0) {
-    console.log("No phone numbers provided for notification");
-    return false;
-  }
-
-  // Filter out empty strings
-  const validPhones = phones.filter(phone => phone && phone.trim());
-  
-  if (validPhones.length === 0) {
-    console.log("No valid phone numbers found after filtering");
-    return false;
-  }
-
-  // Using Email-to-SMS gateways (free option)
-  // This will only work with US phone numbers and certain carriers
-  
-  // Format: number@carrier-gateway
-  // Examples:
-  // AT&T: number@txt.att.net
-  // T-Mobile: number@tmomail.net
-  // Verizon: number@vtext.com
-  // Sprint: number@messaging.sprintpcs.com
-
-  const carriers = [
-    "txt.att.net", 
-    "tmomail.net", 
-    "vtext.com", 
-    "messaging.sprintpcs.com"
-  ];
-  
-  try {
-    const smsPromises = [];
-    
-    for (const phone of validPhones) {
-      const cleanPhone = phone.replace(/\D/g, '');
-      if (cleanPhone.length !== 10) {
-        console.error(`Invalid phone number format: ${phone}`);
-        continue;
-      }
-      
-      // Try sending to all carriers
-      for (const carrier of carriers) {
-        const smsMsg = {
-          to: `${cleanPhone}@${carrier}`,
-          from: "leads@leadxclusive.com", // Using your domain email
-          subject: "New Lead",
-          text: `New Lead: ${lead.name || 'Unknown'} - ${lead.phone || 'No phone'} - Zip: ${lead.territory_zip_code}`,
-        };
-        
-        smsPromises.push(SendGrid.send(smsMsg).catch(err => {
-          // Silently catch errors for individual carriers
-          console.log(`Failed SMS to ${cleanPhone}@${carrier}: ${err.message}`);
-          return null;
-        }));
-      }
-    }
-    
-    // Wait for all SMS attempts to complete
-    await Promise.allSettled(smsPromises);
-    console.log("SMS notification attempts completed");
-    return true;
-  } catch (error) {
-    console.error("Error sending SMS notification:", error);
-    return false;
-  }
+  // We'll keep this for future implementation
+  // For now, just log that SMS would be sent
+  console.log(`SMS notification would be sent to ${phones.length} recipients`);
+  return false;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -229,7 +175,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     });
     
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in notify-lead function:", error.message);
     
     return new Response(JSON.stringify({
