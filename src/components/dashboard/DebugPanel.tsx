@@ -1,10 +1,11 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { debugRlsAccess } from '@/utils/debugRls';
-import { toast } from 'react-toastify';
-import { Loader } from '@/components/ui/loader';
+import { toast } from "sonner";
+import { Loader } from 'lucide-react';
 
 const DebugPanel = ({ userId, territories, leads, refreshData }: { 
   userId: string | null,
