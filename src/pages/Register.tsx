@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -17,6 +16,7 @@ import Footer from '@/components/Footer';
 import { supabase } from "@/integrations/supabase/client";
 import { Loader } from 'lucide-react';
 import { Checkbox } from "@/components/ui/checkbox";
+import { ensureUserProfile } from '@/utils/userProfile';
 
 const Register = () => {
   // Form state
@@ -83,27 +83,19 @@ const Register = () => {
         return;
       }
 
-      toast.success("Account created and logged in successfully!");
-
-      // Ensure user profile creation by calling the ensure-profile function
-      try {
-        const userId = signInData.user?.id;
-        if (userId) {
-          const { data: profileData, error: profileError } = await supabase.functions.invoke('ensure-profile', {
-            body: { userId }
-          });
-          
-          if (profileError) {
-            console.error("Error ensuring user profile:", profileError);
-          }
-          
-          // Redirect to add territory or check availability page since user doesn't have a territory yet
-          navigate('/check-availability');
+      // Ensure user profile creation
+      if (signInData.user) {
+        try {
+          await ensureUserProfile(signInData.user.id);
+          toast.success("Account created and logged in successfully!");
+          // Direct to dashboard immediately after successful registration and login
+          navigate('/dashboard');
+        } catch (profileError) {
+          console.error("Failed to ensure user profile:", profileError);
+          // Still navigate to dashboard as this is not a critical error
+          toast.success("Account created and logged in successfully!");
+          navigate('/dashboard');
         }
-      } catch (profileError) {
-        console.error("Failed to ensure user profile:", profileError);
-        // Still navigate to dashboard as this is not a critical error
-        navigate('/dashboard');
       }
     } catch (error: any) {
       console.error("Registration error:", error);
