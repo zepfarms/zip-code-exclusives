@@ -81,7 +81,7 @@ const Payment = () => {
       
       // Call Stripe checkout function
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { zipCode, leadType: 'seller' }
+        body: { zipCode, leadType: 'investor' }
       });
 
       if (error) {
@@ -141,19 +141,19 @@ const Payment = () => {
                 <span>Seller Leads</span>
               </div>
               <div className="flex justify-between mb-4 pb-4 border-b border-gray-200">
-                <span className="font-medium">Monthly Subscription:</span>
-                <span>$0.00</span>
+                <span className="font-medium">Territory Fee:</span>
+                <span>$1.00</span>
               </div>
               <div className="flex justify-between text-lg font-semibold">
                 <span>Total Today:</span>
-                <span>$0.00</span>
+                <span>$1.00</span>
               </div>
               <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded text-sm text-blue-700">
                 <p className="font-medium mb-1">Important Information:</p>
                 <ul className="list-disc pl-5 space-y-1">
                   <li>Your subscription begins immediately after payment.</li>
                   <li>First leads will be delivered in 7 days.</li>
-                  <li>Your next payment will be due in 37 days (30 days after your first leads).</li>
+                  <li>This is a test payment of $1.00.</li>
                 </ul>
               </div>
             </div>
@@ -171,7 +171,7 @@ const Payment = () => {
                   </>
                 ) : (
                   <>
-                    Subscribe Now - FREE (Testing)
+                    Pay $1.00 Now (Test Payment)
                   </>
                 )}
               </Button>
@@ -189,7 +189,7 @@ const Payment = () => {
           </CardContent>
           <CardFooter className="text-xs text-gray-500 text-center">
             By completing your purchase, you agree to our Terms of Service and Privacy Policy.
-            Your subscription will automatically renew each month (at $0/month during testing).
+            This is a test payment of $1.00 for development purposes.
           </CardFooter>
         </Card>
       </main>

@@ -2,10 +2,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import Stripe from "https://esm.sh/stripe@14.21.0";
 
 const stripe = {
-  url: "https://api.stripe.com/v1/checkout/sessions",
-  apiKey: Deno.env.get("STRIPE_SECRET_KEY") || "",
+  client: new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+    apiVersion: "2023-10-16",
+  }),
 };
 
 serve(async (req) => {
@@ -127,7 +129,19 @@ serve(async (req) => {
       );
     }
 
-    // Generate a success URL with zip code parameter
+    // Save the user's email to use for Stripe
+    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (userError) {
+      console.error("Error getting user data:", userError);
+      return new Response(
+        JSON.stringify({ error: "Error getting user data" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    const userEmail = userData.user?.email || "unknown@example.com";
+    
+    // Generate success and cancel URLs
     const origin = req.headers.get("origin") || "https://ietvubimwsfugzkiycus.supabase.co";
     const successUrl = new URL("/payment-success", origin);
     successUrl.searchParams.set("zip_code", zipCode);
@@ -142,7 +156,6 @@ serve(async (req) => {
 
     // Save checkout details for admin notification
     try {
-      const userEmail = await getUserEmail(supabaseAdmin, userId);
       await supabaseAdmin.from("territory_requests").insert({
         user_id: userId,
         user_email: userEmail,
@@ -157,19 +170,86 @@ serve(async (req) => {
       // Continue with checkout even if recording fails
     }
 
-    // For testing purposes - FREE checkout with redirect
-    // This simulates a successful checkout without charging
-    console.log("Creating FREE test checkout session for zip code:", zipCode);
-    
-    // Create a simulated checkout URL
-    const checkoutUrl = successUrl.toString();
-    console.log("Generated checkout URL:", checkoutUrl);
-    
-    // Return the direct success URL instead of a Stripe checkout
-    return new Response(
-      JSON.stringify({ success: true, url: checkoutUrl }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    // Check if this user already has a Stripe customer ID
+    let customerId;
+    const { data: customerData } = await supabaseAdmin
+      .from("user_profiles")
+      .select("stripe_customer_id")
+      .eq("id", userId)
+      .single();
+      
+    if (customerData?.stripe_customer_id) {
+      customerId = customerData.stripe_customer_id;
+      console.log("Found existing Stripe customer:", customerId);
+    } else {
+      // Create a new customer in Stripe
+      try {
+        const customer = await stripe.client.customers.create({
+          email: userEmail,
+          metadata: {
+            user_id: userId
+          }
+        });
+        customerId = customer.id;
+        
+        // Save the customer ID to the user's profile
+        await supabaseAdmin
+          .from("user_profiles")
+          .update({ stripe_customer_id: customerId })
+          .eq("id", userId);
+          
+        console.log("Created new Stripe customer:", customerId);
+      } catch (error) {
+        console.error("Error creating Stripe customer:", error);
+        return new Response(
+          JSON.stringify({ error: "Failed to create Stripe customer" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // Create a Stripe checkout session for a $1 payment
+    try {
+      console.log("Creating Stripe checkout session for zip code:", zipCode);
+      const session = await stripe.client.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: `Exclusive Territory: ${zipCode}`,
+                description: `Exclusive rights to receive leads in zip code ${zipCode}`
+              },
+              unit_amount: 100, // $1.00 in cents
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        success_url: successUrl.toString(),
+        cancel_url: cancelUrl.toString(),
+        metadata: {
+          zip_code: zipCode,
+          user_id: userId,
+          lead_type: normalizedLeadType
+        }
+      });
+      
+      console.log("Generated Stripe checkout URL:", session.url);
+      
+      return new Response(
+        JSON.stringify({ success: true, url: session.url }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } catch (error) {
+      console.error("Error creating Stripe checkout session:", error);
+      return new Response(
+        JSON.stringify({ error: "Failed to create checkout session" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
   } catch (error) {
     console.error("Error in create-checkout function:", error);
     return new Response(
@@ -178,15 +258,3 @@ serve(async (req) => {
     );
   }
 });
-
-// Helper function to get user email
-async function getUserEmail(supabaseClient, userId) {
-  try {
-    // Try to get user from auth.users table using admin API
-    const { data: user } = await supabaseClient.auth.admin.getUserById(userId);
-    return user?.email || "unknown-email";
-  } catch (error) {
-    console.error("Error getting user email:", error);
-    return "unknown-email";
-  }
-}

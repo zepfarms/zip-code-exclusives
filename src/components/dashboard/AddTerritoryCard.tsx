@@ -171,7 +171,7 @@ const AddTerritoryCard = ({ onTerritoryAdded }: { onTerritoryAdded: () => void }
                       Processing...
                     </>
                   ) : (
-                    'Subscribe Now - FREE (Testing)'
+                    'Subscribe Now - $1 (Test Payment)'
                   )}
                 </Button>
               </div>
