@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -32,6 +31,7 @@ interface Territory {
   zip_code: string;
   lead_type: string;
   user_id: string;
+  active: boolean;
   user_profiles?: {
     first_name: string | null;
     last_name: string | null;
@@ -90,56 +90,65 @@ const AddLeadForm = () => {
       setIsLoadingTerritories(true);
       console.log("Fetching territories for lead assignment...");
       
-      // Get territories with a more robust approach
-      const { data: territoriesData, error: territoriesError } = await supabase
-        .from('territories')
-        .select(`
-          id,
-          zip_code,
-          lead_type,
-          user_id,
-          active
-        `)
-        .eq('active', true);
+      // Get current user session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Not authenticated");
+      }
+      
+      // Use the enhanced edge function to get all territories as admin
+      const { data: territoriesData, error: territoriesError } = await supabase.functions.invoke('get-user-territories', {
+        body: { 
+          userId: session.user.id, 
+          includeInactive: true, 
+          getAllForAdmin: true 
+        }
+      });
 
       if (territoriesError) {
-        throw territoriesError;
+        console.error("Error from edge function:", territoriesError);
+        throw new Error("Failed to fetch territories via edge function");
+      }
+
+      if (!territoriesData || !territoriesData.territories) {
+        console.error("Invalid response format from edge function:", territoriesData);
+        throw new Error("Invalid response format from territories edge function");
       }
       
-      console.log("Raw territories data:", territoriesData);
+      // Only keep active territories for lead assignment
+      const activeTerritoriesOnly = territoriesData.territories.filter(
+        (territory: Territory) => territory.active
+      );
       
-      if (!territoriesData || territoriesData.length === 0) {
-        console.log("No active territories found");
-        setTerritories([]);
-        setIsLoadingTerritories(false);
-        return;
-      }
+      console.log(`Fetched ${activeTerritoriesOnly.length} active territories from edge function`);
       
       // Get user profiles
-      const { data: userProfilesData, error: profilesError } = await supabase
-        .from('user_profiles')
-        .select('id, first_name, last_name');
+      const { data: userProfiles, error: profilesError } = await supabase.functions.invoke('get-admin-profiles', {
+        body: { userId: session.user.id }
+      });
       
       if (profilesError) {
         console.error("Error fetching user profiles:", profilesError);
       }
       
+      // Get user emails from the edge function
+      const { data: usersList, error: usersError } = await supabase.functions.invoke('get-all-users', {
+        body: { userId: session.user.id }
+      });
+      
+      if (usersError) {
+        console.error("Error fetching users:", usersError);
+      }
+      
       // Create a map of user profiles by ID
       const userProfilesMap = new Map();
-      if (userProfilesData) {
-        userProfilesData.forEach((profile: any) => {
+      if (userProfiles) {
+        userProfiles.forEach((profile: any) => {
           userProfilesMap.set(profile.id, {
             first_name: profile.first_name,
             last_name: profile.last_name
           });
         });
-      }
-      
-      // Get user emails from the edge function
-      const { data: usersList, error: usersError } = await supabase.functions.invoke('get-all-users');
-      
-      if (usersError) {
-        console.error("Error fetching users:", usersError);
       }
       
       // Create a map of user emails by ID
@@ -151,8 +160,10 @@ const AddLeadForm = () => {
       }
       
       // Combine territory data with user profiles and emails
-      const enhancedTerritories = territoriesData.map((territory: any) => {
+      const enhancedTerritories = activeTerritoriesOnly.map((territory: any) => {
+        // Find the profile that matches this territory's user_id
         const profile = userProfilesMap.get(territory.user_id);
+        // Find the auth user email that matches this territory's user_id
         const email = userEmailsMap.get(territory.user_id);
         
         return {
@@ -165,7 +176,7 @@ const AddLeadForm = () => {
         };
       });
       
-      console.log("Enhanced territories:", enhancedTerritories);
+      console.log("Enhanced territories for lead assignment:", enhancedTerritories);
       setTerritories(enhancedTerritories);
       setIsLoadingTerritories(false);
     } catch (error) {

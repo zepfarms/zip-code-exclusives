@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -71,23 +72,19 @@ const TerritoriesTable = () => {
 
       console.log(`Fetched ${territoriesData.territories.length} total territories from edge function`); 
     
-      // Get user profiles via the new edge function
+      // Get user profiles via the edge function
       const { data: userProfiles, error: profilesError } = await supabase.functions.invoke('get-admin-profiles', {
         body: { userId: session.user.id }
-      }).catch(err => {
-        // Fallback to direct query if edge function fails
-        console.error("Edge function for profiles failed, using fallback:", err);
-        return supabase
-          .from('user_profiles')
-          .select('id, first_name, last_name');
       });
       
       if (profilesError) {
         console.error("Error fetching user profiles:", profilesError);
       }
       
-      // Get user emails from the edge function
-      const { data: usersList, error: usersError } = await supabase.functions.invoke('get-all-users');
+      // Get user emails using the edge function
+      const { data: usersList, error: usersError } = await supabase.functions.invoke('get-all-users', {
+        body: { userId: session.user.id }
+      });
       
       if (usersError) {
         console.error("Error fetching users for territories:", usersError);
@@ -105,18 +102,27 @@ const TerritoriesTable = () => {
         });
       }
       
+      // Create a map of user emails by ID
+      const userEmailsMap = new Map();
+      if (usersList) {
+        usersList.forEach((user: any) => {
+          userEmailsMap.set(user.id, user.email);
+        });
+      }
+      
       // Combine territory data with user profiles and emails
       const enhancedTerritories = territoriesData.territories.map((territory: any) => {
-        // Find the auth user that matches this territory's user_id
-        const authUser = usersList?.find((u: any) => u.id === territory.user_id);
-        const userProfile = userProfilesMap.get(territory.user_id) || {};
+        // Find the profile that matches this territory's user_id
+        const profile = userProfilesMap.get(territory.user_id);
+        // Find the auth user email that matches this territory's user_id
+        const email = userEmailsMap.get(territory.user_id);
         
         return {
           ...territory,
           user_profile: {
-            first_name: userProfile.first_name || null,
-            last_name: userProfile.last_name || null,
-            email: authUser?.email || 'N/A'
+            first_name: profile?.first_name || null,
+            last_name: profile?.last_name || null,
+            email: email || 'N/A'
           }
         };
       });
