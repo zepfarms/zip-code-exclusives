@@ -21,7 +21,9 @@ const Header = () => {
         
         if (error) {
           console.error('Authentication error:', error);
-          throw error;
+          setUser(null);
+          setIsLoading(false);
+          return;
         }
         
         setUser(data.session?.user || null);
@@ -33,6 +35,7 @@ const Header = () => {
         }
       } catch (error) {
         console.error('Authentication error:', error);
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -41,7 +44,8 @@ const Header = () => {
     getUser();
 
     // Listen for auth changes with cleaner subscription handling
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event, session?.user?.email || "No user");
       setUser(session?.user || null);
       
       // Check admin status when auth state changes
@@ -53,16 +57,30 @@ const Header = () => {
     });
 
     return () => {
-      authListener?.subscription.unsubscribe();
+      if (authListener?.subscription) {
+        authListener.subscription.unsubscribe();
+      }
     };
   }, []);
 
   const handleLogout = async () => {
     try {
+      // Attempt to sign out
       const { error } = await supabase.auth.signOut();
       
       if (error) {
         console.error('Logout error:', error);
+        
+        // Special handling for missing session errors
+        if (error.message.includes('session')) {
+          // If session is missing, we'll consider user logged out anyway
+          setUser(null);
+          setIsAdmin(false);
+          toast.success("Logged out successfully");
+          navigate('/', { replace: true });
+          return;
+        }
+        
         toast.error(`Failed to log out: ${error.message}`);
         return;
       }
@@ -74,7 +92,12 @@ const Header = () => {
       navigate('/', { replace: true });
     } catch (error) {
       console.error('Logout error:', error);
-      toast.error('Failed to log out');
+      
+      // Fallback handling - reset state and redirect
+      setUser(null);
+      setIsAdmin(false);
+      navigate('/', { replace: true });
+      toast.success("Logged out successfully");
     }
   };
 

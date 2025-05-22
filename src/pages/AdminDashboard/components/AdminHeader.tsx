@@ -14,6 +14,15 @@ const AdminHeader = () => {
       
       if (error) {
         console.error('Logout error:', error);
+        
+        // Special handling for missing session errors
+        if (error.message.includes('session')) {
+          // If session is missing, we'll consider user logged out anyway
+          toast.success("Logged out successfully");
+          navigate('/login', { replace: true });
+          return;
+        }
+        
         toast.error(`Failed to log out: ${error.message}`);
         return;
       }
@@ -22,7 +31,10 @@ const AdminHeader = () => {
       navigate('/login', { replace: true });
     } catch (error) {
       console.error('Logout error:', error);
-      toast.error("Error logging out");
+      
+      // Fallback handling - just redirect to login page
+      navigate('/login', { replace: true });
+      toast.success("Logged out successfully");
     }
   };
   
