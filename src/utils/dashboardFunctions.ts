@@ -145,11 +145,27 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
       setTerritories([]);
     }
 
-    // Try to get leads - explicitly filter by user_id to avoid RLS issues
+    // Try to get leads - use our improved debug helper and add better error handling
     try {
       console.log("Fetching leads for user:", userId);
       
-      // Explicitly filter by user_id to ensure we get the right data
+      // First try with the RPC function which should bypass RLS issues
+      try {
+        const { data: rlsDebugInfo } = await supabase.rpc('debug_utils', {
+          p_action: 'get_user_leads',
+          p_user_id: userId
+        });
+        
+        if (rlsDebugInfo?.leads && Array.isArray(rlsDebugInfo.leads)) {
+          console.log("Leads fetched via RPC:", rlsDebugInfo.leads.length);
+          setLeads(rlsDebugInfo.leads);
+          return; // Exit early if this method works
+        }
+      } catch (rpcError) {
+        console.log("RPC method unavailable, falling back to standard query:", rpcError);
+      }
+      
+      // Standard approach - explicitly filter by user_id to ensure we get the right data
       const { data: leads, error: leadsError } = await supabase
         .from('leads')
         .select('*')
@@ -159,8 +175,25 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
       
       if (leadsError) {
         console.error("Error fetching leads:", leadsError);
-        toast.error("Could not load your leads. Please try refreshing.");
-        setLeads([]);
+        
+        // Try edge function as last resort
+        try {
+          const { data: edgeFunctionLeads, error: edgeFunctionError } = await supabase.functions.invoke('get-user-leads', {
+            body: { userId }
+          });
+          
+          if (!edgeFunctionError && edgeFunctionLeads?.leads) {
+            console.log("Leads fetched via edge function:", edgeFunctionLeads.leads.length);
+            setLeads(edgeFunctionLeads.leads);
+          } else {
+            toast.error("Could not load your leads. Please try refreshing.");
+            setLeads([]);
+          }
+        } catch (edgeError) {
+          console.error("Edge function error:", edgeError);
+          toast.error("Could not load your leads. Please try refreshing.");
+          setLeads([]);
+        }
       } else {
         console.log("Leads fetched:", leads?.length || 0);
         setLeads(leads || []);

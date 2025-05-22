@@ -79,6 +79,22 @@ export const debugRlsAccess = async () => {
         
       if (countError) {
         console.error('⚠️ Leads count error:', countError);
+        
+        // If lead count fails, try a different approach
+        try {
+          // Attempt with the edge function
+          const { data: edgeFunctionData, error: edgeFunctionError } = await supabase.functions.invoke('get-user-leads', {
+            body: { userId: session.user.id }
+          });
+          
+          if (edgeFunctionError) {
+            console.error('⚠️ Edge function leads access error:', edgeFunctionError);
+          } else {
+            console.log(`✅ Edge function leads access successful: found ${edgeFunctionData?.leads?.length || 0} leads`);
+          }
+        } catch (edgeErr) {
+          console.error('⚠️ Error testing edge function leads:', edgeErr);
+        }
       } else {
         console.log(`✅ Leads access appears successful: found approximately ${leadsCount} leads`);
         
@@ -106,8 +122,36 @@ export const debugRlsAccess = async () => {
         
       if (adminError) {
         console.error('⚠️ Admin check error:', adminError);
+        
+        // Try edge function instead
+        try {
+          const { data: adminCheck, error: adminCheckError } = await supabase.functions.invoke('check-admin-status', {
+            body: { userId: session.user.id }
+          });
+          
+          if (adminCheckError) {
+            console.error('⚠️ Edge function admin check error:', adminCheckError);
+          } else {
+            console.log(`✅ Edge function admin check successful: User is ${adminCheck?.isAdmin ? '' : 'not '}an admin`);
+          }
+        } catch (edgeErr) {
+          console.error('⚠️ Error testing edge function admin check:', edgeErr);
+        }
       } else {
         console.log(`✅ Admin check successful: User is ${isAdmin ? '' : 'not '}an admin`);
+      }
+      
+      // Direct query to user_profiles as a last resort
+      const { data: profileData, error: profileQueryError } = await supabase
+        .from('user_profiles')
+        .select('is_admin')
+        .eq('id', session.user.id)
+        .maybeSingle();
+        
+      if (profileQueryError) {
+        console.error('⚠️ Profile admin query error:', profileQueryError);
+      } else if (profileData) {
+        console.log(`✅ Profile admin query successful: User is ${profileData.is_admin ? '' : 'not '}an admin according to profile`);
       }
     } catch (err) {
       console.error('⚠️ Error checking admin status:', err);
