@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader } from 'lucide-react';
+import { Loader, Search, RefreshCw } from 'lucide-react';
 import { 
   Card, 
   CardContent, 
@@ -28,6 +28,7 @@ interface UserProfile {
 }
 
 interface Territory {
+  id: string;
   zip_code: string;
   lead_type: string;
   user_id: string;
@@ -81,61 +82,98 @@ const AddLeadForm = () => {
   
   // Fetch territories for reference
   useEffect(() => {
-    const fetchTerritories = async () => {
-      try {
-        setIsLoadingTerritories(true);
-        
-        const { data, error } = await supabase
-          .from('territories')
-          .select(`
-            zip_code,
-            lead_type,
-            user_id,
-            user_profiles:user_id (
-              first_name,
-              last_name
-            )
-          `)
-          .eq('active', true);
-
-        if (error) {
-          throw error;
-        }
-
-        // For demo purposes, simulate the join with user email
-        const authData = await supabase.auth.admin.listUsers();
-        const authUsers = authData.data?.users || [];
-
-        // Handle the data safely considering the types
-        const processedData = data.map((territory: any) => {
-          const authUser = authUsers.find(u => u.id === territory.user_id);
-          
-          // Safe access to nested properties
-          const userProfiles = territory.user_profiles;
-          const firstName = userProfiles && typeof userProfiles === 'object' ? userProfiles.first_name : null;
-          const lastName = userProfiles && typeof userProfiles === 'object' ? userProfiles.last_name : null;
-          
-          return {
-            ...territory,
-            user_profile: {
-              first_name: firstName,
-              last_name: lastName,
-              email: authUser?.email || 'N/A'
-            }
-          };
-        });
-        
-        setTerritories(processedData as Territory[]);
-        setIsLoadingTerritories(false);
-      } catch (error) {
-        console.error("Error fetching territories:", error);
-        toast.error("Failed to load territory data");
-        setIsLoadingTerritories(false);
-      }
-    };
-
     fetchTerritories();
   }, []);
+
+  const fetchTerritories = async () => {
+    try {
+      setIsLoadingTerritories(true);
+      console.log("Fetching territories for lead assignment...");
+      
+      // Get territories with a more robust approach
+      const { data: territoriesData, error: territoriesError } = await supabase
+        .from('territories')
+        .select(`
+          id,
+          zip_code,
+          lead_type,
+          user_id,
+          active
+        `)
+        .eq('active', true);
+
+      if (territoriesError) {
+        throw territoriesError;
+      }
+      
+      console.log("Raw territories data:", territoriesData);
+      
+      if (!territoriesData || territoriesData.length === 0) {
+        console.log("No active territories found");
+        setTerritories([]);
+        setIsLoadingTerritories(false);
+        return;
+      }
+      
+      // Get user profiles
+      const { data: userProfilesData, error: profilesError } = await supabase
+        .from('user_profiles')
+        .select('id, first_name, last_name');
+      
+      if (profilesError) {
+        console.error("Error fetching user profiles:", profilesError);
+      }
+      
+      // Create a map of user profiles by ID
+      const userProfilesMap = new Map();
+      if (userProfilesData) {
+        userProfilesData.forEach((profile: any) => {
+          userProfilesMap.set(profile.id, {
+            first_name: profile.first_name,
+            last_name: profile.last_name
+          });
+        });
+      }
+      
+      // Get user emails from the edge function
+      const { data: usersList, error: usersError } = await supabase.functions.invoke('get-all-users');
+      
+      if (usersError) {
+        console.error("Error fetching users:", usersError);
+      }
+      
+      // Create a map of user emails by ID
+      const userEmailsMap = new Map();
+      if (usersList) {
+        usersList.forEach((user: any) => {
+          userEmailsMap.set(user.id, user.email);
+        });
+      }
+      
+      // Combine territory data with user profiles and emails
+      const enhancedTerritories = territoriesData.map((territory: any) => {
+        const profile = userProfilesMap.get(territory.user_id);
+        const email = userEmailsMap.get(territory.user_id);
+        
+        return {
+          ...territory,
+          user_profile: {
+            first_name: profile?.first_name || null,
+            last_name: profile?.last_name || null,
+            email: email || 'N/A'
+          }
+        };
+      });
+      
+      console.log("Enhanced territories:", enhancedTerritories);
+      setTerritories(enhancedTerritories);
+      setIsLoadingTerritories(false);
+    } catch (error) {
+      console.error("Error fetching territories:", error);
+      toast.error("Failed to load territory data");
+      setIsLoadingTerritories(false);
+    }
+  };
 
   const checkTerritory = () => {
     if (!formData.zip_code) {
@@ -143,16 +181,26 @@ const AddLeadForm = () => {
       return;
     }
 
+    console.log("Checking for territory match with zip code:", formData.zip_code);
+    console.log("Available territories:", territories);
+
     // Always use investor as the lead type now
     const leadType = 'investor';
     
     const match = territories.find(t => 
-      t.zip_code === formData.zip_code && 
-      t.lead_type === leadType
+      t.zip_code === formData.zip_code
     );
 
+    console.log("Territory match result:", match);
+    
     setTerritoryMatch(match || null);
     setHasCheckedTerritory(true);
+    
+    if (!match) {
+      toast.warning(`No active territory found for zip code ${formData.zip_code}`);
+    } else {
+      toast.success(`Territory found for zip code ${formData.zip_code}`);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -185,6 +233,8 @@ const AddLeadForm = () => {
         status: 'New'
       };
       
+      console.log("Submitting lead data:", leadData);
+      
       // Insert lead into database
       const { data, error } = await supabase
         .from('leads')
@@ -192,6 +242,22 @@ const AddLeadForm = () => {
         .select();
       
       if (error) throw error;
+      
+      // Notify the user if a territory match was found
+      if (territoryMatch?.user_id) {
+        try {
+          // Invoke notification edge function if we have a user to notify
+          await supabase.functions.invoke('notify-lead', {
+            body: { 
+              leadId: data[0].id, 
+              userId: territoryMatch.user_id 
+            }
+          });
+        } catch (notifyError) {
+          console.error("Error sending notification:", notifyError);
+          // Continue even if notification fails
+        }
+      }
       
       toast.success(`Lead created successfully${territoryMatch ? ' and assigned to user' : ''}`);
       
@@ -278,6 +344,16 @@ const AddLeadForm = () => {
                       </>
                     ) : "Check"}
                   </Button>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    onClick={fetchTerritories}
+                    disabled={isLoadingTerritories}
+                    className="flex items-center"
+                    title="Refresh territories list"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isLoadingTerritories ? 'animate-spin' : ''}`} />
+                  </Button>
                 </div>
               </div>
             </div>
@@ -333,7 +409,7 @@ const AddLeadForm = () => {
                 <>
                   <AlertTitle className="text-green-800">Territory Assigned</AlertTitle>
                   <AlertDescription className="text-green-700">
-                    This lead will be assigned to {territoryMatch.user_profile?.first_name} {territoryMatch.user_profile?.last_name} ({territoryMatch.user_profile?.email})
+                    This lead will be assigned to {territoryMatch.user_profile?.first_name || ''} {territoryMatch.user_profile?.last_name || ''} {territoryMatch.user_profile?.first_name || territoryMatch.user_profile?.last_name ? `(${territoryMatch.user_profile?.email})` : territoryMatch.user_profile?.email}
                   </AlertDescription>
                 </>
               ) : (
