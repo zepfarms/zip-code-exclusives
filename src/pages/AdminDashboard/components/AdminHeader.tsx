@@ -10,10 +10,18 @@ const AdminHeader = () => {
   
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Logout error:', error);
+        toast.error(`Failed to log out: ${error.message}`);
+        return;
+      }
+      
       toast.success("Logged out successfully");
-      navigate('/login');
+      navigate('/login', { replace: true });
     } catch (error) {
+      console.error('Logout error:', error);
       toast.error("Error logging out");
     }
   };

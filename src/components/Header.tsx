@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -61,11 +62,16 @@ const Header = () => {
       const { error } = await supabase.auth.signOut();
       
       if (error) {
-        throw error;
+        console.error('Logout error:', error);
+        toast.error(`Failed to log out: ${error.message}`);
+        return;
       }
       
+      // Only show success message and navigate if no error
       toast.success("Logged out successfully");
-      navigate('/');
+      setUser(null);
+      setIsAdmin(false);
+      navigate('/', { replace: true });
     } catch (error) {
       console.error('Logout error:', error);
       toast.error('Failed to log out');
