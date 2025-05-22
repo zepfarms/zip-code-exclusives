@@ -46,68 +46,75 @@ const TerritoriesTable = () => {
   
   // Fetch territories
   useEffect(() => {
-    const fetchTerritories = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Get territories with user info
-        const { data, error } = await supabase
-          .from('territories')
-          .select(`
-            id,
-            zip_code,
-            user_id,
-            active,
-            start_date,
-            next_billing_date,
-            lead_type,
-            created_at,
-            user_profiles:user_id (
-              first_name,
-              last_name
-            )
-          `);
-
-        if (error) {
-          throw error;
-        }
-        
-        // Get user emails
-        const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-        
-        if (authError) {
-          console.error("Error fetching auth users:", authError);
-        }
-
-        // Process the data combining territory info with user details
-        const processedData = data.map((territory: any) => {
-          const authUser = authUsers?.users?.find(u => u.id === territory.user_id);
-          
-          const userProfiles = territory.user_profiles;
-          const firstName = userProfiles && typeof userProfiles === 'object' ? userProfiles.first_name : null;
-          const lastName = userProfiles && typeof userProfiles === 'object' ? userProfiles.last_name : null;
-          
-          return {
-            ...territory,
-            user_profile: {
-              first_name: firstName,
-              last_name: lastName,
-              email: authUser?.email || 'N/A'
-            }
-          };
-        });
-        
-        setTerritories(processedData);
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Error fetching territories:", error);
-        toast.error("Failed to load territories");
-        setIsLoading(false);
+    fetchTerritoriesData().then(territoriesData => {
+      if (territoriesData) {
+        setTerritories(territoriesData);
       }
-    };
-
-    fetchTerritories();
+      setIsLoading(false);
+    }).catch(err => {
+      console.error("Error in territory fetch effect:", err);
+      setIsLoading(false);
+    });
   }, []);
+
+  const fetchTerritoriesData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Get territories with user info
+      const { data, error } = await supabase
+        .from('territories')
+        .select(`
+          id,
+          zip_code,
+          user_id,
+          active,
+          start_date,
+          next_billing_date,
+          lead_type,
+          created_at,
+          user_profiles:user_id (
+            first_name,
+            last_name
+          )
+        `);
+
+      if (error) {
+        throw error;
+      }
+      
+      // Get user emails from the edge function
+      const { data: usersList, error: usersError } = await supabase.functions.invoke('get-all-users');
+      
+      if (usersError) {
+        console.error("Error fetching users for territories:", usersError);
+        toast.error("Could not load complete user data for territories");
+      }
+
+      // Process the data combining territory info with user details
+      return data.map((territory: any) => {
+        // Find the auth user that matches this territory's user_id
+        const authUser = usersList?.find((u: any) => u.id === territory.user_id);
+        
+        const userProfiles = territory.user_profiles;
+        const firstName = userProfiles && typeof userProfiles === 'object' ? userProfiles.first_name : null;
+        const lastName = userProfiles && typeof userProfiles === 'object' ? userProfiles.last_name : null;
+        
+        return {
+          ...territory,
+          user_profile: {
+            first_name: firstName,
+            last_name: lastName,
+            email: authUser?.email || 'N/A'
+          }
+        };
+      });
+    } catch (error) {
+      console.error("Error fetching territories:", error);
+      toast.error("Failed to load territories");
+      return [];
+    }
+  };
 
   const filteredTerritories = territories.filter(territory => {
     const searchLower = searchTerm.toLowerCase();
@@ -145,19 +152,37 @@ const TerritoriesTable = () => {
     }
   };
 
+  const refreshTerritories = async () => {
+    const territoriesData = await fetchTerritoriesData();
+    if (territoriesData) {
+      setTerritories(territoriesData);
+      toast.success("Territory data refreshed");
+    }
+  };
+
   return (
     <div className="grid md:grid-cols-3 gap-8">
       <div className="md:col-span-2 bg-white rounded-lg shadow p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold">Territory Management</h2>
-          <div className="relative w-64">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-            <Input
-              placeholder="Search territories..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8"
-            />
+          <div className="flex space-x-2">
+            <div className="relative w-64">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+              <Input
+                placeholder="Search territories..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={refreshTerritories}
+              disabled={isLoading}
+            >
+              Refresh
+            </Button>
           </div>
         </div>
         
@@ -230,69 +255,10 @@ const TerritoriesTable = () => {
       </div>
       
       <div className="md:col-span-1">
-        <AddTerritoryForm onTerritoryAdded={() => {
-          // Refresh the territories list when a new territory is added
-          setIsLoading(true);
-          fetchTerritories();
-        }} />
+        <AddTerritoryForm onTerritoryAdded={refreshTerritories} />
       </div>
     </div>
   );
 };
-
-// Function to fetch territories (extracted for reuse)
-async function fetchTerritories() {
-  try {
-    // Get territories with user info
-    const { data, error } = await supabase
-      .from('territories')
-      .select(`
-        id,
-        zip_code,
-        user_id,
-        active,
-        start_date,
-        next_billing_date,
-        lead_type,
-        created_at,
-        user_profiles:user_id (
-          first_name,
-          last_name
-        )
-      `);
-
-    if (error) {
-      throw error;
-    }
-    
-    // Get user emails
-    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-    
-    if (authError) {
-      console.error("Error fetching auth users:", authError);
-    }
-
-    // Process the data
-    return data.map((territory: any) => {
-      const authUser = authUsers?.users?.find(u => u.id === territory.user_id);
-      
-      const userProfiles = territory.user_profiles;
-      const firstName = userProfiles && typeof userProfiles === 'object' ? userProfiles.first_name : null;
-      const lastName = userProfiles && typeof userProfiles === 'object' ? userProfiles.last_name : null;
-      
-      return {
-        ...territory,
-        user_profile: {
-          first_name: firstName,
-          last_name: lastName,
-          email: authUser?.email || 'N/A'
-        }
-      };
-    });
-  } catch (error) {
-    console.error("Error fetching territories:", error);
-    throw error;
-  }
-}
 
 export default TerritoriesTable;

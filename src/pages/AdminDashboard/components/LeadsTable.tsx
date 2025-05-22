@@ -20,9 +20,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Loader, Search, Edit } from 'lucide-react';
+import { Loader, Search, Edit, UserPlus } from 'lucide-react';
 
 interface Lead {
   id: string;
@@ -44,13 +61,27 @@ interface Lead {
   };
 }
 
+interface User {
+  id: string;
+  email: string;
+  user_metadata?: {
+    first_name?: string;
+    last_name?: string;
+  };
+  created_at: string;
+}
+
 const LeadsTable = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [leadNotes, setLeadNotes] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
   
   // Fetch leads
@@ -81,18 +112,35 @@ const LeadsTable = () => {
         if (userProfilesError) {
           console.error("Error fetching user profiles:", userProfilesError);
         }
+
+        // Get all users from authentication system
+        const { data: allUsers, error: allUsersError } = await supabase.functions.invoke('get-all-users');
+        
+        if (allUsersError) {
+          console.error("Error fetching all users:", allUsersError);
+        } else if (allUsers) {
+          setUsers(allUsers);
+        }
         
         // Map user profiles to leads
         const processedLeads = data.map((lead: any) => {
           const userProfile = userProfiles?.find((profile: any) => profile.id === lead.user_id);
+          
+          // Also try to get email from auth users if available
+          const userAuth = allUsers?.find((user: any) => user.id === lead.user_id);
           
           return {
             ...lead,
             user_info: userProfile ? {
               first_name: userProfile.first_name,
               last_name: userProfile.last_name,
-              // Only add email if it's the current user
-              email: lead.user_id === session?.user?.id ? currentUserEmail : undefined
+              // Add email from auth system if available
+              email: userAuth?.email || (lead.user_id === session?.user?.id ? currentUserEmail : undefined)
+            } : userAuth ? {
+              // If no profile but we have auth user
+              first_name: userAuth.user_metadata?.first_name || null,
+              last_name: userAuth.user_metadata?.last_name || null,
+              email: userAuth.email
             } : undefined
           };
         });
@@ -108,6 +156,27 @@ const LeadsTable = () => {
 
     fetchLeads();
   }, []);
+
+  // Load users for assignment
+  const fetchUsers = async () => {
+    if (users.length > 0) return; // Already loaded
+    
+    try {
+      setIsLoadingUsers(true);
+      const { data: allUsers, error: allUsersError } = await supabase.functions.invoke('get-all-users');
+      
+      if (allUsersError) {
+        console.error("Error fetching all users:", allUsersError);
+        toast.error("Failed to load users");
+      } else if (allUsers) {
+        setUsers(allUsers);
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
 
   const filteredLeads = leads.filter(lead => {
     const searchLower = searchTerm.toLowerCase();
@@ -125,6 +194,13 @@ const LeadsTable = () => {
     setSelectedLead(lead);
     setLeadNotes(lead.notes || '');
     setIsDialogOpen(true);
+  };
+
+  const handleAssignLead = (lead: Lead) => {
+    setSelectedLead(lead);
+    setSelectedUserId(lead.user_id || '');
+    setIsAssignDialogOpen(true);
+    fetchUsers(); // Ensure users are loaded
   };
 
   const updateLeadNotes = async () => {
@@ -150,6 +226,49 @@ const LeadsTable = () => {
     } catch (error) {
       console.error("Error updating lead notes:", error);
       toast.error("Failed to update lead notes");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const assignLeadToUser = async () => {
+    if (!selectedLead) return;
+    
+    try {
+      setIsUpdating(true);
+      
+      const { error } = await supabase
+        .from('leads')
+        .update({ user_id: selectedUserId || null })
+        .eq('id', selectedLead.id);
+      
+      if (error) throw error;
+      
+      // Find user info for the assigned user
+      const assignedUser = users.find(user => user.id === selectedUserId);
+      
+      // Update leads state with new assignment
+      setLeads(prev => prev.map(lead => {
+        if (lead.id !== selectedLead.id) return lead;
+        
+        return {
+          ...lead,
+          user_id: selectedUserId || null,
+          user_info: selectedUserId ? {
+            first_name: assignedUser?.user_metadata?.first_name || null,
+            last_name: assignedUser?.user_metadata?.last_name || null,
+            email: assignedUser?.email
+          } : undefined
+        };
+      }));
+      
+      toast.success(selectedUserId 
+        ? `Lead assigned to ${assignedUser?.email}` 
+        : "Lead unassigned successfully");
+      setIsAssignDialogOpen(false);
+    } catch (error) {
+      console.error("Error assigning lead:", error);
+      toast.error("Failed to assign lead to user");
     } finally {
       setIsUpdating(false);
     }
@@ -263,6 +382,16 @@ const LeadsTable = () => {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => handleAssignLead(lead)}
+                        disabled={isUpdating}
+                        title="Assign to user"
+                      >
+                        <UserPlus className="h-4 w-4 mr-1" />
+                        Assign
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => handleEditNotes(lead)}
                         disabled={isUpdating}
                       >
@@ -316,6 +445,56 @@ const LeadsTable = () => {
               disabled={isUpdating}
             >
               {isUpdating ? "Saving..." : "Save Notes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Lead Dialog */}
+      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign Lead to User</DialogTitle>
+            <DialogDescription>
+              Select a user to assign this lead to
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {isLoadingUsers ? (
+              <div className="flex justify-center items-center py-4">
+                <Loader className="h-4 w-4 mr-2 animate-spin" />
+                <span>Loading users...</span>
+              </div>
+            ) : (
+              <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a user" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Unassigned</SelectItem>
+                  {users.map(user => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.user_metadata?.first_name} {user.user_metadata?.last_name} ({user.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsAssignDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={assignLeadToUser}
+              disabled={isUpdating}
+            >
+              {isUpdating ? "Saving..." : "Assign Lead"}
             </Button>
           </DialogFooter>
         </DialogContent>
