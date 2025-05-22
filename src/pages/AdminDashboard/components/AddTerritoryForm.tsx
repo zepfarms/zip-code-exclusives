@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader, CheckCircle, XCircle } from 'lucide-react';
+import { Loader, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { 
   Card, 
   CardContent, 
@@ -43,52 +43,52 @@ const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
   const [checkResult, setCheckResult] = useState<{available: boolean, checked: boolean}>({ available: false, checked: false });
 
   // Fetch users for the dropdown
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setIsLoadingUsers(true);
-        
-        // Get all user profiles
-        const { data: profiles, error: profilesError } = await supabase
-          .from('user_profiles')
-          .select('id, first_name, last_name');
-        
-        if (profilesError) throw profilesError;
-        
-        // Get emails from auth users via edge function
-        const { data: authUsers, error: authError } = await supabase.functions.invoke('get-all-users');
-        
-        if (authError) {
-          console.error("Error fetching auth users:", authError);
-          throw authError;
-        }
-        
-        if (!authUsers || !Array.isArray(authUsers)) {
-          console.error("Invalid response format from get-all-users:", authUsers);
-          throw new Error("Failed to fetch user data in the expected format");
-        }
-        
-        // Combine the data
-        const combinedUsers = profiles.map(profile => {
-          const authUser = authUsers.find((user: any) => user.id === profile.id);
-          return {
-            id: profile.id,
-            email: authUser?.email || 'N/A',
-            first_name: profile.first_name,
-            last_name: profile.last_name
-          };
-        });
-        
-        console.log("Combined users for dropdown:", combinedUsers);
-        setUsers(combinedUsers);
-      } catch (error) {
-        console.error("Error fetching users:", error);
-        toast.error("Failed to load users");
-      } finally {
-        setIsLoadingUsers(false);
+  const fetchUsers = async () => {
+    try {
+      setIsLoadingUsers(true);
+      
+      // Get all user profiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from('user_profiles')
+        .select('id, first_name, last_name');
+      
+      if (profilesError) throw profilesError;
+      
+      // Get emails from auth users via edge function
+      const { data: authUsers, error: authError } = await supabase.functions.invoke('get-all-users');
+      
+      if (authError) {
+        console.error("Error fetching auth users:", authError);
+        throw authError;
       }
-    };
-    
+      
+      if (!authUsers || !Array.isArray(authUsers)) {
+        console.error("Invalid response format from get-all-users:", authUsers);
+        throw new Error("Failed to fetch user data in the expected format");
+      }
+      
+      // Combine the data
+      const combinedUsers = profiles.map(profile => {
+        const authUser = authUsers.find((user: any) => user.id === profile.id);
+        return {
+          id: profile.id,
+          email: authUser?.email || 'N/A',
+          first_name: profile.first_name,
+          last_name: profile.last_name
+        };
+      });
+      
+      console.log("Combined users for dropdown:", combinedUsers);
+      setUsers(combinedUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      toast.error("Failed to load users");
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
+  
+  useEffect(() => {
     fetchUsers();
   }, []);
 
@@ -102,40 +102,37 @@ const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
     setCheckResult({ available: false, checked: false });
     
     try {
+      console.log("Checking availability for zip code:", zipCode);
+      
       // Check if the zip code already exists in territories
       const { data: existingTerritories, error: territoryError } = await supabase
         .from('territories')
-        .select('id')
+        .select('id, active')
         .eq('zip_code', zipCode);
       
-      if (territoryError) throw territoryError;
-      
-      // Check if the zip code exists in zip_codes table
-      const { data: zipCodeData, error: zipCodeError } = await supabase
-        .from('zip_codes')
-        .select('available')
-        .eq('zip_code', zipCode)
-        .maybeSingle();
-      
-      if (zipCodeError && zipCodeError.code !== 'PGRST116') {
-        throw zipCodeError;
+      if (territoryError) {
+        console.error("Error checking territories:", territoryError);
+        throw territoryError;
       }
       
-      // If territory already exists, it's not available
-      if (existingTerritories && existingTerritories.length > 0) {
+      console.log("Existing territories check:", existingTerritories);
+      
+      // Only consider active territories as unavailable
+      const activeTerritory = existingTerritories?.find(t => t.active === true);
+      
+      if (activeTerritory) {
         setCheckResult({ available: false, checked: true });
-        toast.error(`Zip code ${zipCode} is already assigned to a user`);
+        toast.error(`Zip code ${zipCode} is already assigned to an active user`);
         setIsChecking(false);
         return;
       }
       
-      // If not found in zip_codes or is available
-      const isAvailable = !zipCodeData || zipCodeData.available;
-      setCheckResult({ available: isAvailable, checked: true });
+      // If we got here, it means the territory is either not in the database
+      // or it exists but is not active, so we'll mark it as available
+      console.log("No active territory found for zip code:", zipCode);
+      setCheckResult({ available: true, checked: true });
+      toast.success(`Zip code ${zipCode} is available!`);
       
-      if (!isAvailable) {
-        toast.error(`Zip code ${zipCode} is not available for subscription`);
-      }
     } catch (error) {
       console.error("Error checking zip code:", error);
       toast.error("Failed to check zip code availability");
@@ -168,22 +165,55 @@ const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
     setIsAdding(true);
     
     try {
-      // Add the territory directly to the territories table
-      const { data, error } = await supabase
+      // Check if the territory already exists but is inactive
+      const { data: existingTerritory, error: checkError } = await supabase
         .from('territories')
-        .insert({
-          zip_code: zipCode,
-          user_id: userId,
-          active: true,
-          lead_type: 'investor', // Default to 'investor' since we're removing the option
-          start_date: new Date().toISOString(),
-          next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
-        })
-        .select();
+        .select('id')
+        .eq('zip_code', zipCode)
+        .maybeSingle();
       
-      if (error) throw error;
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
       
-      // If we have zip_codes table, update the availability
+      let territoryId;
+      
+      if (existingTerritory) {
+        // If territory exists, update it
+        console.log("Updating existing territory:", existingTerritory.id);
+        const { data, error } = await supabase
+          .from('territories')
+          .update({
+            user_id: userId,
+            active: true,
+            start_date: new Date().toISOString(),
+            next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
+          })
+          .eq('id', existingTerritory.id)
+          .select();
+        
+        if (error) throw error;
+        territoryId = existingTerritory.id;
+      } else {
+        // Add the territory directly to the territories table
+        console.log("Creating new territory for zip code:", zipCode);
+        const { data, error } = await supabase
+          .from('territories')
+          .insert({
+            zip_code: zipCode,
+            user_id: userId,
+            active: true,
+            lead_type: 'investor',
+            start_date: new Date().toISOString(),
+            next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
+          })
+          .select();
+        
+        if (error) throw error;
+        territoryId = data[0].id;
+      }
+      
+      // Update or create the zip_codes entry
       const { error: zipCodeError } = await supabase
         .from('zip_codes')
         .upsert({
@@ -216,6 +246,11 @@ const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
       setIsAdding(false);
     }
   };
+  
+  const handleRefreshUsers = () => {
+    fetchUsers();
+    toast.success("User list refreshed");
+  };
 
   return (
     <Card>
@@ -228,7 +263,19 @@ const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
       
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="userId">Select User</Label>
+          <div className="flex justify-between items-center">
+            <Label htmlFor="userId">Select User</Label>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleRefreshUsers} 
+              disabled={isLoadingUsers}
+              className="h-8 w-8 p-0"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoadingUsers ? 'animate-spin' : ''}`} />
+              <span className="sr-only">Refresh users</span>
+            </Button>
+          </div>
           <Select
             value={userId}
             onValueChange={setUserId}
