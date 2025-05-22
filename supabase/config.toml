@@ -193,13 +193,5 @@ verify_jwt = true
 [functions.check-admin-status]
 verify_jwt = true
 
-# Configure one of the supported notify hooks.
-# This is triggered when something noteworthy happens, such as a successful sign-up.
-[notify]
-
-[notify.email]
-enabled = false
-# Configure the hook to send to an external mail server.
-[notify.external]
-enabled = false
-url = ""
+[functions.get-admin-leads]
+verify_jwt = true

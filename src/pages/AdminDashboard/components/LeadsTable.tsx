@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -94,6 +95,35 @@ const LeadsTable = () => {
         const { data: { session } } = await supabase.auth.getSession();
         const currentUserEmail = session?.user?.email || '';
         
+        // Try the admin-specific edge function approach first - this is more reliable with RLS
+        try {
+          console.log("Attempting to fetch all leads via admin edge function");
+          const { data: adminLeadsData, error: adminLeadsError } = await supabase.functions.invoke('get-admin-leads');
+          
+          if (!adminLeadsError && adminLeadsData?.leads) {
+            console.log(`Successfully fetched ${adminLeadsData.leads.length} leads via admin edge function`);
+            
+            // Process leads with user info if available
+            const processedLeads = adminLeadsData.leads.map((lead: any) => {
+              return {
+                ...lead,
+                user_info: lead.user_info || undefined
+              };
+            });
+            
+            setLeads(processedLeads);
+            setIsLoading(false);
+            return;
+          } else {
+            console.error("Admin leads edge function failed or not found:", adminLeadsError);
+          }
+        } catch (adminFnError) {
+          console.error("Error using admin leads edge function:", adminFnError);
+        }
+        
+        // Fall back to direct fetch with service role approach
+        console.log("Falling back to direct fetch approach");
+        
         // Fetch all leads directly (don't try to join with user_profiles)
         const { data, error } = await supabase
           .from('leads')
@@ -101,6 +131,7 @@ const LeadsTable = () => {
           .order('created_at', { ascending: false });
 
         if (error) {
+          console.error("Error fetching leads:", error);
           throw error;
         }
         
