@@ -21,19 +21,19 @@ Deno.serve(async (req) => {
 
     // Get the user making the request
     const authHeader = req.headers.get('Authorization') || '';
-    const currentUser = await supabaseClient.auth.getUser(authHeader);
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''));
     
-    if (!currentUser.data.user) {
+    if (authError || !user) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Unauthorized', details: authError?.message }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
     // Check if the requesting user is zepfarms@gmail.com (the only allowed admin)
-    if (currentUser.data.user.email !== 'zepfarms@gmail.com') {
+    if (user.email !== 'zepfarms@gmail.com') {
       return new Response(
-        JSON.stringify({ error: 'Forbidden' }),
+        JSON.stringify({ error: 'Forbidden - Only zepfarms@gmail.com can access admin features' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -49,12 +49,14 @@ Deno.serve(async (req) => {
     }
     
     // Prevent admin from deleting themselves
-    if (userId === currentUser.data.user.id) {
+    if (userId === user.id) {
       return new Response(
         JSON.stringify({ error: 'Cannot delete yourself' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    console.log(`Admin requested deletion of user ID: ${userId}`);
     
     // Delete the user
     const { error } = await supabaseClient.auth.admin.deleteUser(userId);
@@ -63,12 +65,14 @@ Deno.serve(async (req) => {
       throw error;
     }
 
+    console.log(`User ${userId} deleted successfully`);
+
     return new Response(
       JSON.stringify({ success: true, message: 'User deleted successfully' }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error in delete-user function:', error);
     
     return new Response(
       JSON.stringify({ error: error.message }),

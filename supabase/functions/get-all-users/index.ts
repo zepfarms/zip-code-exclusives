@@ -21,22 +21,24 @@ Deno.serve(async (req) => {
 
     // Get the user making the request
     const authHeader = req.headers.get('Authorization') || '';
-    const currentUser = await supabaseClient.auth.getUser(authHeader);
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''));
     
-    if (!currentUser.data.user) {
+    if (authError || !user) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Unauthorized', details: authError?.message }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
     // Check if the requesting user is zepfarms@gmail.com (the only allowed admin)
-    if (currentUser.data.user.email !== 'zepfarms@gmail.com') {
+    if (user.email !== 'zepfarms@gmail.com') {
       return new Response(
-        JSON.stringify({ error: 'Forbidden' }),
+        JSON.stringify({ error: 'Forbidden - Only zepfarms@gmail.com can access admin features' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    console.log("Admin access confirmed, fetching all users...");
     
     // Get all users from the auth.users table (only possible with service_role key)
     const { data: users, error } = await supabaseClient.auth.admin.listUsers();
@@ -62,7 +64,7 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error in get-all-users function:', error);
     
     return new Response(
       JSON.stringify({ error: error.message }),

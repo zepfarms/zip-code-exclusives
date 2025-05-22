@@ -1,16 +1,19 @@
 
 import React from 'react';
+import Header from '@/components/Header';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
-const AdminLayout = ({ children }: AdminLayoutProps) => {
+const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      <Header />
+      
+      <main className="flex-grow py-6">
         {children}
-      </div>
+      </main>
     </div>
   );
 };

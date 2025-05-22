@@ -19,7 +19,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -56,51 +55,69 @@ const UsersTable = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         setIsLoading(true);
+        setError(null);
         
-        // Fetch all user profiles
+        // First get authenticated session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setError("You must be logged in");
+          setIsLoading(false);
+          return;
+        }
+        
+        console.log("Fetching users with auth token...");
+        
+        // Call the edge function to get all users (requires admin access)
+        const { data: authUsers, error: funcError } = await supabase.functions.invoke('get-all-users', {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        });
+        
+        if (funcError) {
+          console.error("Error from get-all-users function:", funcError);
+          setError("Failed to load users from authentication system");
+          toast.error("Failed to load users from authentication system");
+          setIsLoading(false);
+          return;
+        }
+        
+        if (!authUsers || authUsers.error) {
+          console.error("API error:", authUsers?.error || "Unknown error");
+          setError(authUsers?.error || "Failed to load users");
+          toast.error(authUsers?.error || "Failed to load users");
+          setIsLoading(false);
+          return;
+        }
+        
+        console.log("Auth users loaded:", authUsers.length);
+        
+        // Fetch all user profiles to merge with auth data
         const { data: profiles, error: profilesError } = await supabase
           .from('user_profiles')
           .select('*');
 
         if (profilesError) {
-          throw profilesError;
+          console.error("Error fetching profiles:", profilesError);
+          toast.error("Failed to load user profiles");
         }
-
-        // Get current user session to know the admin email
-        const { data: { session } } = await supabase.auth.getSession();
-        const adminEmail = session?.user?.email || '';
-        
-        // Fetch all authentication users (only works when called by admin)
-        const { data: authUsers, error: funcError } = await supabase.functions.invoke('get-all-users');
-        
-        if (funcError) {
-          console.error("Error fetching auth users:", funcError);
-          toast.error("Failed to load users from authentication system");
-          // Even if we can't get emails, still show the profiles
-          const combinedData = profiles.map(profile => ({
-            ...profile,
-            email: profile.id === session?.user?.id ? adminEmail : undefined
-          }));
-          setUsers(combinedData);
-          setIsLoading(false);
-          return;
-        }
-
-        console.log("Auth users:", authUsers);
         
         // Create a map of profiles by ID for faster lookup
         const profilesMap = new Map();
-        profiles.forEach(profile => {
-          profilesMap.set(profile.id, profile);
-        });
+        if (profiles) {
+          profiles.forEach(profile => {
+            profilesMap.set(profile.id, profile);
+          });
+        }
         
-        // Create the combined data, using auth users as the base and adding profile data
+        // Combine auth users with profiles
         const combinedData = authUsers.map(authUser => {
           const profile = profilesMap.get(authUser.id) || {};
           return {
@@ -110,14 +127,14 @@ const UsersTable = () => {
             created_at: authUser.created_at,
             last_sign_in_at: authUser.last_sign_in_at,
             confirmed_at: authUser.confirmed_at,
-            // Include any other fields from authUser that you want to display
           };
         });
         
         setUsers(combinedData);
         setIsLoading(false);
       } catch (error) {
-        console.error("Error fetching users:", error);
+        console.error("Error in fetchUsers:", error);
+        setError("Failed to load users");
         toast.error("Failed to load users");
         setIsLoading(false);
       }
@@ -178,14 +195,25 @@ const UsersTable = () => {
     try {
       setIsDeleting(true);
       
+      // Get authenticated session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("You must be logged in");
+        setIsDeleting(false);
+        return;
+      }
+      
       // Call the delete-user edge function
       const { data, error } = await supabase.functions.invoke('delete-user', {
-        body: { userId: userToDelete }
+        body: { userId: userToDelete },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       });
       
       if (error) throw error;
       
-      if (data.error) {
+      if (data && data.error) {
         throw new Error(data.error);
       }
       
@@ -222,6 +250,13 @@ const UsersTable = () => {
         </div>
       </div>
       
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+          <p className="font-medium">Error loading users</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
+      
       {isLoading ? (
         <div className="flex justify-center items-center py-12">
           <Loader className="h-8 w-8 animate-spin text-brand-600" />
@@ -251,7 +286,7 @@ const UsersTable = () => {
                     </TableCell>
                     <TableCell>{user.email || 'N/A'}</TableCell>
                     <TableCell>{user.phone || 'N/A'}</TableCell>
-                    <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>{user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</TableCell>
                     <TableCell>
                       {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : 'Never'}
                     </TableCell>
@@ -297,7 +332,7 @@ const UsersTable = () => {
               ) : (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-4">
-                    No users found matching your search.
+                    {error ? 'Error loading users' : 'No users found matching your search.'}
                   </TableCell>
                 </TableRow>
               )}
@@ -341,7 +376,7 @@ const UsersTable = () => {
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-gray-500">Joined</h4>
-                  <p>{new Date(selectedUser.created_at).toLocaleDateString()}</p>
+                  <p>{selectedUser.created_at ? new Date(selectedUser.created_at).toLocaleDateString() : 'N/A'}</p>
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-gray-500">Last Sign In</h4>
