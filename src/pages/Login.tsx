@@ -16,12 +16,14 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { supabase } from '@/integrations/supabase/client';
 import { ensureUserProfile } from '@/utils/userProfile';
+import ForgotPassword from '@/components/ForgotPassword';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const navigate = useNavigate();
 
   // Check if user is already logged in
@@ -169,9 +171,13 @@ const Login = () => {
                   <label htmlFor="password" className="text-sm font-medium text-gray-700">
                     Password
                   </label>
-                  <Link to="/forgot-password" className="text-sm text-brand-700 hover:text-brand-800">
+                  <button
+                    type="button"
+                    onClick={() => setForgotPasswordOpen(true)}
+                    className="text-sm text-brand-700 hover:text-brand-800"
+                  >
                     Forgot password?
-                  </Link>
+                  </button>
                 </div>
                 <Input
                   id="password"
@@ -202,6 +208,8 @@ const Login = () => {
           </CardFooter>
         </Card>
       </main>
+      
+      <ForgotPassword open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen} />
       
       <Footer />
     </div>
