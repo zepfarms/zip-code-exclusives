@@ -5,6 +5,7 @@ import { ensureUserProfile } from './userProfile';
 
 export const fetchUserData = async (userId: string, setUserProfile: any, setTerritories: any, setLeads: any, setContacts: any, setSubscriptionInfo: any, setIsLoading: any) => {
   setIsLoading(true);
+  console.log("Starting to fetch user data for:", userId);
   
   try {
     // Ensure user profile exists
@@ -61,10 +62,9 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
       // Don't show error toast as we have a fallback profile
     }
 
-    // Try to get territories - with RLS, we no longer need to filter by user_id in the query
-    // as RLS will handle this automatically
+    // Try to get territories - explicitly filter by user_id to avoid RLS issues
     try {
-      console.log("Fetching territories with RLS for user:", userId);
+      console.log("Fetching territories for user:", userId);
       
       // Check if there's any territory data in sessionStorage (from PaymentSuccess page)
       const justCreatedTerritoryStr = sessionStorage.getItem('justCreatedTerritory');
@@ -79,10 +79,11 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
         }
       }
       
-      // Using RLS now - no need to filter by user_id 
+      // Explicitly filter by user_id to ensure we get the right data
       const { data: territories, error: territoriesError } = await supabase
         .from('territories')
         .select('*')
+        .eq('user_id', userId)
         .eq('active', true);
       
       if (territoriesError) {
@@ -144,13 +145,15 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
       setTerritories([]);
     }
 
-    // Try to get leads - with RLS, we no longer need to filter by user_id in the query
-    // as RLS will handle this automatically
+    // Try to get leads - explicitly filter by user_id to avoid RLS issues
     try {
-      // Using RLS now - no need to filter by user_id
+      console.log("Fetching leads for user:", userId);
+      
+      // Explicitly filter by user_id to ensure we get the right data
       const { data: leads, error: leadsError } = await supabase
         .from('leads')
         .select('*')
+        .eq('user_id', userId)
         .eq('archived', false)
         .order('created_at', { ascending: false });
       

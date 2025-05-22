@@ -26,12 +26,30 @@ const AdminDashboard = () => {
         
         console.log("Checking admin status for user:", session.user.id);
         
-        // First try using the is_admin RLS function via a select query
-        const { data, error } = await supabase
+        // Use the service role function first (more reliable if available)
+        try {
+          const { data: adminCheck, error: adminCheckError } = await supabase.functions.invoke('check-admin-status', {
+            body: { userId: session.user.id }
+          });
+          
+          if (!adminCheckError && adminCheck?.isAdmin === true) {
+            console.log("Admin access granted via edge function");
+            setIsAdmin(true);
+            setIsLoading(false);
+            return;
+          } else if (adminCheckError) {
+            console.error("Edge function error:", adminCheckError);
+          }
+        } catch (err) {
+          console.error("Error calling admin check edge function:", err);
+        }
+        
+        // Fall back to direct RPC check
+        const { data: isAdminResult, error: rpcError } = await supabase
           .rpc('is_admin', { user_id: session.user.id });
           
-        if (error) {
-          console.error("Error checking admin status via RPC:", error);
+        if (rpcError) {
+          console.error("Error checking admin status via RPC:", rpcError);
           
           // Fall back to checking the profile directly
           const { data: profile, error: profileError } = await supabase
@@ -48,19 +66,27 @@ const AdminDashboard = () => {
           }
           
           if (profile?.is_admin || session.user.email === 'zepfarms@gmail.com') {
-            console.log("Admin access granted");
+            console.log("Admin access granted via profile check");
             setIsAdmin(true);
             setIsLoading(false);
             return;
           }
         } else {
           // RPC call was successful
-          if (data === true || session.user.email === 'zepfarms@gmail.com') {
+          if (isAdminResult === true || session.user.email === 'zepfarms@gmail.com') {
             console.log("Admin access granted via is_admin function");
             setIsAdmin(true);
             setIsLoading(false);
             return;
           }
+        }
+
+        // Always grant access for zepfarms@gmail.com as a final failsafe
+        if (session.user.email === 'zepfarms@gmail.com') {
+          console.log("Admin access granted for special admin user");
+          setIsAdmin(true);
+          setIsLoading(false);
+          return;
         }
 
         // Everyone else is denied access
@@ -70,6 +96,8 @@ const AdminDashboard = () => {
         console.error("Error checking admin status:", error);
         toast.error("An error occurred. Please try again.");
         navigate('/dashboard');
+      } finally {
+        setIsLoading(false);
       }
     };
 

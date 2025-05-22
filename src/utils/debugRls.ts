@@ -41,38 +41,76 @@ export const debugRlsAccess = async () => {
       console.log('✅ Profile access successful:', profile);
     }
     
-    // Test territories access
-    const { data: territories, error: territoriesError } = await supabase
-      .from('territories')
-      .select('count')
-      .eq('active', true);
-      
-    if (territoriesError) {
-      console.error('⚠️ Territories access error:', territoriesError);
-    } else {
-      console.log(`✅ Territories access successful: ${territories.length} territories found`);
+    // Test territories access directly - this avoids any filtering
+    try {
+      const { count: territoriesCount, error: countError } = await supabase
+        .from('territories')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', session.user.id);
+        
+      if (countError) {
+        console.error('⚠️ Territories count error:', countError);
+      } else {
+        console.log(`✅ Territories access appears successful: found approximately ${territoriesCount} territories`);
+        
+        // Now try to actually fetch some territories
+        const { data: terrData, error: terrError } = await supabase
+          .from('territories')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .limit(5);
+          
+        if (terrError) {
+          console.error('⚠️ Territories fetch error:', terrError);
+        } else {
+          console.log(`✅ Successfully fetched ${terrData?.length || 0} territories`);
+        }
+      }
+    } catch (err) {
+      console.error('⚠️ Error testing territories:', err);
     }
     
     // Test leads access
-    const { data: leads, error: leadsError } = await supabase
-      .from('leads')
-      .select('count')
-      .eq('archived', false);
-      
-    if (leadsError) {
-      console.error('⚠️ Leads access error:', leadsError);
-    } else {
-      console.log(`✅ Leads access successful: ${leads.length} leads found`);
+    try {
+      const { count: leadsCount, error: countError } = await supabase
+        .from('leads')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', session.user.id);
+        
+      if (countError) {
+        console.error('⚠️ Leads count error:', countError);
+      } else {
+        console.log(`✅ Leads access appears successful: found approximately ${leadsCount} leads`);
+        
+        // Now try to actually fetch some leads
+        const { data: leadsData, error: leadsError } = await supabase
+          .from('leads')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .limit(5);
+          
+        if (leadsError) {
+          console.error('⚠️ Leads fetch error:', leadsError);
+        } else {
+          console.log(`✅ Successfully fetched ${leadsData?.length || 0} leads`);
+        }
+      }
+    } catch (err) {
+      console.error('⚠️ Error testing leads:', err);
     }
     
-    // Check if user is admin
-    const { data: isAdmin, error: adminError } = await supabase
-      .rpc('is_admin', { user_id: session.user.id });
-      
-    if (adminError) {
-      console.error('⚠️ Admin check error:', adminError);
-    } else {
-      console.log(`✅ Admin check successful: User is ${isAdmin ? '' : 'not '}an admin`);
+    // Test admin status
+    try {
+      const { data: isAdmin, error: adminError } = await supabase
+        .rpc('is_admin', { user_id: session.user.id });
+        
+      if (adminError) {
+        console.error('⚠️ Admin check error:', adminError);
+      } else {
+        console.log(`✅ Admin check successful: User is ${isAdmin ? '' : 'not '}an admin`);
+      }
+    } catch (err) {
+      console.error('⚠️ Error checking admin status:', err);
     }
     
     console.groupEnd();
