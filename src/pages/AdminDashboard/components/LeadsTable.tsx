@@ -92,50 +92,44 @@ const LeadsTable = () => {
         setIsLoading(true);
         setErrorMessage(null);
         
-        // Get current user session
+        console.log("Attempting to fetch all leads via admin edge function");
+        
+        // Get the current session for the auth header
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           setErrorMessage("Authentication session not found");
+          toast.error("Authentication session not found");
+          setIsLoading(false);
+          return;
+        }
+
+        // Call the edge function with proper authorization
+        const { data, error } = await supabase.functions.invoke('get-admin-leads');
+        
+        if (error) {
+          console.error("Admin leads edge function failed:", error);
+          setErrorMessage("Failed to load leads: " + error.message);
+          toast.error("Failed to load leads: " + error.message);
           setIsLoading(false);
           return;
         }
         
-        console.log("Attempting to fetch all leads via admin edge function");
-        
-        // Call the edge function with proper authorization header
-        const { data: adminLeadsData, error: adminLeadsError } = await supabase.functions.invoke('get-admin-leads');
-        
-        if (adminLeadsError) {
-          console.error("Admin leads edge function failed:", adminLeadsError);
-          setErrorMessage("Failed to load leads: " + adminLeadsError.message);
-          setLeads([]);
-          setIsLoading(false);
-          return;
-        }
-        
-        if (!adminLeadsData?.leads) {
-          console.error("No leads data returned", adminLeadsData);
+        if (!data?.leads) {
+          console.error("No leads data returned", data);
           setErrorMessage("No leads data returned from server");
+          toast.error("No leads data returned from server");
           setLeads([]);
           setIsLoading(false);
           return;
         }
         
-        console.log(`Successfully fetched ${adminLeadsData.leads.length} leads via admin edge function`);
+        console.log(`Successfully fetched ${data.leads.length} leads via admin edge function`);
+        setLeads(data.leads);
         
-        // Process leads with user info if available
-        const processedLeads = adminLeadsData.leads.map((lead: any) => {
-          return {
-            ...lead,
-            user_info: lead.user_info || undefined
-          };
-        });
-        
-        setLeads(processedLeads);
-        setErrorMessage(null);
       } catch (error: any) {
         console.error("Error fetching leads:", error);
         setErrorMessage("Failed to load leads: " + error.message);
+        toast.error("Failed to load leads");
         setLeads([]);
       } finally {
         setIsLoading(false);

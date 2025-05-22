@@ -17,13 +17,15 @@ serve(async (req) => {
   try {
     logStep("Starting admin leads function");
     
-    // Get the authorization header from the request
+    // Create a Supabase client with the auth header from the request
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      logStep("Missing authorization header");
-      throw new Error("Missing authorization header");
-    }
     
+    // Check if the auth header exists
+    if (!authHeader) {
+      logStep("No authorization header provided");
+      throw new Error("No authorization header");
+    }
+
     // Create a Supabase client with the auth header
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -35,89 +37,79 @@ serve(async (req) => {
     );
 
     // Check if the user is authenticated
-    const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
-    if (sessionError || !session) {
-      logStep("Auth error or no session", { error: sessionError?.message });
+    const { data: { user, session }, error: sessionError } = await supabaseClient.auth.getUser();
+    
+    if (sessionError || !user) {
+      logStep("Auth error or no user", { error: sessionError?.message });
       throw new Error("Not authenticated");
     }
 
-    const userId = session.user.id;
-    logStep("User authenticated", { userId });
+    const userId = user.id;
+    logStep("User authenticated", { userId, email: user.email });
 
-    // Create admin client with service role key to bypass RLS
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { auth: { persistSession: false } }
-    );
-
-    // Check if user is admin
-    const { data: userProfile, error: profileError } = await supabaseAdmin
-      .from('user_profiles')
-      .select('is_admin')
-      .eq('id', userId)
-      .single();
+    // Special admin check for zepfarms@gmail.com
+    if (user.email === 'zepfarms@gmail.com') {
+      logStep("Special admin access granted");
       
-    if (profileError) {
-      logStep("Error checking admin status", { error: profileError.message });
-      throw new Error("Error checking admin status");
-    }
+      // Create admin client with service role key to bypass RLS
+      const supabaseAdmin = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+        { auth: { persistSession: false } }
+      );
+      
+      // Get all leads with service role
+      const { data: leads, error: leadsError } = await supabaseAdmin
+        .from('leads')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    // Allow access if user is admin or has the special admin email
-    if (!userProfile?.is_admin && session.user.email !== 'zepfarms@gmail.com') {
-      logStep("Access denied - not an admin", { userId, email: session.user.email });
+      if (leadsError) {
+        logStep("Error fetching leads", { error: leadsError.message });
+        throw leadsError;
+      }
+
+      // Get user profiles to join with leads
+      const { data: userProfiles, error: userProfilesError } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, first_name, last_name');
+
+      // Get auth users for email info
+      const { data: { users: authUsers }, error: authUsersError } = await supabaseAdmin.auth.admin.listUsers();
+
+      // Join leads with user info
+      const processedLeads = leads.map(lead => {
+        const userProfile = userProfiles?.find(profile => profile.id === lead.user_id);
+        const authUser = authUsers?.find(user => user.id === lead.user_id);
+        
+        return {
+          ...lead,
+          user_info: userProfile ? {
+            first_name: userProfile.first_name,
+            last_name: userProfile.last_name,
+            email: authUser?.email
+          } : authUser ? {
+            first_name: authUser.user_metadata?.first_name || null,
+            last_name: authUser.user_metadata?.last_name || null,
+            email: authUser.email
+          } : undefined
+        };
+      });
+
+      logStep("Success", { leadCount: processedLeads.length });
+
+      return new Response(JSON.stringify({
+        leads: processedLeads,
+        fetchedAt: new Date().toISOString()
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200
+      });
+    } else {
+      // Not the special admin email
+      logStep("Access denied - not an admin", { userId, email: user.email });
       throw new Error("Unauthorized: Admin access required");
     }
-
-    logStep("Admin access granted");
-
-    // Get all leads with service role
-    const { data: leads, error: leadsError } = await supabaseAdmin
-      .from('leads')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (leadsError) {
-      logStep("Error fetching leads", { error: leadsError.message });
-      throw leadsError;
-    }
-
-    // Get user profiles to join with leads
-    const { data: userProfiles, error: userProfilesError } = await supabaseAdmin
-      .from('user_profiles')
-      .select('id, first_name, last_name');
-
-    // Get auth users for email info
-    const { data: { users: authUsers }, error: authUsersError } = await supabaseAdmin.auth.admin.listUsers();
-
-    // Join leads with user info
-    const processedLeads = leads.map(lead => {
-      const userProfile = userProfiles?.find(profile => profile.id === lead.user_id);
-      const authUser = authUsers?.find(user => user.id === lead.user_id);
-      
-      return {
-        ...lead,
-        user_info: userProfile ? {
-          first_name: userProfile.first_name,
-          last_name: userProfile.last_name,
-          email: authUser?.email
-        } : authUser ? {
-          first_name: authUser.user_metadata?.first_name || null,
-          last_name: authUser.user_metadata?.last_name || null,
-          email: authUser.email
-        } : undefined
-      };
-    });
-
-    logStep("Success", { leadCount: processedLeads.length });
-
-    return new Response(JSON.stringify({
-      leads: processedLeads,
-      fetchedAt: new Date().toISOString()
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200
-    });
   } catch (error: any) {
     logStep("Error processing request", { message: error.message });
     
