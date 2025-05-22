@@ -19,8 +19,19 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Loader, Search } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Loader, Search, UserX, User, Users } from 'lucide-react';
 
 interface UserProfile {
   id: string;
@@ -31,6 +42,8 @@ interface UserProfile {
   company: string | null;
   phone: string | null;
   created_at: string;
+  last_sign_in_at?: string;
+  confirmed_at?: string;
 }
 
 const UsersTable = () => {
@@ -40,6 +53,9 @@ const UsersTable = () => {
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Fetch users
   useEffect(() => {
@@ -48,24 +64,24 @@ const UsersTable = () => {
         setIsLoading(true);
         
         // Fetch all user profiles
-        const { data: profiles, error } = await supabase
+        const { data: profiles, error: profilesError } = await supabase
           .from('user_profiles')
           .select('*');
 
-        if (error) {
-          throw error;
+        if (profilesError) {
+          throw profilesError;
         }
 
         // Get current user session to know the admin email
         const { data: { session } } = await supabase.auth.getSession();
         const adminEmail = session?.user?.email || '';
         
-        // Fetch all authentication users to get emails
-        // This edge function will get all users (only works when called by admin)
+        // Fetch all authentication users (only works when called by admin)
         const { data: authUsers, error: funcError } = await supabase.functions.invoke('get-all-users');
         
         if (funcError) {
           console.error("Error fetching auth users:", funcError);
+          toast.error("Failed to load users from authentication system");
           // Even if we can't get emails, still show the profiles
           const combinedData = profiles.map(profile => ({
             ...profile,
@@ -76,21 +92,25 @@ const UsersTable = () => {
           return;
         }
 
-        // Map auth users to profiles to get emails
-        const userMap = new Map();
-        if (authUsers && Array.isArray(authUsers)) {
-          authUsers.forEach(user => {
-            if (user.id && user.email) {
-              userMap.set(user.id, user.email);
-            }
-          });
-        }
+        console.log("Auth users:", authUsers);
         
-        // Create the combined data with emails
-        const combinedData = profiles.map(profile => {
+        // Create a map of profiles by ID for faster lookup
+        const profilesMap = new Map();
+        profiles.forEach(profile => {
+          profilesMap.set(profile.id, profile);
+        });
+        
+        // Create the combined data, using auth users as the base and adding profile data
+        const combinedData = authUsers.map(authUser => {
+          const profile = profilesMap.get(authUser.id) || {};
           return {
             ...profile,
-            email: userMap.get(profile.id) || (profile.id === session?.user?.id ? adminEmail : undefined)
+            id: authUser.id,
+            email: authUser.email,
+            created_at: authUser.created_at,
+            last_sign_in_at: authUser.last_sign_in_at,
+            confirmed_at: authUser.confirmed_at,
+            // Include any other fields from authUser that you want to display
           };
         });
         
@@ -147,10 +167,50 @@ const UsersTable = () => {
     }
   };
 
+  const handleDeletePrompt = (userId: string) => {
+    setUserToDelete(userId);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    
+    try {
+      setIsDeleting(true);
+      
+      // Call the delete-user edge function
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId: userToDelete }
+      });
+      
+      if (error) throw error;
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      // Update the UI by removing the deleted user
+      setUsers(users.filter(user => user.id !== userToDelete));
+      toast.success("User deleted successfully");
+      
+      // Close the modal
+      setIsDeleteModalOpen(false);
+      setUserToDelete(null);
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast.error(`Failed to delete user: ${error.message || 'Unknown error'}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold">User Management</h2>
+        <div className="flex items-center">
+          <Users className="h-6 w-6 mr-2 text-brand-600" />
+          <h2 className="text-xl font-semibold">User Management</h2>
+        </div>
         <div className="relative w-64">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
           <Input
@@ -176,6 +236,7 @@ const UsersTable = () => {
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Joined</TableHead>
+                <TableHead>Last Sign In</TableHead>
                 <TableHead>Admin</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -191,6 +252,9 @@ const UsersTable = () => {
                     <TableCell>{user.email || 'N/A'}</TableCell>
                     <TableCell>{user.phone || 'N/A'}</TableCell>
                     <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : 'Never'}
+                    </TableCell>
                     <TableCell>
                       {user.is_admin ? 
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -214,13 +278,25 @@ const UsersTable = () => {
                         >
                           {user.is_admin ? "Remove Admin" : "Make Admin"}
                         </Button>
+                        {/* Skip delete button for the current admin */}
+                        {user.email !== 'zepfarms@gmail.com' && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeletePrompt(user.id)}
+                            className="flex items-center"
+                          >
+                            <UserX className="h-4 w-4 mr-1" />
+                            Delete
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-4">
+                  <TableCell colSpan={7} className="text-center py-4">
                     No users found matching your search.
                   </TableCell>
                 </TableRow>
@@ -267,6 +343,14 @@ const UsersTable = () => {
                   <h4 className="text-sm font-medium text-gray-500">Joined</h4>
                   <p>{new Date(selectedUser.created_at).toLocaleDateString()}</p>
                 </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Last Sign In</h4>
+                  <p>{selectedUser.last_sign_in_at ? new Date(selectedUser.last_sign_in_at).toLocaleDateString() : 'Never'}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500">Email Confirmed</h4>
+                  <p>{selectedUser.confirmed_at ? 'Yes' : 'No'}</p>
+                </div>
               </div>
             </div>
           )}
@@ -278,9 +362,58 @@ const UsersTable = () => {
             >
               Close
             </Button>
+            
+            {selectedUser && selectedUser.email !== 'zepfarms@gmail.com' && (
+              <Button 
+                variant="destructive" 
+                onClick={() => {
+                  setIsDialogOpen(false);
+                  handleDeletePrompt(selectedUser.id);
+                }}
+              >
+                <UserX className="mr-2 h-4 w-4" />
+                Delete User
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete User Confirmation Alert Dialog */}
+      <AlertDialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the user account
+              and remove all associated data from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault(); // Prevent the dialog from closing automatically
+                handleDeleteUser();
+              }}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <UserX className="mr-2 h-4 w-4" />
+                  Delete
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

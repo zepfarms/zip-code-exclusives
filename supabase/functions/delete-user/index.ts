@@ -38,27 +38,33 @@ Deno.serve(async (req) => {
       );
     }
     
-    // Get all users from the auth.users table (only possible with service_role key)
-    const { data: users, error } = await supabaseClient.auth.admin.listUsers();
+    // Parse the request body to get the user ID to delete
+    const { userId } = await req.json();
+    
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: 'User ID is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Prevent admin from deleting themselves
+    if (userId === currentUser.data.user.id) {
+      return new Response(
+        JSON.stringify({ error: 'Cannot delete yourself' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Delete the user
+    const { error } = await supabaseClient.auth.admin.deleteUser(userId);
     
     if (error) {
       throw error;
     }
 
-    // Return mapped users with more details
-    const mappedUsers = users.users.map(user => ({
-      id: user.id,
-      email: user.email,
-      created_at: user.created_at,
-      last_sign_in_at: user.last_sign_in_at,
-      app_metadata: user.app_metadata,
-      user_metadata: user.user_metadata,
-      confirmed_at: user.confirmed_at,
-      banned_until: user.banned_until,
-    }));
-
     return new Response(
-      JSON.stringify(mappedUsers),
+      JSON.stringify({ success: true, message: 'User deleted successfully' }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
