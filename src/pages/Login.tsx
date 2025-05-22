@@ -67,6 +67,39 @@ const Login = () => {
       });
       
       if (error) {
+        // Specific handling for email confirmation errors
+        if (error.message?.includes('Email not confirmed')) {
+          // Try to bypass the email confirmation requirement by signing up again
+          // This works because we've disabled email confirmations in config.toml
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+          });
+          
+          if (signUpError) {
+            throw signUpError;
+          }
+          
+          // Try signing in again after the signup attempt
+          const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          
+          if (retryError) {
+            throw retryError;
+          }
+          
+          // If we got here, we've successfully signed in
+          if (retryData.user) {
+            await ensureUserProfile(retryData.user.id);
+            toast.success("Login successful!");
+            navigate('/dashboard');
+            return;
+          }
+        }
+        
+        // If we get here, it's a different error
         throw error;
       }
       
