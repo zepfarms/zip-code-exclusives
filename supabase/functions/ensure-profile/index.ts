@@ -24,10 +24,15 @@ serve(async (req) => {
     logStep("Processing request for user", userId);
 
     // Initialize Supabase client with service role key to bypass RLS
+    // Use fixed URLs - don't use variables for better security
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey);
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: {
+        persistSession: false,
+      }
+    });
 
     // Get user data
     const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
@@ -50,7 +55,7 @@ serve(async (req) => {
     // Check if profile exists
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('user_profiles')
-      .select('*')
+      .select('id, first_name, last_name, user_type')
       .eq('id', userId)
       .maybeSingle();
 

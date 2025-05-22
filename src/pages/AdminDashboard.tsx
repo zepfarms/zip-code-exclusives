@@ -24,9 +24,23 @@ const AdminDashboard = () => {
           return;
         }
         
-        // Only zepfarms@gmail.com is allowed to access admin
-        if (session.user.email === 'zepfarms@gmail.com') {
-          console.log("Admin access granted for zepfarms@gmail.com");
+        // Get user profile to check admin status
+        const { data: profile, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .maybeSingle();
+          
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
+          toast.error("Could not verify admin status");
+          navigate('/dashboard');
+          return;
+        }
+        
+        // Check if user is admin
+        if (profile?.is_admin || session.user.email === 'zepfarms@gmail.com') {
+          console.log("Admin access granted");
           setIsAdmin(true);
           setIsLoading(false);
           return;
