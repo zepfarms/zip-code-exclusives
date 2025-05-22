@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from "sonner";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const AdminDashboard = () => {
   // Mock data updated to include user_type and lead_type
@@ -24,17 +23,13 @@ const AdminDashboard = () => {
     city: '',
     state: '',
     zipCode: '',
-    leadType: 'investor', // Default lead type
+    leadType: 'investor', // Default lead type - now fixed to 'investor'
     notes: ''
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setNewLead(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleLeadTypeChange = (value: string) => {
-    setNewLead(prev => ({ ...prev, leadType: value }));
   };
 
   const handleAddLead = (e: React.FormEvent) => {
@@ -199,25 +194,8 @@ const AdminDashboard = () => {
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <label className="text-sm font-medium">
-                        Lead Type <span className="text-red-500">*</span>
-                      </label>
-                      <RadioGroup 
-                        value={newLead.leadType} 
-                        onValueChange={handleLeadTypeChange}
-                        className="flex space-x-4"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="investor" id="lead-investor" />
-                          <label htmlFor="lead-investor">Investor Lead</label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="agent" id="lead-agent" />
-                          <label htmlFor="lead-agent">Agent Lead</label>
-                        </div>
-                      </RadioGroup>
-                    </div>
+                    {/* Removed the lead type selection - now fixed to 'investor' */}
+                    <input type="hidden" name="leadType" value="investor" />
                     
                     <div className="space-y-2">
                       <label htmlFor="notes" className="text-sm font-medium">
@@ -261,7 +239,7 @@ const AdminDashboard = () => {
                         ).map(client => (
                           <div key={client.id} className="p-4 bg-green-50 border border-green-200 rounded-lg">
                             <div className="font-bold text-green-800">
-                              {newLead.leadType === 'agent' ? 'Agent' : 'Investor'} lead will be assigned to:
+                              Lead will be assigned to:
                             </div>
                             <div className="mt-2 space-y-1">
                               <div><span className="font-medium">Name:</span> {client.name}</div>
@@ -279,9 +257,9 @@ const AdminDashboard = () => {
                         ))
                       ) : (
                         <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                          <div className="font-bold text-amber-800">No client found for this zip code and lead type</div>
+                          <div className="font-bold text-amber-800">No client found for this zip code</div>
                           <div className="mt-2 text-amber-700">
-                            Zip code {newLead.zipCode} isn't currently assigned to any {newLead.leadType} client.
+                            Zip code {newLead.zipCode} isn't currently assigned to any client.
                           </div>
                         </div>
                       )}
@@ -345,16 +323,9 @@ const AdminDashboard = () => {
                               {client.territories.map(territory => (
                                 <span 
                                   key={`${territory.zip}-${territory.leadType}`} 
-                                  className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium 
-                                    ${territory.leadType === 'agent' 
-                                      ? 'bg-blue-50 text-blue-700 border border-blue-200' 
-                                      : 'bg-purple-50 text-purple-700 border border-purple-200'
-                                    }`}
+                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200"
                                 >
                                   {territory.zip}
-                                  <span className="ml-1 text-[10px]">
-                                    ({territory.leadType === 'agent' ? 'A' : 'I'})
-                                  </span>
                                 </span>
                               ))}
                             </div>
