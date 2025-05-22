@@ -1,8 +1,7 @@
 
-# A string used to distinguish different Supabase projects on the same host. Defaults to the
-# working directory name when running `supabase init`.
+# A string used to distinguish different Supabase projects on the same host. Defaults to the working
+# directory name when running `supabase init`.
 project_id = "ietvubimwsfugzkiycus"
-organization_id = "self"
 
 [api]
 # Port to use for the API URL.
@@ -19,6 +18,9 @@ max_rows = 1000
 [db]
 # Port to use for the local database URL.
 port = 54322
+# The database major version to use. This has to be the same as your remote database's. Run `SHOW
+# server_version;` on the remote database to check.
+major_version = 15
 
 [studio]
 # Port to use for Supabase Studio.
@@ -42,7 +44,8 @@ file_size_limit = "50MiB"
 site_url = "http://localhost:3000"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 additional_redirect_urls = ["https://localhost:3000"]
-# How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
+# How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 seconds (one
+# week).
 jwt_expiry = 3600
 # Allow/disallow new user signups to your project.
 enable_signup = true
@@ -178,7 +181,80 @@ redirect_uri = ""
 url = ""
 
 [functions]
-[functions.get-all-users]
+[functions.admin-notification]
 verify_jwt = true
+
+[functions.check-admin-status]
+verify_jwt = true
+
+[functions.check-territory-availability]
+verify_jwt = true
+
+[functions.create-checkout]
+verify_jwt = true
+
+[functions.create-territory]
+verify_jwt = false
+
+[functions.customer-portal]
+verify_jwt = true
+
+[functions.delete-user]
+verify_jwt = true
+
+[functions.ensure-profile]
+verify_jwt = true
+
+[functions.get-admin-leads]
+verify_jwt = true
+
 [functions.get-admin-profiles]
 verify_jwt = true
+
+[functions.get-all-users]
+verify_jwt = true
+
+[functions.get-user-leads]
+verify_jwt = true
+
+[functions.get-user-territories]
+verify_jwt = true
+
+[functions.notify-lead]
+verify_jwt = true
+
+[functions.schedule-followup-email]
+verify_jwt = true
+
+[functions.send-followup-email]
+verify_jwt = true
+
+[functions.set-admin]
+verify_jwt = true
+
+[functions.welcome-email]
+verify_jwt = false
+
+# Configure one of the supported email providers: `smtp`, `ses`, or `mailgun`, `resend`.
+[email]
+enable_signup = true
+double_confirm_changes = false
+enable_confirmations = false
+
+[email.smtp]
+host = ""
+port = 587
+user = ""
+password = ""
+sender_name = ""
+sender_email = ""
+
+# Use an external SMS provider. The full list of providers are: `twilio`, `messagebird`, `textlocal`,
+# `vonage`.
+[sms]
+enabled = false
+
+[sms.twilio]
+account_sid = ""
+message_service_sid = ""
+auth_token = ""

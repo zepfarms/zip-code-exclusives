@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -127,59 +128,47 @@ const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
     try {
       console.log("Checking availability for zip code:", zipCode);
       
-      // Check if the zip code exists in territories and is active
-      const { data: existingTerritories, error: territoryError } = await supabase
-        .from('territories')
-        .select('id, active, user_id, zip_code, lead_type')
-        .eq('zip_code', zipCode);
+      // Get current user session for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Not authenticated");
+      }
+
+      // Use the edge function to check territory availability
+      const { data, error } = await supabase.functions.invoke('check-territory-availability', {
+        body: { 
+          zipCode: zipCode,
+          userId: session.user.id
+        }
+      });
       
-      if (territoryError) {
-        console.error("Error checking territories:", territoryError);
-        throw territoryError;
+      if (error) {
+        console.error("Error checking territory availability:", error);
+        throw new Error(error.message || "Failed to check availability");
       }
       
-      console.log("Existing territories check:", existingTerritories);
+      console.log("Territory check result:", data);
       
-      // Only consider active territories as unavailable
-      const activeTerritory = existingTerritories?.find(t => t.active === true);
-      
-      if (activeTerritory) {
-        // Get user details for the active territory
-        const { data: userProfiles } = await supabase
-          .from('user_profiles')
-          .select('first_name, last_name')
-          .eq('id', activeTerritory.user_id)
-          .maybeSingle();
-          
-        const { data: authUsers } = await supabase.functions.invoke('get-all-users');
-        const activeUser = authUsers?.find((u: any) => u.id === activeTerritory.user_id);
-        const userName = userProfiles ? 
-          `${userProfiles.first_name || ''} ${userProfiles.last_name || ''}`.trim() : 
-          'unknown user';
-        
+      if (data && data.available !== undefined) {
         setCheckResult({ 
-          available: false, 
-          checked: true, 
-          existingTerritory: {
-            ...activeTerritory,
-            userName,
-            userEmail: activeUser?.email || 'N/A'
-          }
+          available: data.available, 
+          checked: true,
+          existingTerritory: data.existingTerritory
         });
-        toast.error(`Zip code ${zipCode} is already assigned to ${userName} (${activeTerritory.lead_type} lead type)`);
-        setIsChecking(false);
-        return;
+        
+        if (!data.available && data.existingTerritory) {
+          toast.error(`Zip code ${zipCode} is already assigned to ${data.existingTerritory.userName || 'a user'}`);
+        } else if (data.available) {
+          toast.success(`Zip code ${zipCode} is available!`);
+        }
+      } else {
+        throw new Error("Invalid response format from availability check");
       }
-      
-      // If we got here, it means the territory is either not in the database
-      // or it exists but is not active, so we'll mark it as available
-      console.log("No active territory found for zip code:", zipCode);
-      setCheckResult({ available: true, checked: true });
-      toast.success(`Zip code ${zipCode} is available!`);
-      
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error checking zip code:", error);
-      toast.error("Failed to check zip code availability");
+      toast.error("Failed to check zip code availability: " + (error.message || "Unknown error"));
+      // Set a default state to avoid UI being stuck
+      setCheckResult({ available: false, checked: true });
     } finally {
       setIsChecking(false);
     }
