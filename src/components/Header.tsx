@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -65,39 +64,39 @@ const Header = () => {
 
   const handleLogout = async () => {
     try {
-      // Attempt to sign out
-      const { error } = await supabase.auth.signOut();
+      // Show loading toast
+      const loadingToast = toast.loading("Logging out...");
+      
+      // Attempt to sign out with all storage options cleared
+      const { error } = await supabase.auth.signOut({
+        scope: 'global' // This explicitly clears all local storage
+      });
+      
+      // Remove loading toast
+      toast.dismiss(loadingToast);
       
       if (error) {
         console.error('Logout error:', error);
-        
-        // Special handling for missing session errors
-        if (error.message.includes('session')) {
-          // If session is missing, we'll consider user logged out anyway
-          setUser(null);
-          setIsAdmin(false);
-          toast.success("Logged out successfully");
-          navigate('/', { replace: true });
-          return;
-        }
-        
         toast.error(`Failed to log out: ${error.message}`);
         return;
       }
       
-      // Only show success message and navigate if no error
-      toast.success("Logged out successfully");
+      // Clear user state
       setUser(null);
       setIsAdmin(false);
-      navigate('/', { replace: true });
+      
+      // Show success message and navigate
+      toast.success("Logged out successfully");
+      
+      // Force reload to ensure all auth state is cleared
+      window.location.href = '/';
     } catch (error) {
       console.error('Logout error:', error);
       
-      // Fallback handling - reset state and redirect
+      // Fallback handling
       setUser(null);
       setIsAdmin(false);
-      navigate('/', { replace: true });
-      toast.success("Logged out successfully");
+      window.location.href = '/';
     }
   };
 

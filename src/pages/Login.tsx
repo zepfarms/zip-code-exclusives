@@ -21,6 +21,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const navigate = useNavigate();
 
   // Check if user is already logged in
@@ -31,6 +32,7 @@ const Login = () => {
         
         if (error) {
           console.error("Session check error:", error);
+          setIsInitializing(false);
           return;
         }
         
@@ -40,6 +42,8 @@ const Login = () => {
         }
       } catch (error) {
         console.error("Auth check error:", error);
+      } finally {
+        setIsInitializing(false);
       }
     };
     
@@ -85,6 +89,19 @@ const Login = () => {
       setIsLoading(false);
     }
   };
+
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="animate-spin h-8 w-8 border-4 border-brand-600 border-t-transparent rounded-full"></div>
+          <span className="ml-2">Checking authentication...</span>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

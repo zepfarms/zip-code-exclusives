@@ -10,31 +10,30 @@ const AdminHeader = () => {
   
   const handleLogout = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
+      const loadingToast = toast.loading("Logging out...");
+      
+      // Use global scope to clear all session data
+      const { error } = await supabase.auth.signOut({
+        scope: 'global'
+      });
+      
+      toast.dismiss(loadingToast);
       
       if (error) {
         console.error('Logout error:', error);
-        
-        // Special handling for missing session errors
-        if (error.message.includes('session')) {
-          // If session is missing, we'll consider user logged out anyway
-          toast.success("Logged out successfully");
-          navigate('/login', { replace: true });
-          return;
-        }
-        
         toast.error(`Failed to log out: ${error.message}`);
         return;
       }
       
       toast.success("Logged out successfully");
-      navigate('/login', { replace: true });
+      
+      // Force full page reload to clear any cached authentication state
+      window.location.href = '/login';
     } catch (error) {
       console.error('Logout error:', error);
       
       // Fallback handling - just redirect to login page
-      navigate('/login', { replace: true });
-      toast.success("Logged out successfully");
+      window.location.href = '/login';
     }
   };
   

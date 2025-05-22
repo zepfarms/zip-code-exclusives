@@ -40,6 +40,27 @@ const ScrollToTop = () => {
   return null;
 };
 
+// Session cleanup on app initialization
+const SessionCleanup = () => {
+  useEffect(() => {
+    // Check for stale session data
+    const checkForStaleSession = async () => {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase.auth.getSession();
+      
+      // If there's a session but no valid user data, clear it
+      if (data.session && !data.session.user) {
+        console.log("Found stale session data, clearing...");
+        await supabase.auth.signOut({ scope: 'global' });
+      }
+    };
+    
+    checkForStaleSession().catch(console.error);
+  }, []);
+  
+  return null;
+};
+
 // Create a loading fallback
 const LoadingFallback = () => (
   <div className="flex items-center justify-center h-screen">
@@ -67,6 +88,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <ScrollToTop />
+          <SessionCleanup />
           <BreadcrumbNav />
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
