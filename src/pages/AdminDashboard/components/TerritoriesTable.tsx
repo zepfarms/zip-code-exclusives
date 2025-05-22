@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Loader, Search } from 'lucide-react';
+import { Loader, Search, RefreshCw } from 'lucide-react';
 import AddTerritoryForm from './AddTerritoryForm';
 
 interface UserProfile {
@@ -42,12 +42,7 @@ const TerritoriesTable = () => {
   
   // Fetch territories
   useEffect(() => {
-    fetchTerritoriesData().then(territoriesData => {
-      if (territoriesData) {
-        setTerritories(territoriesData);
-      }
-      setIsLoading(false);
-    }).catch(err => {
+    fetchTerritoriesData().catch(err => {
       console.error("Error in territory fetch effect:", err);
       setIsLoading(false);
     });
@@ -104,7 +99,7 @@ const TerritoriesTable = () => {
       }
       
       // Combine territory data with user profiles and emails
-      return territoriesData.map((territory: any) => {
+      const enhancedTerritories = territoriesData.map((territory: any) => {
         // Find the auth user that matches this territory's user_id
         const authUser = usersList?.find((u: any) => u.id === territory.user_id);
         const userProfile = userProfilesMap.get(territory.user_id) || {};
@@ -118,9 +113,15 @@ const TerritoriesTable = () => {
           }
         };
       });
+
+      console.log("Enhanced territories:", enhancedTerritories);
+      setTerritories(enhancedTerritories);
+      setIsLoading(false);
+      return enhancedTerritories;
     } catch (error) {
       console.error("Error fetching territories:", error);
       toast.error("Failed to load territories");
+      setIsLoading(false);
       return [];
     }
   };
@@ -163,8 +164,7 @@ const TerritoriesTable = () => {
 
   const refreshTerritories = async () => {
     const territoriesData = await fetchTerritoriesData();
-    if (territoriesData) {
-      setTerritories(territoriesData);
+    if (territoriesData.length > 0) {
       toast.success("Territory data refreshed");
     }
   };
@@ -189,7 +189,9 @@ const TerritoriesTable = () => {
               size="sm"
               onClick={refreshTerritories}
               disabled={isLoading}
+              className="flex items-center"
             >
+              <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </div>
@@ -256,7 +258,10 @@ const TerritoriesTable = () => {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-4">
-                      No territories found matching your search.
+                      {territories.length === 0 ? 
+                        "No territories found. Add a territory using the form." :
+                        "No territories found matching your search."
+                      }
                     </TableCell>
                   </TableRow>
                 )}

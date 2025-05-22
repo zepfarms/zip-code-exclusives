@@ -14,6 +14,13 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface User {
   id: string;
@@ -48,19 +55,22 @@ const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
         
         if (profilesError) throw profilesError;
         
-        // Get emails from auth.users
-        const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+        // Get emails from auth users via edge function
+        const { data: authUsers, error: authError } = await supabase.functions.invoke('get-all-users');
         
         if (authError) {
           console.error("Error fetching auth users:", authError);
           throw authError;
         }
         
-        const authUsers = authData?.users || [];
+        if (!authUsers || !Array.isArray(authUsers)) {
+          console.error("Invalid response format from get-all-users:", authUsers);
+          throw new Error("Failed to fetch user data in the expected format");
+        }
         
         // Combine the data
         const combinedUsers = profiles.map(profile => {
-          const authUser = authUsers.find(user => user.id === profile.id);
+          const authUser = authUsers.find((user: any) => user.id === profile.id);
           return {
             id: profile.id,
             email: authUser?.email || 'N/A',
@@ -69,6 +79,7 @@ const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
           };
         });
         
+        console.log("Combined users for dropdown:", combinedUsers);
         setUsers(combinedUsers);
       } catch (error) {
         console.error("Error fetching users:", error);
@@ -218,20 +229,28 @@ const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="userId">Select User</Label>
-          <select 
-            id="userId" 
-            value={userId} 
-            onChange={(e) => setUserId(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md"
+          <Select
+            value={userId}
+            onValueChange={setUserId}
             disabled={isLoadingUsers}
           >
-            <option value="">-- Select User --</option>
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.email} {user.first_name ? `(${user.first_name} ${user.last_name || ''})` : ''}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="-- Select User --" />
+            </SelectTrigger>
+            <SelectContent>
+              {users.length > 0 ? (
+                users.map((user) => (
+                  <SelectItem key={user.id} value={user.id}>
+                    {user.email} {user.first_name ? `(${user.first_name} ${user.last_name || ''})` : ''}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="loading" disabled>
+                  {isLoadingUsers ? "Loading users..." : "No users found"}
+                </SelectItem>
+              )}
+            </SelectContent>
+          </Select>
         </div>
         
         <div className="space-y-2">
