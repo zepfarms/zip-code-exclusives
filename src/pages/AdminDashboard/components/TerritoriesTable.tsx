@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Loader, Search } from 'lucide-react';
+import AddTerritoryForm from './AddTerritoryForm';
 
 interface UserProfile {
   first_name: string | null;
@@ -145,88 +146,92 @@ const TerritoriesTable = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold">Territory Management</h2>
-        <div className="relative w-64">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-          <Input
-            placeholder="Search territories..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8"
-          />
+    <div className="grid md:grid-cols-3 gap-8">
+      <div className="md:col-span-2 bg-white rounded-lg shadow p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold">Territory Management</h2>
+          <div className="relative w-64">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+            <Input
+              placeholder="Search territories..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
+          </div>
         </div>
-      </div>
-      
-      {isLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader className="h-8 w-8 animate-spin text-brand-600" />
-          <span className="ml-2">Loading territories...</span>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Zip Code</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Lead Type</TableHead>
-                <TableHead>Start Date</TableHead>
-                <TableHead>Next Billing</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredTerritories.length > 0 ? (
-                filteredTerritories.map((territory) => (
-                  <TableRow key={territory.id}>
-                    <TableCell className="font-medium">{territory.zip_code}</TableCell>
-                    <TableCell>
-                      {territory.user_profile?.first_name} {territory.user_profile?.last_name}
-                      <span className="block text-xs text-gray-500">{territory.user_profile?.email}</span>
-                    </TableCell>
-                    <TableCell className="capitalize">{territory.lead_type}</TableCell>
-                    <TableCell>
-                      {territory.start_date ? new Date(territory.start_date).toLocaleDateString() : 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      {territory.next_billing_date ? new Date(territory.next_billing_date).toLocaleDateString() : 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      {territory.active ? 
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                          Active
-                        </Badge> : 
-                        <Badge variant="outline" className="bg-red-100 text-red-800 hover:bg-red-100">
-                          Inactive
-                        </Badge>
-                      }
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant={territory.active ? "destructive" : "outline"}
-                        size="sm"
-                        onClick={() => toggleTerritoryStatus(territory)}
-                        disabled={isUpdating}
-                      >
-                        {territory.active ? "Deactivate" : "Activate"}
-                      </Button>
+        
+        {isLoading ? (
+          <div className="flex justify-center items-center py-12">
+            <Loader className="h-8 w-8 animate-spin text-brand-600" />
+            <span className="ml-2">Loading territories...</span>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Zip Code</TableHead>
+                  <TableHead>User</TableHead>
+                  <TableHead>Start Date</TableHead>
+                  <TableHead>Next Billing</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredTerritories.length > 0 ? (
+                  filteredTerritories.map((territory) => (
+                    <TableRow key={territory.id}>
+                      <TableCell className="font-medium">{territory.zip_code}</TableCell>
+                      <TableCell>
+                        {territory.user_profile?.first_name} {territory.user_profile?.last_name}
+                        <span className="block text-xs text-gray-500">{territory.user_profile?.email}</span>
+                      </TableCell>
+                      <TableCell>
+                        {territory.start_date ? new Date(territory.start_date).toLocaleDateString() : 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        {territory.next_billing_date ? new Date(territory.next_billing_date).toLocaleDateString() : 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        {territory.active ? 
+                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                            Active
+                          </Badge> : 
+                          <Badge variant="outline" className="bg-red-100 text-red-800 hover:bg-red-100">
+                            Inactive
+                          </Badge>
+                        }
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant={territory.active ? "destructive" : "outline"}
+                          size="sm"
+                          onClick={() => toggleTerritoryStatus(territory)}
+                          disabled={isUpdating}
+                        >
+                          {territory.active ? "Deactivate" : "Activate"}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-4">
+                      No territories found matching your search.
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-4">
-                    No territories found matching your search.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+      
+      <div className="md:col-span-1">
+        <AddTerritoryForm />
+      </div>
     </div>
   );
 };

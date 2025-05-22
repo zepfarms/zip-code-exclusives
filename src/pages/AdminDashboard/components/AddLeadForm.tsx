@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader } from 'lucide-react';
 import { 
   Card, 
@@ -48,7 +47,6 @@ interface LeadFormData {
   state: string;
   zip_code: string;
   notes: string;
-  lead_type: 'investor' | 'agent';
 }
 
 const initialFormData: LeadFormData = {
@@ -59,8 +57,7 @@ const initialFormData: LeadFormData = {
   city: '',
   state: '',
   zip_code: '',
-  notes: '',
-  lead_type: 'investor'
+  notes: ''
 };
 
 const AddLeadForm = () => {
@@ -80,12 +77,6 @@ const AddLeadForm = () => {
       setHasCheckedTerritory(false);
       setTerritoryMatch(null);
     }
-  };
-
-  const handleLeadTypeChange = (value: 'investor' | 'agent') => {
-    setFormData(prev => ({ ...prev, lead_type: value }));
-    setHasCheckedTerritory(false);
-    setTerritoryMatch(null);
   };
   
   // Fetch territories for reference
@@ -152,9 +143,12 @@ const AddLeadForm = () => {
       return;
     }
 
+    // Always use investor as the lead type now
+    const leadType = 'investor';
+    
     const match = territories.find(t => 
       t.zip_code === formData.zip_code && 
-      t.lead_type === formData.lead_type
+      t.lead_type === leadType
     );
 
     setTerritoryMatch(match || null);
@@ -226,24 +220,6 @@ const AddLeadForm = () => {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="lead_type">Lead Type</Label>
-              <RadioGroup 
-                value={formData.lead_type} 
-                onValueChange={(value) => handleLeadTypeChange(value as 'investor' | 'agent')}
-                className="flex space-x-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="investor" id="lead_type_investor" />
-                  <Label htmlFor="lead_type_investor">Investor Lead</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="agent" id="lead_type_agent" />
-                  <Label htmlFor="lead_type_agent">Agent Lead</Label>
-                </div>
-              </RadioGroup>
-            </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name *</Label>
@@ -364,7 +340,7 @@ const AddLeadForm = () => {
                 <>
                   <AlertTitle className="text-yellow-800">No Territory Match</AlertTitle>
                   <AlertDescription className="text-yellow-700">
-                    No user is currently assigned to zip code {formData.zip_code} for {formData.lead_type} leads. 
+                    No user is currently assigned to zip code {formData.zip_code}. 
                     The lead will be saved but not assigned to any user.
                   </AlertDescription>
                 </>
