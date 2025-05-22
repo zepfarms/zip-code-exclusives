@@ -38,7 +38,7 @@ serve(async (req) => {
       .from('user_profiles')
       .select('is_admin')
       .eq('id', requesterUserId)
-      .single();
+      .maybeSingle();
     
     if (requesterError) {
       logStep("Error checking requester admin status", requesterError);
@@ -62,7 +62,7 @@ serve(async (req) => {
       .update({ is_admin: isAdmin })
       .eq('id', userId)
       .select()
-      .single();
+      .maybeSingle();
     
     if (error) {
       logStep("Error updating admin status", error);

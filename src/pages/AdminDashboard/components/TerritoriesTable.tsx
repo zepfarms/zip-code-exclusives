@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -71,11 +70,17 @@ const TerritoriesTable = () => {
       }
 
       console.log(`Fetched ${territoriesData.territories.length} total territories from edge function`); 
-      
-      // Get user profiles
-      const { data: userProfilesData, error: profilesError } = await supabase
-        .from('user_profiles')
-        .select('id, first_name, last_name');
+    
+      // Get user profiles via the new edge function
+      const { data: userProfiles, error: profilesError } = await supabase.functions.invoke('get-admin-profiles', {
+        body: { userId: session.user.id }
+      }).catch(err => {
+        // Fallback to direct query if edge function fails
+        console.error("Edge function for profiles failed, using fallback:", err);
+        return supabase
+          .from('user_profiles')
+          .select('id, first_name, last_name');
+      });
       
       if (profilesError) {
         console.error("Error fetching user profiles:", profilesError);
@@ -91,8 +96,8 @@ const TerritoriesTable = () => {
 
       // Create a map of user profiles by ID
       const userProfilesMap = new Map();
-      if (userProfilesData) {
-        userProfilesData.forEach((profile: any) => {
+      if (userProfiles) {
+        userProfiles.forEach((profile: any) => {
           userProfilesMap.set(profile.id, {
             first_name: profile.first_name,
             last_name: profile.last_name
@@ -119,7 +124,7 @@ const TerritoriesTable = () => {
       console.log("Enhanced territories:", enhancedTerritories);
       
       // Count active territories for debugging
-      const activeCount = enhancedTerritories.filter((t: Territory) => t.active).length;
+      const activeCount = enhancedTerritories.filter((t: any) => t.active).length;
       console.log(`Active territories: ${activeCount}`);
       
       setTerritories(enhancedTerritories);

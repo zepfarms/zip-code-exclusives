@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "sonner";
 import { ensureUserProfile } from './userProfile';
@@ -62,7 +61,7 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
       // Don't show error toast as we have a fallback profile
     }
 
-    // Try to get territories - explicitly filter by user_id to avoid RLS issues
+    // Try to get territories - use the edge function first
     try {
       console.log("Fetching territories for user:", userId);
       
@@ -99,7 +98,7 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
         console.error("Edge function error for territories:", edgeError);
       }
       
-      // Explicitly filter by user_id to ensure we get the right data
+      // Fall back to direct query
       const { data: territories, error: territoriesError } = await supabase
         .from('territories')
         .select('*')

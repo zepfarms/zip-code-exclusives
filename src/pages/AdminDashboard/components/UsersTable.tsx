@@ -84,11 +84,7 @@ const UsersTable = () => {
       console.log("Fetching users with auth token...");
       
       // Call the edge function to get all users (requires admin access)
-      const { data: authUsers, error: funcError } = await supabase.functions.invoke('get-all-users', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
-      });
+      const { data: authUsers, error: funcError } = await supabase.functions.invoke('get-all-users');
       
       if (funcError) {
         console.error("Error from get-all-users function:", funcError);
@@ -108,28 +104,43 @@ const UsersTable = () => {
       
       console.log("Auth users loaded:", authUsers.length);
       
-      // Fetch all user profiles to merge with auth data
-      const { data: profiles, error: profilesError } = await supabase
-        .from('user_profiles')
-        .select('*');
-
-      if (profilesError) {
-        console.error("Error fetching profiles:", profilesError);
-        toast.error("Failed to load user profiles");
-      }
-      
-      // Fetch territories directly using our admin privilege
+      // Fetch territories directly using our improved edge function
       console.log("Fetching all territories...");
-      const { data: allTerritories, error: territoriesError } = await supabase
-        .from('territories')
-        .select('*');
-
+      const { data: territoriesData, error: territoriesError } = await supabase.functions.invoke('get-user-territories', {
+        body: { 
+          userId: session.user.id, 
+          includeInactive: true, 
+          getAllForAdmin: true 
+        }
+      });
+      
       if (territoriesError) {
         console.error("Error fetching territories:", territoriesError);
         toast.error("Failed to load territories");
       }
       
-      console.log(`Fetched ${allTerritories?.length || 0} territories total`);
+      let allTerritories = [];
+      if (territoriesData?.territories) {
+        allTerritories = territoriesData.territories;
+        console.log(`Fetched ${allTerritories.length || 0} territories total from edge function`);
+      }
+      
+      // Get user profiles directly with admin access via service role function
+      const { data: profiles, error: profilesError } = await supabase.functions.invoke('get-admin-profiles', {
+        body: { 
+          userId: session.user.id
+        }
+      }).catch(err => {
+        // Fall back to regular query if the function doesn't exist
+        return supabase
+          .from('user_profiles')
+          .select('*');
+      });
+      
+      if (profilesError) {
+        console.error("Error fetching profiles:", profilesError);
+        toast.error("Failed to load user profiles");
+      }
       
       // Create a map of profiles by ID for faster lookup
       const profilesMap = new Map();
@@ -141,7 +152,7 @@ const UsersTable = () => {
       
       // Group territories by user_id
       const territoriesByUser = new Map();
-      if (allTerritories) {
+      if (allTerritories && allTerritories.length > 0) {
         allTerritories.forEach(territory => {
           if (!territoriesByUser.has(territory.user_id)) {
             territoriesByUser.set(territory.user_id, []);

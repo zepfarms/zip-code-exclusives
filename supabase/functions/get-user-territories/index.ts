@@ -36,11 +36,13 @@ serve(async (req) => {
     // Check if user is admin when getAllForAdmin is true
     if (getAllForAdmin) {
       logStep("Checking admin status for user requesting all territories");
+      
+      // Use a direct query with service role to bypass RLS
       const { data: adminCheck, error: adminCheckError } = await supabaseAdmin
         .from('user_profiles')
         .select('is_admin')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
       
       if (adminCheckError) {
         logStep("Error checking admin status", adminCheckError);

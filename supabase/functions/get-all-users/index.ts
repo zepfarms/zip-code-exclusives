@@ -1,12 +1,9 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { corsHeaders } from "../_shared/cors.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-Deno.serve(async (req) => {
+serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -30,12 +27,21 @@ Deno.serve(async (req) => {
       );
     }
     
-    // Check if the requesting user is zepfarms@gmail.com (the only allowed admin)
-    if (user.email !== 'zepfarms@gmail.com') {
-      return new Response(
-        JSON.stringify({ error: 'Forbidden - Only zepfarms@gmail.com can access admin features' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Check if the requesting user is an admin
+    const { data: adminCheck, error: adminCheckError } = await supabaseClient
+      .from('user_profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single();
+      
+    if (adminCheckError || !adminCheck?.is_admin) {
+      // Special case for zepfarms@gmail.com as a fallback
+      if (user.email !== 'zepfarms@gmail.com') {
+        return new Response(
+          JSON.stringify({ error: 'Forbidden - Only admins can access user data' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
     
     console.log("Admin access confirmed, fetching all users...");
