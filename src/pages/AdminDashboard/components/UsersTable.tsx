@@ -47,7 +47,7 @@ const UsersTable = () => {
       try {
         setIsLoading(true);
         
-        // Fetch user profiles - this works for any authenticated user
+        // Fetch all user profiles
         const { data: profiles, error } = await supabase
           .from('user_profiles')
           .select('*');
@@ -56,22 +56,41 @@ const UsersTable = () => {
           throw error;
         }
 
-        // Get auth emails via edge function or session data
-        // Since we can't use admin.listUsers in client code, we'll use email from session if available
+        // Get current user session to know the admin email
         const { data: { session } } = await supabase.auth.getSession();
-        const currentUserEmail = session?.user?.email || '';
+        const adminEmail = session?.user?.email || '';
         
-        // Create the combined data with emails when available
+        // Fetch all authentication users to get emails
+        // This edge function will get all users (only works when called by admin)
+        const { data: authUsers, error: funcError } = await supabase.functions.invoke('get-all-users');
+        
+        if (funcError) {
+          console.error("Error fetching auth users:", funcError);
+          // Even if we can't get emails, still show the profiles
+          const combinedData = profiles.map(profile => ({
+            ...profile,
+            email: profile.id === session?.user?.id ? adminEmail : undefined
+          }));
+          setUsers(combinedData);
+          setIsLoading(false);
+          return;
+        }
+
+        // Map auth users to profiles to get emails
+        const userMap = new Map();
+        if (authUsers && Array.isArray(authUsers)) {
+          authUsers.forEach(user => {
+            if (user.id && user.email) {
+              userMap.set(user.id, user.email);
+            }
+          });
+        }
+        
+        // Create the combined data with emails
         const combinedData = profiles.map(profile => {
-          // If this is the current user, we know their email
-          const isCurrentUser = profile.id === session?.user?.id;
-          
           return {
             ...profile,
-            // Add email if it's the current user or if it's zepfarms@gmail.com (admin)
-            email: isCurrentUser ? currentUserEmail : 
-                  profile.id === session?.user?.id ? currentUserEmail :
-                  undefined
+            email: userMap.get(profile.id) || (profile.id === session?.user?.id ? adminEmail : undefined)
           };
         });
         

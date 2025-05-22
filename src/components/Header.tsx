@@ -25,24 +25,10 @@ const Header = () => {
         
         setUser(data.session?.user || null);
         
-        // Check if user is admin
-        if (data.session?.user) {
-          // Special case for zepfarms@gmail.com
-          if (data.session.user.email === 'zepfarms@gmail.com') {
-            console.log("Admin status granted in header for zepfarms@gmail.com");
-            setIsAdmin(true);
-          } else {
-            // Regular check for other users
-            const { data: userProfile, error: profileError } = await supabase
-              .from('user_profiles')
-              .select('is_admin')
-              .eq('id', data.session.user.id)
-              .single();
-              
-            if (!profileError && userProfile) {
-              setIsAdmin(userProfile.is_admin === true);
-            }
-          }
+        // Check if user is admin (only zepfarms@gmail.com)
+        if (data.session?.user?.email === 'zepfarms@gmail.com') {
+          console.log("Admin status granted in header for zepfarms@gmail.com");
+          setIsAdmin(true);
         }
       } catch (error) {
         console.error('Authentication error:', error);
@@ -58,19 +44,8 @@ const Header = () => {
       setUser(session?.user || null);
       
       // Check admin status when auth state changes
-      if (session?.user) {
-        // Special case for zepfarms@gmail.com
-        if (session.user.email === 'zepfarms@gmail.com') {
-          setIsAdmin(true);
-        } else {
-          const { data: userProfile } = await supabase
-            .from('user_profiles')
-            .select('is_admin')
-            .eq('id', session.user.id)
-            .single();
-            
-          setIsAdmin(userProfile?.is_admin === true);
-        }
+      if (session?.user?.email === 'zepfarms@gmail.com') {
+        setIsAdmin(true);
       } else {
         setIsAdmin(false);
       }

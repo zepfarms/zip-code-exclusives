@@ -24,9 +24,7 @@ const AdminDashboard = () => {
           return;
         }
         
-        console.log("Checking admin access for:", session.user.email);
-        
-        // Special case for zepfarms@gmail.com - grant admin access
+        // Only zepfarms@gmail.com is allowed to access admin
         if (session.user.email === 'zepfarms@gmail.com') {
           console.log("Admin access granted for zepfarms@gmail.com");
           setIsAdmin(true);
@@ -34,28 +32,9 @@ const AdminDashboard = () => {
           return;
         }
 
-        // Regular check for other users
-        const { data: userProfile, error } = await supabase
-          .from('user_profiles')
-          .select('is_admin')
-          .eq('id', session.user.id)
-          .single();
-
-        if (error) {
-          console.error("Error checking admin status:", error);
-          toast.error("An error occurred checking your permissions");
-          navigate('/dashboard');
-          return;
-        }
-
-        if (!userProfile?.is_admin) {
-          toast.error("You don't have permission to access the admin panel");
-          navigate('/dashboard');
-          return;
-        }
-
-        setIsAdmin(true);
-        setIsLoading(false);
+        // Everyone else is denied access
+        toast.error("You don't have permission to access the admin panel");
+        navigate('/dashboard');
       } catch (error) {
         console.error("Error checking admin status:", error);
         toast.error("An error occurred. Please try again.");

@@ -1,35 +1,4 @@
 
-project_id = "ietvubimwsfugzkiycus"
-
-[api]
-enabled = true
-port = 54321
-schemas = ["public", "storage", "graphql_public"]
-extra_schemas = ["supabase_functions"]
-max_rows = 1000
-
-[db]
-port = 54322
-shadow_port = 54320
-
-[studio]
-enabled = true
-port = 54323
-api_url = "http://localhost:54321"
-
-[storage]
-enabled = true
-
-[auth]
-enabled = true
-site_url = "http://localhost:3000"
-
-[inbucket]
-enabled = true
-port = 54324
-
-[functions.create-checkout]
-verify_jwt = true
-
-[functions.admin-notification]
+[functions]
+[functions.get-all-users]
 verify_jwt = true
