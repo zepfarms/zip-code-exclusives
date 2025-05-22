@@ -51,6 +51,8 @@ const TerritoriesTable = () => {
         throw new Error("Not authenticated");
       }
 
+      console.log("Fetching territories with user ID:", session.user.id);
+
       // Use the enhanced edge function to get all territories as admin
       const { data: territoriesData, error: territoriesError } = await supabase.functions.invoke('get-user-territories', {
         body: { 
@@ -81,7 +83,7 @@ const TerritoriesTable = () => {
         console.error("Error fetching user profiles:", profilesError);
       }
       
-      // Get user emails using the edge function
+      // Get user emails using the edge function - explicitly pass user ID
       const { data: usersList, error: usersError } = await supabase.functions.invoke('get-all-users', {
         body: { userId: session.user.id }
       });
@@ -226,7 +228,7 @@ const TerritoriesTable = () => {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={refreshTerritories}
+              onClick={fetchTerritoriesData}
               disabled={isLoading}
               className="flex items-center"
             >
@@ -311,7 +313,7 @@ const TerritoriesTable = () => {
       </div>
       
       <div className="md:col-span-1">
-        <AddTerritoryForm onTerritoryAdded={refreshTerritories} />
+        <AddTerritoryForm onTerritoryAdded={fetchTerritoriesData} />
       </div>
     </div>
   );

@@ -10,8 +10,13 @@ serve(async (req) => {
   }
 
   try {
-    // Get the user ID from the request body
-    const { userId } = await req.json().catch(() => ({}));
+    console.log("[GET-ALL-USERS] Processing request");
+    
+    // Get the user ID from the request body or auth header
+    const requestBody = await req.json().catch(() => ({}));
+    const userId = requestBody.userId;
+
+    console.log(`[GET-ALL-USERS] Request from user ID: ${userId || 'Not provided'}`);
 
     // Create a Supabase client with the service role key (required for admin operations)
     const supabaseClient = createClient(
@@ -19,7 +24,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
-    // If userId is provided, check if they're an admin
+    // If userId is provided, verify admin status
     if (userId) {
       // Check if the requesting user is an admin
       const { data: adminCheck, error: adminCheckError } = await supabaseClient
@@ -28,16 +33,36 @@ serve(async (req) => {
         .eq('id', userId)
         .single();
         
-      if (adminCheckError || !adminCheck?.is_admin) {
+      if (adminCheckError) {
+        console.error(`[GET-ALL-USERS] Admin check error: ${adminCheckError.message}`);
+        
         // Special case for zepfarms@gmail.com as a fallback
         const { data: userInfo } = await supabaseClient.auth.admin.getUserById(userId);
         
         if (!userInfo?.user || userInfo.user.email !== 'zepfarms@gmail.com') {
+          console.error(`[GET-ALL-USERS] User ${userId} is not authorized`);
           return new Response(
             JSON.stringify({ error: 'Forbidden - Only admins can access user data' }),
             { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
+        
+        console.log(`[GET-ALL-USERS] Special admin access granted for zepfarms@gmail.com`);
+      } else if (!adminCheck?.is_admin) {
+        // Double-check with email
+        const { data: userInfo } = await supabaseClient.auth.admin.getUserById(userId);
+        
+        if (!userInfo?.user || userInfo.user.email !== 'zepfarms@gmail.com') {
+          console.error(`[GET-ALL-USERS] User ${userId} is not an admin`);
+          return new Response(
+            JSON.stringify({ error: 'Forbidden - Only admins can access user data' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        console.log(`[GET-ALL-USERS] Special admin access granted for zepfarms@gmail.com`);
+      } else {
+        console.log(`[GET-ALL-USERS] Admin access confirmed for user ${userId}`);
       }
     } else {
       // If no userId provided, use the auth header method as fallback
@@ -45,6 +70,7 @@ serve(async (req) => {
       const { data: { user }, error: authError } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''));
       
       if (authError || !user) {
+        console.error(`[GET-ALL-USERS] Auth error: ${authError?.message || 'No user found'}`);
         return new Response(
           JSON.stringify({ error: 'Unauthorized', details: authError?.message }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -61,22 +87,30 @@ serve(async (req) => {
       if (adminCheckError || !adminCheck?.is_admin) {
         // Special case for zepfarms@gmail.com as a fallback
         if (user.email !== 'zepfarms@gmail.com') {
+          console.error(`[GET-ALL-USERS] User ${user.id} (${user.email}) is not an admin`);
           return new Response(
             JSON.stringify({ error: 'Forbidden - Only admins can access user data' }),
             { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
+        
+        console.log(`[GET-ALL-USERS] Special admin access granted for zepfarms@gmail.com`);
+      } else {
+        console.log(`[GET-ALL-USERS] Admin access confirmed for user ${user.id}`);
       }
     }
     
-    console.log("Admin access confirmed, fetching all users...");
+    console.log("[GET-ALL-USERS] Admin access confirmed, fetching all users...");
     
     // Get all users from the auth.users table (only possible with service_role key)
     const { data: users, error } = await supabaseClient.auth.admin.listUsers();
     
     if (error) {
+      console.error(`[GET-ALL-USERS] Error fetching users: ${error.message}`);
       throw error;
     }
+
+    console.log(`[GET-ALL-USERS] Successfully fetched ${users.users.length} users`);
 
     // Return mapped users with more details
     const mappedUsers = users.users.map(user => ({
@@ -95,7 +129,7 @@ serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error in get-all-users function:', error);
+    console.error('[GET-ALL-USERS] Error:', error.message);
     
     return new Response(
       JSON.stringify({ error: error.message }),

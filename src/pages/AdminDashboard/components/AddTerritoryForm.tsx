@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -50,19 +49,32 @@ const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
     try {
       setIsLoadingUsers(true);
       
-      // Get all user profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('user_profiles')
-        .select('id, first_name, last_name');
+      // Get current user session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Not authenticated");
+      }
       
-      if (profilesError) throw profilesError;
+      console.log("Fetching users for territory form with user ID:", session.user.id);
       
-      // Get emails from auth users via edge function
-      const { data: authUsers, error: authError } = await supabase.functions.invoke('get-all-users');
+      // Get emails from auth users via edge function with explicit user ID
+      const { data: authUsers, error: authError } = await supabase.functions.invoke('get-all-users', {
+        body: { userId: session.user.id }
+      });
       
       if (authError) {
         console.error("Error fetching auth users:", authError);
         throw authError;
+      }
+      
+      // Get all user profiles
+      const { data: profiles, error: profilesError } = await supabase.functions.invoke('get-admin-profiles', {
+        body: { userId: session.user.id }
+      });
+      
+      if (profilesError) {
+        console.error("Error fetching profiles:", profilesError);
+        throw profilesError;
       }
       
       if (!authUsers || !Array.isArray(authUsers)) {
@@ -70,23 +82,31 @@ const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
         throw new Error("Failed to fetch user data in the expected format");
       }
       
+      // Create a map of profiles by ID for faster lookup
+      const profilesMap = new Map();
+      if (profiles) {
+        profiles.forEach((profile: any) => {
+          profilesMap.set(profile.id, profile);
+        });
+      }
+      
       // Combine the data
-      const combinedUsers = profiles.map(profile => {
-        const authUser = authUsers.find((user: any) => user.id === profile.id);
+      const combinedUsers = authUsers.map(user => {
+        const profile = profilesMap.get(user.id);
         return {
-          id: profile.id,
-          email: authUser?.email || 'N/A',
-          first_name: profile.first_name,
-          last_name: profile.last_name
+          id: user.id,
+          email: user.email || 'N/A',
+          first_name: profile?.first_name || null,
+          last_name: profile?.last_name || null
         };
       });
       
       console.log("Combined users for dropdown:", combinedUsers);
       setUsers(combinedUsers);
+      setIsLoadingUsers(false);
     } catch (error) {
       console.error("Error fetching users:", error);
       toast.error("Failed to load users");
-    } finally {
       setIsLoadingUsers(false);
     }
   };
@@ -309,8 +329,8 @@ const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
     }
   };
   
-  const handleRefreshUsers = () => {
-    fetchUsers();
+  const handleRefreshUsers = async () => {
+    await fetchUsers();
     toast.success("User list refreshed");
   };
 
