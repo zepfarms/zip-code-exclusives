@@ -41,18 +41,11 @@ const TerritoriesTable = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   
   // Fetch territories
-  useEffect(() => {
-    fetchTerritoriesData().catch(err => {
-      console.error("Error in territory fetch effect:", err);
-      setIsLoading(false);
-    });
-  }, []);
-
   const fetchTerritoriesData = async () => {
     try {
       setIsLoading(true);
       
-      // Get territories
+      // Get territories with no filtering (get ALL territories)
       const { data: territoriesData, error: territoriesError } = await supabase
         .from('territories')
         .select(`
@@ -69,6 +62,8 @@ const TerritoriesTable = () => {
       if (territoriesError) {
         throw territoriesError;
       }
+
+      console.log(`Fetched ${territoriesData.length} total territories`); 
       
       // Get user profiles
       const { data: userProfilesData, error: profilesError } = await supabase
@@ -115,6 +110,11 @@ const TerritoriesTable = () => {
       });
 
       console.log("Enhanced territories:", enhancedTerritories);
+      
+      // Count active territories for debugging
+      const activeCount = enhancedTerritories.filter((t: Territory) => t.active).length;
+      console.log(`Active territories: ${activeCount}`);
+      
       setTerritories(enhancedTerritories);
       setIsLoading(false);
       return enhancedTerritories;
@@ -125,6 +125,13 @@ const TerritoriesTable = () => {
       return [];
     }
   };
+
+  useEffect(() => {
+    fetchTerritoriesData().catch(err => {
+      console.error("Error in territory fetch effect:", err);
+      setIsLoading(false);
+    });
+  }, []);
 
   const filteredTerritories = territories.filter(territory => {
     const searchLower = searchTerm.toLowerCase();
@@ -152,6 +159,20 @@ const TerritoriesTable = () => {
       setTerritories(prev => prev.map(t => 
         t.id === territory.id ? { ...t, active: !territory.active } : t
       ));
+
+      // Also update the zip_codes table to maintain consistency
+      const { error: zipCodeError } = await supabase
+        .from('zip_codes')
+        .upsert({
+          zip_code: territory.zip_code,
+          available: territory.active, // If deactivating territory, make zip available
+          user_id: !territory.active ? territory.user_id : null // If activating, assign user
+        });
+
+      if (zipCodeError) {
+        console.error("Error updating zip_codes:", zipCodeError);
+        toast.warning("Territory status changed, but zip code record was not fully updated");
+      }
       
       toast.success(`Territory ${!territory.active ? 'activated' : 'deactivated'} successfully`);
     } catch (error) {

@@ -40,7 +40,10 @@ const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
   const [isChecking, setIsChecking] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  const [checkResult, setCheckResult] = useState<{available: boolean, checked: boolean}>({ available: false, checked: false });
+  const [checkResult, setCheckResult] = useState<{available: boolean, checked: boolean, existingTerritory?: any}>({ 
+    available: false, 
+    checked: false 
+  });
 
   // Fetch users for the dropdown
   const fetchUsers = async () => {
@@ -104,10 +107,10 @@ const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
     try {
       console.log("Checking availability for zip code:", zipCode);
       
-      // Check if the zip code already exists in territories
+      // Check if the zip code exists in territories and is active
       const { data: existingTerritories, error: territoryError } = await supabase
         .from('territories')
-        .select('id, active')
+        .select('id, active, user_id, zip_code, lead_type')
         .eq('zip_code', zipCode);
       
       if (territoryError) {
@@ -121,8 +124,29 @@ const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
       const activeTerritory = existingTerritories?.find(t => t.active === true);
       
       if (activeTerritory) {
-        setCheckResult({ available: false, checked: true });
-        toast.error(`Zip code ${zipCode} is already assigned to an active user`);
+        // Get user details for the active territory
+        const { data: userProfiles } = await supabase
+          .from('user_profiles')
+          .select('first_name, last_name')
+          .eq('id', activeTerritory.user_id)
+          .maybeSingle();
+          
+        const { data: authUsers } = await supabase.functions.invoke('get-all-users');
+        const activeUser = authUsers?.find((u: any) => u.id === activeTerritory.user_id);
+        const userName = userProfiles ? 
+          `${userProfiles.first_name || ''} ${userProfiles.last_name || ''}`.trim() : 
+          'unknown user';
+        
+        setCheckResult({ 
+          available: false, 
+          checked: true, 
+          existingTerritory: {
+            ...activeTerritory,
+            userName,
+            userEmail: activeUser?.email || 'N/A'
+          }
+        });
+        toast.error(`Zip code ${zipCode} is already assigned to ${userName} (${activeTerritory.lead_type} lead type)`);
         setIsChecking(false);
         return;
       }
@@ -375,7 +399,14 @@ const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
               ) : (
                 <>
                   <XCircle className="h-5 w-5 text-red-500" />
-                  <span className="font-medium text-red-800">Zip code {zipCode} is not available.</span>
+                  <div>
+                    <span className="font-medium text-red-800 block">Zip code {zipCode} is not available.</span>
+                    {checkResult.existingTerritory && (
+                      <span className="text-sm text-red-700">
+                        Assigned to {checkResult.existingTerritory.userName} ({checkResult.existingTerritory.userEmail})
+                      </span>
+                    )}
+                  </div>
                 </>
               )}
             </div>

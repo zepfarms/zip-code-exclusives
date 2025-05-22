@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -30,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader, Search, UserX, User, Users } from 'lucide-react';
+import { Loader, Search, UserX, User, Users, RefreshCw } from 'lucide-react';
 
 interface UserProfile {
   id: string;
@@ -66,118 +65,124 @@ const UsersTable = () => {
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Fetch users and their territories
-  useEffect(() => {
-    const fetchUsersAndTerritories = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        // First get authenticated session
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          setError("You must be logged in");
-          setIsLoading(false);
-          return;
-        }
-        
-        console.log("Fetching users with auth token...");
-        
-        // Call the edge function to get all users (requires admin access)
-        const { data: authUsers, error: funcError } = await supabase.functions.invoke('get-all-users', {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`
-          }
-        });
-        
-        if (funcError) {
-          console.error("Error from get-all-users function:", funcError);
-          setError("Failed to load users from authentication system");
-          toast.error("Failed to load users from authentication system");
-          setIsLoading(false);
-          return;
-        }
-        
-        if (!authUsers || authUsers.error) {
-          console.error("API error:", authUsers?.error || "Unknown error");
-          setError(authUsers?.error || "Failed to load users");
-          toast.error(authUsers?.error || "Failed to load users");
-          setIsLoading(false);
-          return;
-        }
-        
-        console.log("Auth users loaded:", authUsers.length);
-        
-        // Fetch all user profiles to merge with auth data
-        const { data: profiles, error: profilesError } = await supabase
-          .from('user_profiles')
-          .select('*');
-
-        if (profilesError) {
-          console.error("Error fetching profiles:", profilesError);
-          toast.error("Failed to load user profiles");
-        }
-        
-        // Fetch territories
-        const { data: territories, error: territoriesError } = await supabase
-          .from('territories')
-          .select('zip_code, user_id, lead_type, active');
-
-        if (territoriesError) {
-          console.error("Error fetching territories:", territoriesError);
-          toast.error("Failed to load territories");
-        }
-        
-        // Create a map of profiles by ID for faster lookup
-        const profilesMap = new Map();
-        if (profiles) {
-          profiles.forEach(profile => {
-            profilesMap.set(profile.id, profile);
-          });
-        }
-        
-        // Group territories by user_id
-        const territoriesByUser = new Map();
-        if (territories) {
-          territories.forEach(territory => {
-            if (!territoriesByUser.has(territory.user_id)) {
-              territoriesByUser.set(territory.user_id, []);
-            }
-            territoriesByUser.get(territory.user_id).push({
-              zip_code: territory.zip_code,
-              lead_type: territory.lead_type,
-              active: territory.active
-            });
-          });
-        }
-        
-        // Combine auth users with profiles and territories
-        const combinedData = authUsers.map(authUser => {
-          const profile = profilesMap.get(authUser.id) || {};
-          const userTerritories = territoriesByUser.get(authUser.id) || [];
-          
-          return {
-            ...profile,
-            id: authUser.id,
-            email: authUser.email,
-            created_at: authUser.created_at,
-            last_sign_in_at: authUser.last_sign_in_at,
-            confirmed_at: authUser.confirmed_at,
-            territories: userTerritories
-          };
-        });
-        
-        setUsers(combinedData);
+  const fetchUsersAndTerritories = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // First get authenticated session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError("You must be logged in");
         setIsLoading(false);
-      } catch (error) {
-        console.error("Error in fetchUsers:", error);
-        setError("Failed to load users");
-        toast.error("Failed to load users");
-        setIsLoading(false);
+        return;
       }
-    };
+      
+      console.log("Fetching users with auth token...");
+      
+      // Call the edge function to get all users (requires admin access)
+      const { data: authUsers, error: funcError } = await supabase.functions.invoke('get-all-users', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
+      
+      if (funcError) {
+        console.error("Error from get-all-users function:", funcError);
+        setError("Failed to load users from authentication system");
+        toast.error("Failed to load users from authentication system");
+        setIsLoading(false);
+        return;
+      }
+      
+      if (!authUsers || authUsers.error) {
+        console.error("API error:", authUsers?.error || "Unknown error");
+        setError(authUsers?.error || "Failed to load users");
+        toast.error(authUsers?.error || "Failed to load users");
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log("Auth users loaded:", authUsers.length);
+      
+      // Fetch all user profiles to merge with auth data
+      const { data: profiles, error: profilesError } = await supabase
+        .from('user_profiles')
+        .select('*');
 
+      if (profilesError) {
+        console.error("Error fetching profiles:", profilesError);
+        toast.error("Failed to load user profiles");
+      }
+      
+      // Fetch territories directly using our admin privilege
+      console.log("Fetching all territories...");
+      const { data: allTerritories, error: territoriesError } = await supabase
+        .from('territories')
+        .select('*');
+
+      if (territoriesError) {
+        console.error("Error fetching territories:", territoriesError);
+        toast.error("Failed to load territories");
+      }
+      
+      console.log(`Fetched ${allTerritories?.length || 0} territories total`);
+      
+      // Create a map of profiles by ID for faster lookup
+      const profilesMap = new Map();
+      if (profiles) {
+        profiles.forEach(profile => {
+          profilesMap.set(profile.id, profile);
+        });
+      }
+      
+      // Group territories by user_id
+      const territoriesByUser = new Map();
+      if (allTerritories) {
+        allTerritories.forEach(territory => {
+          if (!territoriesByUser.has(territory.user_id)) {
+            territoriesByUser.set(territory.user_id, []);
+          }
+          territoriesByUser.get(territory.user_id).push({
+            zip_code: territory.zip_code,
+            lead_type: territory.lead_type,
+            active: territory.active
+          });
+        });
+      }
+      
+      // Combine auth users with profiles and territories
+      const combinedData = authUsers.map(authUser => {
+        const profile = profilesMap.get(authUser.id) || {};
+        const userTerritories = territoriesByUser.get(authUser.id) || [];
+        
+        return {
+          ...profile,
+          id: authUser.id,
+          email: authUser.email,
+          created_at: authUser.created_at,
+          last_sign_in_at: authUser.last_sign_in_at,
+          confirmed_at: authUser.confirmed_at,
+          territories: userTerritories
+        };
+      });
+      
+      setUsers(combinedData);
+      setIsLoading(false);
+      return combinedData;
+    } catch (error) {
+      console.error("Error in fetchUsers:", error);
+      setError("Failed to load users");
+      toast.error("Failed to load users");
+      setIsLoading(false);
+      return [];
+    }
+  };
+
+  useEffect(() => {
     fetchUsersAndTerritories();
   }, []);
 
@@ -275,6 +280,13 @@ const UsersTable = () => {
     }
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchUsersAndTerritories();
+    toast.success("User data has been refreshed");
+    setIsRefreshing(false);
+  };
+
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-6">
@@ -282,14 +294,26 @@ const UsersTable = () => {
           <Users className="h-6 w-6 mr-2 text-brand-600" />
           <h2 className="text-xl font-semibold">User Management</h2>
         </div>
-        <div className="relative w-64">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-          <Input
-            placeholder="Search users or zip codes..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8"
-          />
+        <div className="flex items-center space-x-2">
+          <div className="relative w-64">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+            <Input
+              placeholder="Search users or zip codes..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center"
+          >
+            <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
       </div>
       

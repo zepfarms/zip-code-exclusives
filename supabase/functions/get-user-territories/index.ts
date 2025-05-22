@@ -33,20 +33,22 @@ serve(async (req) => {
       }
     });
 
-    // Get territories for the user
+    // Get territories for the user with more detailed logging
+    logStep("Executing territories query");
     const { data: territories, error } = await supabaseAdmin
       .from('territories')
       .select('*')
-      .eq('user_id', userId)
-      .eq('active', true)
-      .order('created_at', { ascending: false });
+      .eq('user_id', userId);
     
     if (error) {
       logStep("Error fetching territories", error);
       throw error;
     }
     
-    logStep(`Successfully fetched ${territories.length} territories`);
+    // Add additional logging about active vs. inactive territories
+    const activeCount = territories.filter(t => t.active).length;
+    const inactiveCount = territories.filter(t => !t.active).length;
+    logStep(`Successfully fetched ${territories.length} territories (${activeCount} active, ${inactiveCount} inactive)`);
 
     return new Response(JSON.stringify({ 
       territories,

@@ -31,70 +31,48 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // First, check if the zip code is available
-    console.log(`Checking availability for zip code ${zipCode}`);
-    const { data: zipData, error: zipError } = await supabaseAdmin
-      .from("zip_codes")
-      .select("*")
-      .eq("zip_code", zipCode)
-      .maybeSingle();
-    
-    if (zipError) {
-      console.error("Error checking zip code:", zipError);
-      return new Response(
-        JSON.stringify({ error: "Error checking zip code" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // If zip code not found, create it and mark as available
-    if (!zipData) {
-      console.log(`Zip code ${zipCode} not found, creating new record`);
-      const { error: insertZipError } = await supabaseAdmin
-        .from("zip_codes")
-        .insert({ zip_code: zipCode, available: true });
-        
-      if (insertZipError) {
-        console.error("Error creating zip code record:", insertZipError);
-        return new Response(
-          JSON.stringify({ error: "Failed to create zip code record" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    } else if (!zipData.available) {
-      console.log(`Zip code ${zipCode} is not available`);
-      return new Response(
-        JSON.stringify({ error: "Zip code is not available" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Check if the territory is already assigned
-    console.log(`Checking if territory ${zipCode} is already assigned`);
-    const { data: existingTerritory, error: territoryError } = await supabaseAdmin
+    // Check if this territory is already active for any user (important to prevent duplicates)
+    console.log(`Checking if territory with zip ${zipCode} already exists and is active`);
+    const { data: activeTerritory, error: activeCheckError } = await supabaseAdmin
       .from("territories")
       .select("*")
       .eq("zip_code", zipCode)
       .eq("active", true)
       .maybeSingle();
-      
-    if (territoryError && territoryError.code !== "PGRST116") {
-      console.error("Error checking existing territory:", territoryError);
+
+    if (activeCheckError) {
+      console.error("Error checking active territory:", activeCheckError);
       return new Response(
-        JSON.stringify({ error: "Error checking existing territory" }),
+        JSON.stringify({ error: "Error checking territory status: " + activeCheckError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    
-    if (existingTerritory) {
-      console.log(`Territory ${zipCode} is already taken`);
+
+    if (activeTerritory) {
+      console.error(`Territory ${zipCode} is already active and assigned to user ${activeTerritory.user_id}`);
       return new Response(
-        JSON.stringify({ error: "This territory is already taken" }),
+        JSON.stringify({ error: "This territory is already active and assigned to another user" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Create a new territory record
+    // Next, check any existing territory (active or inactive)
+    console.log(`Checking if territory with zip ${zipCode} exists in database (active or inactive)`);
+    const { data: existingTerritory, error: territoryError } = await supabaseAdmin
+      .from("territories")
+      .select("*")
+      .eq("zip_code", zipCode)
+      .maybeSingle();
+      
+    if (territoryError && territoryError.code !== "PGRST116") {
+      console.error("Error checking existing territory:", territoryError);
+      return new Response(
+        JSON.stringify({ error: "Error checking existing territory: " + territoryError.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create a new territory record or update existing one
     const now = new Date();
     const thirtySevenDaysLater = new Date(now);
     thirtySevenDaysLater.setDate(now.getDate() + 37); // 30 days + 7 days initial lead delivery period
@@ -103,41 +81,85 @@ serve(async (req) => {
     // Default to 'investor' if the leadType is not valid
     const validLeadType = leadType === 'agent' ? 'agent' : 'investor';
     
-    console.log(`Creating new territory for user ${userId} with zip code ${zipCode} and normalized lead type ${validLeadType}`);
-    const { data: territory, error: insertError } = await supabaseAdmin
-      .from("territories")
-      .insert({
-        user_id: userId,
-        zip_code: zipCode,
-        lead_type: validLeadType,
-        active: true,
-        start_date: now.toISOString(),
-        next_billing_date: thirtySevenDaysLater.toISOString()
-      })
-      .select()
-      .single();
+    let territory;
+
+    if (existingTerritory) {
+      // Update existing territory
+      console.log(`Updating existing territory for zip ${zipCode}, setting user_id to ${userId}`);
+      const { data: updatedTerritory, error: updateError } = await supabaseAdmin
+        .from("territories")
+        .update({
+          user_id: userId,
+          active: true,
+          lead_type: validLeadType,
+          start_date: now.toISOString(),
+          next_billing_date: thirtySevenDaysLater.toISOString()
+        })
+        .eq("id", existingTerritory.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error("Error updating territory:", updateError);
+        return new Response(
+          JSON.stringify({ error: "Failed to update territory: " + updateError.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       
-    if (insertError) {
-      console.error("Error creating territory:", insertError);
-      return new Response(
-        JSON.stringify({ error: "Failed to create territory: " + insertError.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      territory = updatedTerritory;
+    } else {
+      // Create new territory
+      console.log(`Creating new territory for user ${userId} with zip code ${zipCode}`);
+      const { data: newTerritory, error: insertError } = await supabaseAdmin
+        .from("territories")
+        .insert({
+          user_id: userId,
+          zip_code: zipCode,
+          lead_type: validLeadType,
+          active: true,
+          start_date: now.toISOString(),
+          next_billing_date: thirtySevenDaysLater.toISOString()
+        })
+        .select()
+        .single();
+        
+      if (insertError) {
+        console.error("Error creating territory:", insertError);
+        return new Response(
+          JSON.stringify({ error: "Failed to create territory: " + insertError.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      territory = newTerritory;
     }
     
-    // Mark the zip code as no longer available
-    console.log(`Marking zip code ${zipCode} as unavailable`);
-    const { error: updateError } = await supabaseAdmin
+    // Look up the zip_code entry
+    const { data: zipCodeEntry, error: zipLookupError } = await supabaseAdmin
       .from("zip_codes")
-      .update({ 
+      .select("*")
+      .eq("zip_code", zipCode)
+      .maybeSingle();
+
+    if (zipLookupError && zipLookupError.code !== 'PGRST116') {
+      console.error("Error looking up zip code:", zipLookupError);
+    }
+    
+    // Mark the zip code as no longer available by updating or creating the zip_codes record
+    console.log(`Marking zip code ${zipCode} as unavailable and assigned to user ${userId}`);
+    const { error: upsertError } = await supabaseAdmin
+      .from("zip_codes")
+      .upsert({ 
+        zip_code: zipCode,
         available: false, 
         user_id: userId,
-        claimed_at: now.toISOString() 
-      })
-      .eq("zip_code", zipCode);
+        claimed_at: now.toISOString(),
+        id: zipCodeEntry?.id // Use existing ID if found, otherwise new one will be generated
+      });
       
-    if (updateError) {
-      console.error("Error updating zip code availability:", updateError);
+    if (upsertError) {
+      console.error("Error updating zip code availability:", upsertError);
       // We don't want to fail the whole operation if this update fails
       // The territory has been created, which is the important part
     }
@@ -158,6 +180,32 @@ serve(async (req) => {
     } catch (error) {
       console.error("Error updating territory request:", error);
       // Continue even if updating the request fails
+    }
+
+    // Create welcome lead
+    try {
+      console.log(`Creating welcome lead for territory ${zipCode}, user ${userId}`);
+      const { data: leadData, error: leadError } = await supabaseAdmin
+        .from("leads")
+        .insert({
+          name: "Welcome Lead",
+          territory_zip_code: zipCode,
+          user_id: userId,
+          status: "New",
+          notes: "This is a welcome lead created when your territory was activated.",
+          address: `Zip Code: ${zipCode}`,
+          phone: "",
+          email: ""
+        })
+        .select();
+        
+      if (leadError) {
+        console.error("Error creating welcome lead:", leadError);
+      } else {
+        console.log("Welcome lead created:", leadData);
+      }
+    } catch (error) {
+      console.error("Error in welcome lead creation:", error);
     }
 
     console.log(`Territory creation successful for user ${userId}, zip code ${zipCode}`);
