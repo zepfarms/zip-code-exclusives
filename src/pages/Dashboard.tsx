@@ -18,7 +18,6 @@ import { X, Plus, Loader } from 'lucide-react';
 import AddTerritoryCard from '@/components/dashboard/AddTerritoryCard';
 import { ensureUserProfile, updateUserProfile } from '@/utils/userProfile';
 import { fetchUserData } from '@/utils/dashboardFunctions';
-import DebugPanel from '@/components/dashboard/DebugPanel';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -35,7 +34,6 @@ const Dashboard = () => {
     nextRenewal: null,
     daysRemaining: 0
   });
-  const [debugMode, setDebugMode] = useState(false);
 
   useEffect(() => {
     // Check if user is logged in
@@ -387,35 +385,7 @@ const Dashboard = () => {
               <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
               <p className="text-gray-600">Manage your territories and leads</p>
             </div>
-            <div className="flex gap-2 mt-4 md:mt-0">
-              {!isLoading && (
-                <Button 
-                  onClick={() => refreshData(true)}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                >
-                  <span>Refresh Data</span>
-                </Button>
-              )}
-              <Button 
-                onClick={() => setDebugMode(!debugMode)} 
-                variant="ghost" 
-                size="sm"
-              >
-                {debugMode ? "Hide Debug" : "Debug"}
-              </Button>
-            </div>
           </div>
-          
-          {/* Advanced Debug Panel */}
-          {debugMode && (
-            <DebugPanel 
-              userId={userProfile?.id || null}
-              territories={territories}
-              leads={leads}
-              refreshData={refreshData}
-            />
-          )}
           
           <Tabs defaultValue="territories">
             <TabsList className="mb-6">
