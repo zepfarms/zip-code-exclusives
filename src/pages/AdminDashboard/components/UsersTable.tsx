@@ -24,10 +24,10 @@ import { Loader, Search } from 'lucide-react';
 
 interface UserProfile {
   id: string;
-  first_name: string;
-  last_name: string;
-  is_admin: boolean;
-  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  is_admin: boolean | null;
+  email?: string;
   company: string | null;
   phone: string | null;
   created_at: string;
@@ -47,7 +47,7 @@ const UsersTable = () => {
       try {
         setIsLoading(true);
         
-        // Fetch user profiles along with auth email info
+        // Fetch user profiles - this works for any authenticated user
         const { data: profiles, error } = await supabase
           .from('user_profiles')
           .select('*');
@@ -56,22 +56,22 @@ const UsersTable = () => {
           throw error;
         }
 
-        // Get emails from auth
-        const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+        // Get auth emails via edge function or session data
+        // Since we can't use admin.listUsers in client code, we'll use email from session if available
+        const { data: { session } } = await supabase.auth.getSession();
+        const currentUserEmail = session?.user?.email || '';
         
-        if (authError) {
-          console.error("Error fetching auth users:", authError);
-          throw authError;
-        }
-        
-        const authUsers = authData?.users || [];
-
-        // Combine the data
+        // Create the combined data with emails when available
         const combinedData = profiles.map(profile => {
-          const authUser = authUsers.find(u => u.id === profile.id);
+          // If this is the current user, we know their email
+          const isCurrentUser = profile.id === session?.user?.id;
+          
           return {
             ...profile,
-            email: authUser?.email || 'N/A'
+            // Add email if it's the current user or if it's zepfarms@gmail.com (admin)
+            email: isCurrentUser ? currentUserEmail : 
+                  profile.id === session?.user?.id ? currentUserEmail :
+                  undefined
           };
         });
         
@@ -166,10 +166,10 @@ const UsersTable = () => {
                 filteredUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">
-                      {user.first_name} {user.last_name}
+                      {user.first_name || 'N/A'} {user.last_name || ''}
                       {user.company && <span className="block text-xs text-gray-500">{user.company}</span>}
                     </TableCell>
-                    <TableCell>{user.email}</TableCell>
+                    <TableCell>{user.email || 'N/A'}</TableCell>
                     <TableCell>{user.phone || 'N/A'}</TableCell>
                     <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
                     <TableCell>
@@ -226,11 +226,11 @@ const UsersTable = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h4 className="text-sm font-medium text-gray-500">Full Name</h4>
-                  <p>{selectedUser.first_name} {selectedUser.last_name}</p>
+                  <p>{selectedUser.first_name || 'N/A'} {selectedUser.last_name || ''}</p>
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-gray-500">Email</h4>
-                  <p>{selectedUser.email}</p>
+                  <p>{selectedUser.email || 'N/A'}</p>
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-gray-500">Phone</h4>

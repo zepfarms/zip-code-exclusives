@@ -24,12 +24,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Loader, Search, Edit } from 'lucide-react';
 
-interface UserProfile {
-  first_name: string | null;
-  last_name: string | null;
-  email: string;
-}
-
 interface Lead {
   id: string;
   name: string;
@@ -41,13 +35,13 @@ interface Lead {
   notes: string | null;
   created_at: string;
   updated_at: string;
-  archived: boolean;
+  archived: boolean | null;
   user_id: string | null;
-  user_profiles?: {
+  user_info?: {
     first_name: string | null;
     last_name: string | null;
-  } | null;
-  user_profile?: UserProfile;
+    email?: string;
+  };
 }
 
 const LeadsTable = () => {
@@ -65,49 +59,45 @@ const LeadsTable = () => {
       try {
         setIsLoading(true);
         
-        // Fetch leads
+        // Get current user session to match with email later
+        const { data: { session } } = await supabase.auth.getSession();
+        const currentUserEmail = session?.user?.email || '';
+        
+        // Fetch all leads directly (don't try to join with user_profiles)
         const { data, error } = await supabase
           .from('leads')
-          .select(`
-            *,
-            user_profiles:user_id (
-              first_name,
-              last_name
-            )
-          `)
+          .select('*')
           .order('created_at', { ascending: false });
 
         if (error) {
           throw error;
         }
-
-        // For demo purposes, simulate the join with user email
-        // In production, you would handle this through Supabase functions
-        const authData = await supabase.auth.admin.listUsers();
-        const authUsers = authData.data?.users || [];
-
-        // Handle the data safely considering the types
-        const processedData = data.map((lead: any) => {
-          if (!lead.user_id) return lead;
+        
+        // Fetch user profiles separately to get names
+        const { data: userProfiles, error: userProfilesError } = await supabase
+          .from('user_profiles')
+          .select('id, first_name, last_name');
           
-          const authUser = authUsers.find(u => u.id === lead.user_id);
-          
-          // Safe access to nested properties
-          const userProfiles = lead.user_profiles;
-          const firstName = userProfiles && typeof userProfiles === 'object' ? userProfiles.first_name : null;
-          const lastName = userProfiles && typeof userProfiles === 'object' ? userProfiles.last_name : null;
+        if (userProfilesError) {
+          console.error("Error fetching user profiles:", userProfilesError);
+        }
+        
+        // Map user profiles to leads
+        const processedLeads = data.map((lead: any) => {
+          const userProfile = userProfiles?.find((profile: any) => profile.id === lead.user_id);
           
           return {
             ...lead,
-            user_profile: {
-              first_name: firstName,
-              last_name: lastName,
-              email: authUser?.email || 'N/A'
-            }
+            user_info: userProfile ? {
+              first_name: userProfile.first_name,
+              last_name: userProfile.last_name,
+              // Only add email if it's the current user
+              email: lead.user_id === session?.user?.id ? currentUserEmail : undefined
+            } : undefined
           };
         });
         
-        setLeads(processedData as Lead[]);
+        setLeads(processedLeads);
         setIsLoading(false);
       } catch (error) {
         console.error("Error fetching leads:", error);
@@ -225,6 +215,11 @@ const LeadsTable = () => {
           <Loader className="h-8 w-8 animate-spin text-brand-600" />
           <span className="ml-2">Loading leads...</span>
         </div>
+      ) : filteredLeads.length === 0 ? (
+        <div className="text-center py-12 bg-gray-50 rounded-lg">
+          <h3 className="text-lg font-medium text-gray-700">No leads found</h3>
+          <p className="text-gray-500 mt-2">There are no leads in the system yet.</p>
+        </div>
       ) : (
         <div className="overflow-x-auto">
           <Table>
@@ -240,59 +235,51 @@ const LeadsTable = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLeads.length > 0 ? (
-                filteredLeads.map((lead) => (
-                  <TableRow key={lead.id} className={lead.archived ? "bg-gray-50" : ""}>
-                    <TableCell className="font-medium">
-                      {lead.name}
-                      {lead.archived && <span className="ml-2 text-xs text-gray-500">(Archived)</span>}
-                    </TableCell>
-                    <TableCell>
-                      {lead.email && <div>{lead.email}</div>}
-                      {lead.phone && <div>{lead.phone}</div>}
-                    </TableCell>
-                    <TableCell>{lead.territory_zip_code}</TableCell>
-                    <TableCell>
-                      {lead.user_profile ? (
-                        <>
-                          {lead.user_profile.first_name} {lead.user_profile.last_name}
-                          <span className="block text-xs text-gray-500">{lead.user_profile.email}</span>
-                        </>
-                      ) : (
-                        <span className="text-gray-500">Unassigned</span>
-                      )}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(lead.status || 'New')}</TableCell>
-                    <TableCell>{new Date(lead.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditNotes(lead)}
-                          disabled={isUpdating}
-                        >
-                          <Edit className="h-4 w-4 mr-1" /> Notes
-                        </Button>
-                        <Button
-                          variant={lead.archived ? "outline" : "secondary"}
-                          size="sm"
-                          onClick={() => toggleLeadArchived(lead)}
-                          disabled={isUpdating}
-                        >
-                          {lead.archived ? "Unarchive" : "Archive"}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-4">
-                    No leads found matching your search.
+              {filteredLeads.map((lead) => (
+                <TableRow key={lead.id} className={lead.archived ? "bg-gray-50" : ""}>
+                  <TableCell className="font-medium">
+                    {lead.name}
+                    {lead.archived && <span className="ml-2 text-xs text-gray-500">(Archived)</span>}
+                  </TableCell>
+                  <TableCell>
+                    {lead.email && <div>{lead.email}</div>}
+                    {lead.phone && <div>{lead.phone}</div>}
+                  </TableCell>
+                  <TableCell>{lead.territory_zip_code}</TableCell>
+                  <TableCell>
+                    {lead.user_info ? (
+                      <>
+                        {lead.user_info.first_name || ''} {lead.user_info.last_name || ''}
+                        {lead.user_info.email && <span className="block text-xs text-gray-500">{lead.user_info.email}</span>}
+                      </>
+                    ) : (
+                      <span className="text-gray-500">Unassigned</span>
+                    )}
+                  </TableCell>
+                  <TableCell>{getStatusBadge(lead.status || 'New')}</TableCell>
+                  <TableCell>{new Date(lead.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditNotes(lead)}
+                        disabled={isUpdating}
+                      >
+                        <Edit className="h-4 w-4 mr-1" /> Notes
+                      </Button>
+                      <Button
+                        variant={lead.archived ? "outline" : "secondary"}
+                        size="sm"
+                        onClick={() => toggleLeadArchived(lead)}
+                        disabled={isUpdating}
+                      >
+                        {lead.archived ? "Unarchive" : "Archive"}
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
-              )}
+              ))}
             </TableBody>
           </Table>
         </div>
