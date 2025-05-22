@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "sonner";
 
@@ -63,22 +64,52 @@ export const updateUserProfile = async (userId: string, profileData: any) => {
     delete updatedData.user_type;
     
     console.log('Updating profile with data:', updatedData);
-    
-    // Update the profile without changing the user_type
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .update(updatedData)
-      .eq('id', userId)
-      .select();
+
+    // Use the service function for reliable updates
+    try {
+      const session = await supabase.auth.getSession();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-profile`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.data.session?.access_token}`
+          },
+          body: JSON.stringify({
+            userId,
+            profileData: updatedData
+          })
+        }
+      );
+
+      const result = await response.json();
       
-    if (error) {
-      console.error('Error updating profile:', error);
-      toast.error('Failed to update profile. Please try again.');
-      throw error;
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update profile');
+      }
+      
+      toast.success('Profile updated successfully!');
+      return result.profile;
+    } catch (edgeFunctionError) {
+      console.error('Edge function error, falling back to direct update:', edgeFunctionError);
+      
+      // Direct update fallback
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .update(updatedData)
+        .eq('id', userId)
+        .select();
+        
+      if (error) {
+        console.error('Error updating profile:', error);
+        toast.error('Failed to update profile. Please try again.');
+        throw error;
+      }
+      
+      toast.success('Profile updated successfully!');
+      return data;
     }
-    
-    toast.success('Profile updated successfully!');
-    return data;
   } catch (error) {
     console.error('Failed to update profile:', error);
     toast.error('Failed to update profile. Please try again.');

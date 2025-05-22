@@ -24,7 +24,6 @@ serve(async (req) => {
     logStep("Checking admin status for user", userId);
 
     // Initialize Supabase client with service role key to bypass RLS
-    // Use fixed URLs - don't use variables for better security
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     
@@ -34,7 +33,8 @@ serve(async (req) => {
       }
     });
 
-    // Check if user is admin
+    // Check if user is admin by directly querying the user_profiles table
+    // We're using service role key so RLS doesn't apply
     const { data, error } = await supabaseAdmin
       .from('user_profiles')
       .select('is_admin')

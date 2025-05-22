@@ -48,7 +48,8 @@ serve(async (req) => {
       );
     }
 
-    if (activeTerritory) {
+    // If territory is active and assigned to a different user, return an error
+    if (activeTerritory && activeTerritory.user_id !== userId) {
       console.error(`Territory ${zipCode} is already active and assigned to user ${activeTerritory.user_id}`);
       return new Response(
         JSON.stringify({ error: "This territory is already active and assigned to another user" }),

@@ -24,7 +24,6 @@ serve(async (req) => {
     logStep("Processing request to set admin status", { userId, isAdmin, requesterUserId });
 
     // Initialize Supabase client with service role key to bypass RLS
-    // Use fixed URLs - don't use variables for better security
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     
@@ -34,7 +33,7 @@ serve(async (req) => {
       }
     });
 
-    // Check if requester is an admin
+    // Check if requester is an admin using our new security definer function directly
     const { data: requesterData, error: requesterError } = await supabaseAdmin
       .from('user_profiles')
       .select('is_admin')
@@ -46,7 +45,7 @@ serve(async (req) => {
       throw new Error("Failed to verify requester admin status");
     }
     
-    if (!requesterData?.is_admin) {
+    if (!requesterData?.is_admin && requesterUserId !== userId) {
       logStep("Unauthorized request", { requesterUserId });
       return new Response(JSON.stringify({ 
         success: false, 

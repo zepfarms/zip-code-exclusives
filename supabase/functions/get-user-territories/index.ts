@@ -15,13 +15,13 @@ serve(async (req) => {
   }
 
   try {
-    const { userId } = await req.json();
+    const { userId, includeInactive } = await req.json();
     
     if (!userId) {
       throw new Error("userId is required");
     }
 
-    logStep("Fetching territories for user", userId);
+    logStep("Fetching territories for user", { userId, includeInactive });
 
     // Initialize Supabase client with service role key to bypass RLS
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
@@ -33,12 +33,20 @@ serve(async (req) => {
       }
     });
 
-    // Get territories for the user with more detailed logging
-    logStep("Executing territories query");
-    const { data: territories, error } = await supabaseAdmin
+    // Prepare query to get territories for the user
+    let query = supabaseAdmin
       .from('territories')
       .select('*')
       .eq('user_id', userId);
+      
+    // Filter by active status if requested
+    if (!includeInactive) {
+      query = query.eq('active', true);
+    }
+
+    // Execute the query
+    logStep("Executing territories query");
+    const { data: territories, error } = await query;
     
     if (error) {
       logStep("Error fetching territories", error);

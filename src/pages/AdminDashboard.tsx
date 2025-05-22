@@ -26,7 +26,15 @@ const AdminDashboard = () => {
         
         console.log("Checking admin status for user:", session.user.id);
         
-        // Use the service role function first (more reliable if available)
+        // Always grant access for zepfarms@gmail.com as a final failsafe
+        if (session.user.email === 'zepfarms@gmail.com') {
+          console.log("Admin access granted for special admin user");
+          setIsAdmin(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        // First try to check admin status using edge function (most reliable)
         try {
           const { data: adminCheck, error: adminCheckError } = await supabase.functions.invoke('check-admin-status', {
             body: { userId: session.user.id }
@@ -44,52 +52,22 @@ const AdminDashboard = () => {
           console.error("Error calling admin check edge function:", err);
         }
         
-        // Fall back to direct RPC check
-        const { data: isAdminResult, error: rpcError } = await supabase
-          .rpc('is_admin', { user_id: session.user.id });
+        // Fall back to direct check for superusers
+        // This is a redundant safeguard
+        const { data: profile, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .maybeSingle();
           
-        if (rpcError) {
-          console.error("Error checking admin status via RPC:", rpcError);
-          
-          // Fall back to checking the profile directly
-          const { data: profile, error: profileError } = await supabase
-            .from('user_profiles')
-            .select('is_admin')
-            .eq('id', session.user.id)
-            .maybeSingle();
-            
-          if (profileError) {
-            console.error("Error fetching profile:", profileError);
-            toast.error("Could not verify admin status");
-            navigate('/dashboard');
-            return;
-          }
-          
-          if (profile?.is_admin || session.user.email === 'zepfarms@gmail.com') {
-            console.log("Admin access granted via profile check");
-            setIsAdmin(true);
-            setIsLoading(false);
-            return;
-          }
-        } else {
-          // RPC call was successful
-          if (isAdminResult === true || session.user.email === 'zepfarms@gmail.com') {
-            console.log("Admin access granted via is_admin function");
-            setIsAdmin(true);
-            setIsLoading(false);
-            return;
-          }
-        }
-
-        // Always grant access for zepfarms@gmail.com as a final failsafe
-        if (session.user.email === 'zepfarms@gmail.com') {
-          console.log("Admin access granted for special admin user");
+        if (!profileError && profile?.is_admin) {
+          console.log("Admin access granted via direct profile check");
           setIsAdmin(true);
           setIsLoading(false);
           return;
         }
 
-        // Everyone else is denied access
+        // If we get here, the user is not an admin
         toast.error("You don't have permission to access the admin panel");
         navigate('/dashboard');
       } catch (error) {
