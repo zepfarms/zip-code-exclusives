@@ -61,9 +61,10 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
       // Don't show error toast as we have a fallback profile
     }
 
-    // Try to get territories
+    // Try to get territories - with RLS, we no longer need to filter by user_id in the query
+    // as RLS will handle this automatically
     try {
-      console.log("Fetching territories for user:", userId);
+      console.log("Fetching territories with RLS for user:", userId);
       
       // Check if there's any territory data in sessionStorage (from PaymentSuccess page)
       const justCreatedTerritoryStr = sessionStorage.getItem('justCreatedTerritory');
@@ -78,20 +79,15 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
         }
       }
       
-      // Use direct query to fetch territories
-      const { data: directTerritoriesData, error: directTerritoriesError } = await supabase
+      // Using RLS now - no need to filter by user_id 
+      const { data: territories, error: territoriesError } = await supabase
         .from('territories')
         .select('*')
-        .eq('user_id', userId)
         .eq('active', true);
       
-      if (directTerritoriesError) {
-        console.error("Error fetching territories directly:", directTerritoriesError);
-        if (directTerritoriesError.code !== 'PGRST116' && 
-            directTerritoriesError.code !== '401' && 
-            directTerritoriesError.code !== '403') {
-          toast.error("Could not load your territories. Please try refreshing.");
-        }
+      if (territoriesError) {
+        console.error("Error fetching territories:", territoriesError);
+        toast.error("Could not load your territories. Please try refreshing.");
         
         // Use sessionStorage as fallback if available
         if (justCreatedTerritory) {
@@ -112,8 +108,8 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
           setTerritories([]);
         }
       } else {
-        console.log("Territories fetched directly:", directTerritoriesData);
-        setTerritories(directTerritoriesData || []);
+        console.log("Territories fetched:", territories?.length || 0);
+        setTerritories(territories || []);
         
         // Clear sessionStorage after successful fetch
         if (justCreatedTerritory) {
@@ -122,14 +118,13 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
         
         // Calculate subscription info
         try {
-          const territories = directTerritoriesData || [];
           // Find earliest next billing date
           const nextBillingDates = territories
-            .map(t => t.next_billing_date)
+            ?.map(t => t.next_billing_date)
             .filter(Boolean) // Filter out null dates
             .sort();
             
-          if (nextBillingDates.length > 0) {
+          if (nextBillingDates && nextBillingDates.length > 0) {
             const nextRenewal = new Date(nextBillingDates[0]);
             const today = new Date();
             const daysRemaining = Math.ceil((nextRenewal.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
@@ -149,26 +144,23 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
       setTerritories([]);
     }
 
-    // Try to get leads
+    // Try to get leads - with RLS, we no longer need to filter by user_id in the query
+    // as RLS will handle this automatically
     try {
-      // Use direct query to fetch leads
-      const { data: directLeadsData, error: directLeadsError } = await supabase
+      // Using RLS now - no need to filter by user_id
+      const { data: leads, error: leadsError } = await supabase
         .from('leads')
         .select('*')
-        .eq('user_id', userId)
         .eq('archived', false)
         .order('created_at', { ascending: false });
       
-      if (directLeadsError) {
-        console.error("Error fetching leads directly:", directLeadsError);
-        if (directLeadsError.code !== 'PGRST116' && 
-            directLeadsError.code !== '401' && 
-            directLeadsError.code !== '403') {
-          toast.error("Could not load your leads. Please try refreshing.");
-        }
+      if (leadsError) {
+        console.error("Error fetching leads:", leadsError);
+        toast.error("Could not load your leads. Please try refreshing.");
         setLeads([]);
       } else {
-        setLeads(directLeadsData || []);
+        console.log("Leads fetched:", leads?.length || 0);
+        setLeads(leads || []);
       }
     } catch (leadsError) {
       console.error("Error in leads fetch:", leadsError);

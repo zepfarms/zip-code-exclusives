@@ -1,8 +1,10 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { debugRlsAccess } from '@/utils/debugRls';
+import { toast } from 'react-toastify';
+import { Loader } from '@/components/ui/loader';
 
 const DebugPanel = ({ userId, territories, leads, refreshData }: { 
   userId: string | null,
@@ -13,6 +15,7 @@ const DebugPanel = ({ userId, territories, leads, refreshData }: {
   const [isExpanded, setIsExpanded] = useState(false);
   const [apiResponses, setApiResponses] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isRunningDebug, setIsRunningDebug] = useState(false);
 
   const testUserProfile = async () => {
     setIsLoading(true);
@@ -97,6 +100,26 @@ const DebugPanel = ({ userId, territories, leads, refreshData }: {
     await testLeads();
   };
 
+  const handleRunRlsDebug = async () => {
+    try {
+      setIsRunningDebug(true);
+      
+      // Run RLS debug checks
+      const result = await debugRlsAccess();
+      
+      if (result.success) {
+        toast.success("RLS debug checks completed. Check console for details.");
+      } else {
+        toast.error(`RLS debug error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Error running debug:", error);
+      toast.error("Debug failed to execute");
+    } finally {
+      setIsRunningDebug(false);
+    }
+  };
+
   return (
     <Card className="mb-6 bg-gray-50 border-blue-200">
       <CardHeader className="pb-2">
@@ -154,6 +177,24 @@ const DebugPanel = ({ userId, territories, leads, refreshData }: {
               </Button>
               <Button size="sm" variant="outline" onClick={clearSessionStorage} disabled={isLoading}>
                 Clear Session Storage
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleRunRlsDebug}
+                disabled={isRunningDebug}
+                className="text-amber-600 border-amber-300"
+              >
+                {isRunningDebug ? (
+                  <>
+                    <Loader size={14} className="mr-2 animate-spin" />
+                    Running RLS Debug...
+                  </>
+                ) : (
+                  <>
+                    Debug RLS Access
+                  </>
+                )}
               </Button>
             </div>
           </div>

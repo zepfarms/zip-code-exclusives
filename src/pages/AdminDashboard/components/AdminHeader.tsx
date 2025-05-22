@@ -27,6 +27,10 @@ const AdminHeader = () => {
       
       toast.success("Logged out successfully");
       
+      // Clear any cached data that might be in localStorage
+      localStorage.removeItem('leadxclusive-territory-data');
+      localStorage.removeItem('leadxclusive-leads-data');
+      
       // Force full page reload to clear any cached authentication state
       window.location.href = '/login';
     } catch (error) {

@@ -24,26 +24,43 @@ const AdminDashboard = () => {
           return;
         }
         
-        // Get user profile to check admin status
-        const { data: profile, error: profileError } = await supabase
-          .from('user_profiles')
-          .select('is_admin')
-          .eq('id', session.user.id)
-          .maybeSingle();
-          
-        if (profileError) {
-          console.error("Error fetching profile:", profileError);
-          toast.error("Could not verify admin status");
-          navigate('/dashboard');
-          return;
-        }
+        console.log("Checking admin status for user:", session.user.id);
         
-        // Check if user is admin
-        if (profile?.is_admin || session.user.email === 'zepfarms@gmail.com') {
-          console.log("Admin access granted");
-          setIsAdmin(true);
-          setIsLoading(false);
-          return;
+        // First try using the is_admin RLS function via a select query
+        const { data, error } = await supabase
+          .rpc('is_admin', { user_id: session.user.id });
+          
+        if (error) {
+          console.error("Error checking admin status via RPC:", error);
+          
+          // Fall back to checking the profile directly
+          const { data: profile, error: profileError } = await supabase
+            .from('user_profiles')
+            .select('is_admin')
+            .eq('id', session.user.id)
+            .maybeSingle();
+            
+          if (profileError) {
+            console.error("Error fetching profile:", profileError);
+            toast.error("Could not verify admin status");
+            navigate('/dashboard');
+            return;
+          }
+          
+          if (profile?.is_admin || session.user.email === 'zepfarms@gmail.com') {
+            console.log("Admin access granted");
+            setIsAdmin(true);
+            setIsLoading(false);
+            return;
+          }
+        } else {
+          // RPC call was successful
+          if (data === true || session.user.email === 'zepfarms@gmail.com') {
+            console.log("Admin access granted via is_admin function");
+            setIsAdmin(true);
+            setIsLoading(false);
+            return;
+          }
         }
 
         // Everyone else is denied access
