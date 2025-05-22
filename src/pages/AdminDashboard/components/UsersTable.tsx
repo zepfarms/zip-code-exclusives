@@ -45,11 +45,21 @@ interface UserProfile {
   confirmed_at?: string;
 }
 
+interface Territory {
+  zip_code: string;
+  lead_type: string;
+  active: boolean;
+}
+
+interface UserWithTerritories extends UserProfile {
+  territories: Territory[];
+}
+
 const UsersTable = () => {
-  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [users, setUsers] = useState<UserWithTerritories[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserWithTerritories | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -57,9 +67,9 @@ const UsersTable = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Fetch users
+  // Fetch users and their territories
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchUsersAndTerritories = async () => {
       try {
         setIsLoading(true);
         setError(null);
@@ -109,6 +119,16 @@ const UsersTable = () => {
           toast.error("Failed to load user profiles");
         }
         
+        // Fetch territories
+        const { data: territories, error: territoriesError } = await supabase
+          .from('territories')
+          .select('zip_code, user_id, lead_type, active');
+
+        if (territoriesError) {
+          console.error("Error fetching territories:", territoriesError);
+          toast.error("Failed to load territories");
+        }
+        
         // Create a map of profiles by ID for faster lookup
         const profilesMap = new Map();
         if (profiles) {
@@ -117,9 +137,26 @@ const UsersTable = () => {
           });
         }
         
-        // Combine auth users with profiles
+        // Group territories by user_id
+        const territoriesByUser = new Map();
+        if (territories) {
+          territories.forEach(territory => {
+            if (!territoriesByUser.has(territory.user_id)) {
+              territoriesByUser.set(territory.user_id, []);
+            }
+            territoriesByUser.get(territory.user_id).push({
+              zip_code: territory.zip_code,
+              lead_type: territory.lead_type,
+              active: territory.active
+            });
+          });
+        }
+        
+        // Combine auth users with profiles and territories
         const combinedData = authUsers.map(authUser => {
           const profile = profilesMap.get(authUser.id) || {};
+          const userTerritories = territoriesByUser.get(authUser.id) || [];
+          
           return {
             ...profile,
             id: authUser.id,
@@ -127,6 +164,7 @@ const UsersTable = () => {
             created_at: authUser.created_at,
             last_sign_in_at: authUser.last_sign_in_at,
             confirmed_at: authUser.confirmed_at,
+            territories: userTerritories
           };
         });
         
@@ -140,21 +178,26 @@ const UsersTable = () => {
       }
     };
 
-    fetchUsers();
+    fetchUsersAndTerritories();
   }, []);
 
   const filteredUsers = users.filter(user => {
     const searchLower = searchTerm.toLowerCase();
+    const hasTerritoryMatch = user.territories.some(t => 
+      t.zip_code.toLowerCase().includes(searchLower)
+    );
+    
     return (
       (user.first_name?.toLowerCase().includes(searchLower) || false) ||
       (user.last_name?.toLowerCase().includes(searchLower) || false) ||
       (user.email?.toLowerCase().includes(searchLower) || false) ||
       (user.company?.toLowerCase().includes(searchLower) || false) ||
-      (user.phone?.includes(searchTerm) || false)
+      (user.phone?.includes(searchTerm) || false) ||
+      hasTerritoryMatch
     );
   });
 
-  const handleViewUser = (user: UserProfile) => {
+  const handleViewUser = (user: UserWithTerritories) => {
     setSelectedUser(user);
     setIsDialogOpen(true);
   };
@@ -242,7 +285,7 @@ const UsersTable = () => {
         <div className="relative w-64">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
           <Input
-            placeholder="Search users..."
+            placeholder="Search users or zip codes..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-8"
@@ -270,8 +313,8 @@ const UsersTable = () => {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
+                <TableHead>Territories</TableHead>
                 <TableHead>Joined</TableHead>
-                <TableHead>Last Sign In</TableHead>
                 <TableHead>Admin</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -281,15 +324,35 @@ const UsersTable = () => {
                 filteredUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">
-                      {user.first_name || 'N/A'} {user.last_name || ''}
+                      {user.first_name || user.last_name ? 
+                        `${user.first_name || ''} ${user.last_name || ''}`.trim() : 
+                        'N/A'
+                      }
                       {user.company && <span className="block text-xs text-gray-500">{user.company}</span>}
                     </TableCell>
                     <TableCell>{user.email || 'N/A'}</TableCell>
                     <TableCell>{user.phone || 'N/A'}</TableCell>
-                    <TableCell>{user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</TableCell>
                     <TableCell>
-                      {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : 'Never'}
+                      {user.territories.length > 0 ? (
+                        <div className="max-h-20 overflow-y-auto">
+                          {user.territories.map((territory, index) => (
+                            <span 
+                              key={index} 
+                              className={`inline-block mr-1 mb-1 px-2 py-1 text-xs rounded ${
+                                territory.active 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}
+                            >
+                              {territory.zip_code}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500">No territories</span>
+                      )}
                     </TableCell>
+                    <TableCell>{user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</TableCell>
                     <TableCell>
                       {user.is_admin ? 
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -386,6 +449,28 @@ const UsersTable = () => {
                   <h4 className="text-sm font-medium text-gray-500">Email Confirmed</h4>
                   <p>{selectedUser.confirmed_at ? 'Yes' : 'No'}</p>
                 </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-medium text-gray-500 mb-2">Territories</h4>
+                {selectedUser.territories.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedUser.territories.map((territory, i) => (
+                      <span 
+                        key={i}
+                        className={`inline-block px-2.5 py-1 text-xs rounded ${
+                          territory.active 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {territory.zip_code} ({territory.lead_type})
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500">No territories assigned</p>
+                )}
               </div>
             </div>
           )}

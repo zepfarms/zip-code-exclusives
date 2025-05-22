@@ -31,10 +31,6 @@ interface Territory {
   next_billing_date: string | null;
   lead_type: string;
   created_at: string;
-  user_profiles?: {
-    first_name: string | null;
-    last_name: string | null;
-  } | null;
   user_profile?: UserProfile;
 }
 
@@ -61,8 +57,8 @@ const TerritoriesTable = () => {
     try {
       setIsLoading(true);
       
-      // Get territories with user info
-      const { data, error } = await supabase
+      // Get territories
+      const { data: territoriesData, error: territoriesError } = await supabase
         .from('territories')
         .select(`
           id,
@@ -72,15 +68,20 @@ const TerritoriesTable = () => {
           start_date,
           next_billing_date,
           lead_type,
-          created_at,
-          user_profiles:user_id (
-            first_name,
-            last_name
-          )
+          created_at
         `);
 
-      if (error) {
-        throw error;
+      if (territoriesError) {
+        throw territoriesError;
+      }
+      
+      // Get user profiles
+      const { data: userProfilesData, error: profilesError } = await supabase
+        .from('user_profiles')
+        .select('id, first_name, last_name');
+      
+      if (profilesError) {
+        console.error("Error fetching user profiles:", profilesError);
       }
       
       // Get user emails from the edge function
@@ -91,20 +92,28 @@ const TerritoriesTable = () => {
         toast.error("Could not load complete user data for territories");
       }
 
-      // Process the data combining territory info with user details
-      return data.map((territory: any) => {
+      // Create a map of user profiles by ID
+      const userProfilesMap = new Map();
+      if (userProfilesData) {
+        userProfilesData.forEach((profile: any) => {
+          userProfilesMap.set(profile.id, {
+            first_name: profile.first_name,
+            last_name: profile.last_name
+          });
+        });
+      }
+      
+      // Combine territory data with user profiles and emails
+      return territoriesData.map((territory: any) => {
         // Find the auth user that matches this territory's user_id
         const authUser = usersList?.find((u: any) => u.id === territory.user_id);
-        
-        const userProfiles = territory.user_profiles;
-        const firstName = userProfiles && typeof userProfiles === 'object' ? userProfiles.first_name : null;
-        const lastName = userProfiles && typeof userProfiles === 'object' ? userProfiles.last_name : null;
+        const userProfile = userProfilesMap.get(territory.user_id) || {};
         
         return {
           ...territory,
           user_profile: {
-            first_name: firstName,
-            last_name: lastName,
+            first_name: userProfile.first_name || null,
+            last_name: userProfile.last_name || null,
             email: authUser?.email || 'N/A'
           }
         };
@@ -210,7 +219,10 @@ const TerritoriesTable = () => {
                     <TableRow key={territory.id}>
                       <TableCell className="font-medium">{territory.zip_code}</TableCell>
                       <TableCell>
-                        {territory.user_profile?.first_name} {territory.user_profile?.last_name}
+                        {territory.user_profile?.first_name || territory.user_profile?.last_name ? 
+                          `${territory.user_profile.first_name || ''} ${territory.user_profile.last_name || ''}`.trim() : 
+                          'N/A'
+                        }
                         <span className="block text-xs text-gray-500">{territory.user_profile?.email}</span>
                       </TableCell>
                       <TableCell>
