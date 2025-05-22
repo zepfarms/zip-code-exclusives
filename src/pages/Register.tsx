@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -86,13 +87,15 @@ const Register = () => {
           if (profileError) {
             console.error("Error ensuring user profile:", profileError);
           }
+          
+          // Redirect to add territory or check availability page since user doesn't have a territory yet
+          navigate('/check-availability');
         }
       } catch (profileError) {
         console.error("Failed to ensure user profile:", profileError);
+        // Still navigate to dashboard as this is not a critical error
+        navigate('/dashboard');
       }
-
-      // Navigate to dashboard
-      navigate('/dashboard');
     } catch (error: any) {
       console.error("Registration error:", error);
       toast.error(error.message || "Failed to create account");

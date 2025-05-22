@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,7 +16,7 @@ const Register = lazy(() => import("./pages/Register"));
 const Payment = lazy(() => import("./pages/Payment"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard")); // Fixed import path
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const HowItWorksPage = lazy(() => import("./pages/HowItWorksPage"));
 const PricingPage = lazy(() => import("./pages/PricingPage"));
@@ -23,6 +24,7 @@ const AboutUsPage = lazy(() => import("./pages/AboutUsPage"));
 const InvestorLeadsPage = lazy(() => import("./pages/InvestorLeadsPage"));
 const RealtorLeadsPage = lazy(() => import("./pages/RealtorLeadsPage"));
 const AddTerritory = lazy(() => import("./pages/AddTerritory"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 
 // Scroll restoration component
 const ScrollToTop = () => {
@@ -83,6 +85,7 @@ const App = () => (
               <Route path="/investor-leads" element={<InvestorLeadsPage />} />
               <Route path="/realtor-leads" element={<RealtorLeadsPage />} />
               <Route path="/add-territory" element={<AddTerritory />} />
+              <Route path="/terms-of-service" element={<TermsOfService />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

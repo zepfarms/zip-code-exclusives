@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
-import { Resend } from "npm:resend@1.0.0"; // Using npm: prefix instead of esm.sh
+import { Resend } from "npm:resend@1.0.0";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "re_YDeatYqf_7PMsHrt7Szf17r69LZRQ6qJo";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
@@ -34,13 +34,13 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, zipCode } = await req.json();
+    const { userId, zipCode, emailType = 'activation' } = await req.json();
     
-    if (!userId || !zipCode) {
-      throw new Error("Missing required parameters");
+    if (!userId) {
+      throw new Error("Missing required userId parameter");
     }
     
-    console.log("Processing welcome email for user:", userId, "zip:", zipCode);
+    console.log(`Processing follow-up email for user: ${userId}, email type: ${emailType}`);
     
     // Get user details
     const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
@@ -65,41 +65,44 @@ serve(async (req) => {
       email: userData.user.email || "",
       first_name: profileData?.first_name || "",
       last_name: profileData?.last_name || "",
-      zip_code: zipCode
+      zip_code: zipCode || ""
     };
     
-    console.log("Sending welcome email to:", userDetails.email);
+    console.log("Sending follow-up email to:", userDetails.email);
     
-    // Send welcome email
+    // Send follow-up email
     const { data, error } = await resend.emails.send({
       from: "LeadXclusive <help@leadxclusive.com>",
       to: userDetails.email,
-      subject: "Welcome to LeadXclusive!",
-      html: generateWelcomeEmailHtml(userDetails)
+      subject: "Your LeadXclusive Account is Now Active!",
+      html: generateFollowUpEmailHtml(userDetails, emailType)
     });
     
     if (error) {
-      console.error("Error sending welcome email:", error);
-      throw new Error(`Failed to send welcome email: ${error.message}`);
+      console.error("Error sending follow-up email:", error);
+      throw new Error(`Failed to send follow-up email: ${error.message}`);
     }
     
-    console.log("Welcome email sent successfully:", data);
+    console.log("Follow-up email sent successfully:", data);
     
-    // Schedule a 7-day follow-up email
-    try {
-      await supabase.functions.invoke('schedule-followup-email', {
-        body: { userId, zipCode, daysToWait: 7 }
-      });
-      console.log("7-day follow-up email scheduled successfully");
-    } catch (followupError) {
-      console.error("Error scheduling follow-up email:", followupError);
-      // Don't fail the welcome email if scheduling fails
+    // Update the scheduled email status if this was triggered by a scheduled job
+    if (req.headers.get("x-scheduled") === "true") {
+      const { error: updateError } = await supabase
+        .from('scheduled_emails')
+        .update({ status: 'sent' })
+        .eq('user_id', userId)
+        .eq('type', emailType)
+        .eq('status', 'scheduled');
+        
+      if (updateError) {
+        console.error("Error updating scheduled email status:", updateError);
+      }
     }
     
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Welcome email sent successfully",
+        message: "Follow-up email sent successfully",
       }),
       {
         status: 200,
@@ -110,7 +113,7 @@ serve(async (req) => {
       }
     );
   } catch (error: any) {
-    console.error("Error in welcome-email function:", error);
+    console.error("Error in send-followup-email function:", error);
     return new Response(
       JSON.stringify({
         success: false,
@@ -127,39 +130,36 @@ serve(async (req) => {
   }
 });
 
-function generateWelcomeEmailHtml(user: UserDetails): string {
+function generateFollowUpEmailHtml(user: UserDetails, emailType: string): string {
   const firstName = user.first_name || "there";
   
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333333;">
       <div style="text-align: center; margin-bottom: 30px;">
-        <h1 style="color: #4a6cf7; margin-bottom: 10px;">Welcome to LeadXclusive!</h1>
-        <p style="font-size: 18px; font-weight: 500;">We're thrilled to have you join us, ${firstName}!</p>
+        <h1 style="color: #4a6cf7; margin-bottom: 10px;">Your Account is Now Active!</h1>
+        <p style="font-size: 18px; font-weight: 500;">Great news, ${firstName}!</p>
       </div>
       
-      <p style="line-height: 1.6; margin-bottom: 15px;">Thank you for choosing LeadXclusive as your partner for exclusive real estate leads. We're excited to help you grow your business with high-quality, exclusive leads in your territory.</p>
+      <p style="line-height: 1.6; margin-bottom: 15px;">Your LeadXclusive account is now fully active and you should start receiving exclusive leads for zip code <strong>${user.zip_code}</strong> right away.</p>
       
       <div style="background-color: #f7f9fc; border-left: 4px solid #4a6cf7; padding: 15px; margin: 25px 0;">
-        <h2 style="color: #4a6cf7; margin-top: 0;">What happens next?</h2>
-        <p style="margin-bottom: 10px;">Our team is currently setting up your exclusive territory for zip code <strong>${user.zip_code}</strong>. Here's what you can expect:</p>
+        <h2 style="color: #4a6cf7; margin-top: 0;">Important Information:</h2>
         <ul style="padding-left: 20px;">
-          <li style="margin-bottom: 8px;"><strong>Account Setup (Next 7 Days):</strong> We're configuring your territory and preparing our systems to deliver leads directly to you.</li>
-          <li style="margin-bottom: 8px;"><strong>Activation Email:</strong> In approximately 7 days, you'll receive an activation email letting you know when your leads will start flowing.</li>
-          <li style="margin-bottom: 8px;"><strong>Exclusive Access:</strong> Once active, you'll be the only LeadXclusive customer receiving leads in your zip code - giving you a competitive advantage.</li>
+          <li style="margin-bottom: 8px;"><strong>Exclusive Territory:</strong> You are now the only LeadXclusive customer receiving leads in zip code ${user.zip_code}.</li>
+          <li style="margin-bottom: 8px;"><strong>Lead Notifications:</strong> You'll receive email notifications whenever new leads are assigned to you.</li>
+          <li style="margin-bottom: 8px;"><strong>Dashboard Access:</strong> Log in anytime to view and manage your leads through your personal dashboard.</li>
         </ul>
       </div>
       
-      <p style="line-height: 1.6; margin-bottom: 15px;">You can log into your dashboard anytime to check the status of your account and view your leads once they begin arriving.</p>
+      <p style="line-height: 1.6; margin-bottom: 15px;">We encourage you to log in to your dashboard regularly to check for new leads and ensure you're responding to them promptly for the best conversion rates.</p>
       
       <div style="margin: 30px 0; text-align: center;">
-        <a href="https://leadxclusive.com/dashboard" style="background-color: #4a6cf7; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Access Your Dashboard</a>
+        <a href="https://leadxclusive.com/dashboard" style="background-color: #4a6cf7; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Your Leads Now</a>
       </div>
       
-      <p style="line-height: 1.6; margin-bottom: 15px;">If you have any questions or need assistance, please don't hesitate to reach out. We're here to help!</p>
+      <p style="line-height: 1.6; margin-bottom: 15px;">If you have any questions or need assistance with using the platform, please reach out to us at <a href="mailto:help@leadxclusive.com" style="color: #4a6cf7; text-decoration: none; font-weight: bold;">help@leadxclusive.com</a>.</p>
       
-      <p style="line-height: 1.6; margin-bottom: 15px;">You can email us anytime at <a href="mailto:help@leadxclusive.com" style="color: #4a6cf7; text-decoration: none; font-weight: bold;">help@leadxclusive.com</a> and we'll respond promptly.</p>
-      
-      <p style="line-height: 1.6; margin-bottom: 25px;">We look forward to being your trusted partner for exclusive real estate leads!</p>
+      <p style="line-height: 1.6; margin-bottom: 25px;">We're excited about our partnership and helping you grow your business with exclusive, high-quality leads!</p>
       
       <p style="line-height: 1.6;">Warm regards,<br>The LeadXclusive Team</p>
       

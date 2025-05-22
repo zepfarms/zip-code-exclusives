@@ -61,10 +61,18 @@ const Footer = () => {
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Contact</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Company</h3>
             <ul className="space-y-2">
               <li className="text-gray-600">
                 <strong>Email:</strong> help@leadxclusive.com
+              </li>
+              <li className="text-gray-600">
+                <strong>Phone:</strong> 405-481-3651
+              </li>
+              <li>
+                <Link to="/terms-of-service" className="text-gray-600 hover:text-brand-700 transition-colors">
+                  Terms of Service
+                </Link>
               </li>
             </ul>
           </div>
@@ -72,7 +80,7 @@ const Footer = () => {
         
         <div className="pt-8 mt-8 border-t border-gray-200">
           <p className="text-sm text-gray-600 text-center">
-            &copy; {currentYear} LeadXclusive. All rights reserved.
+            &copy; {currentYear} LeadXclusive, a service by AutoPilotRE LLC. All rights reserved.
           </p>
         </div>
       </div>
