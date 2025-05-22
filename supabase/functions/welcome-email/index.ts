@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 import { Resend } from "https://esm.sh/resend@1.0.0";
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "re_YDeatYqf_7PMsHrt7Szf17r69LZRQ6qJo";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
@@ -40,6 +40,8 @@ serve(async (req) => {
       throw new Error("Missing required parameters");
     }
     
+    console.log("Processing welcome email for user:", userId, "zip:", zipCode);
+    
     // Get user details
     const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
     
@@ -66,6 +68,8 @@ serve(async (req) => {
       zip_code: zipCode
     };
     
+    console.log("Sending welcome email to:", userDetails.email);
+    
     // Send welcome email
     const { data, error } = await resend.emails.send({
       from: "LeadXclusive <help@leadxclusive.com>",
@@ -78,6 +82,8 @@ serve(async (req) => {
       console.error("Error sending welcome email:", error);
       throw new Error(`Failed to send welcome email: ${error.message}`);
     }
+    
+    console.log("Welcome email sent successfully:", data);
     
     return new Response(
       JSON.stringify({

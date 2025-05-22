@@ -1,8 +1,9 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
 import { Resend } from "https://esm.sh/resend@1.0.0";
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "re_YDeatYqf_7PMsHrt7Szf17r69LZRQ6qJo";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
@@ -38,6 +39,9 @@ async function sendEmail(emails: string[], lead: any) {
   }
 
   try {
+    console.log("Sending email notification to:", validEmails);
+    console.log("Using Resend API key:", RESEND_API_KEY ? "API key exists" : "No API key");
+
     const { data, error } = await resend.emails.send({
       from: "LeadXclusive <help@leadxclusive.com>",
       to: validEmails,
@@ -67,6 +71,7 @@ async function sendEmail(emails: string[], lead: any) {
     }
     
     console.log("Email notification sent successfully to", validEmails);
+    console.log("Resend response:", data);
     return true;
   } catch (error) {
     console.error("Error sending email notification:", error);
