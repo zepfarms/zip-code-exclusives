@@ -2,8 +2,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
 import { Resend } from "npm:resend@1.0.0"; // Using npm: prefix instead of esm.sh
+import { Twilio } from "npm:twilio@4.26.0";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "re_YDeatYqf_7PMsHrt7Szf17r69LZRQ6qJo";
+const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
+const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
+const TWILIO_PHONE_NUMBER = Deno.env.get("TWILIO_PHONE_NUMBER");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
@@ -93,21 +97,65 @@ async function sendSms(phones: string[], lead: any) {
     return false;
   }
 
-  try {
-    console.log("Would send SMS notification to:", validPhones);
-    
-    // This is where we would implement the actual SMS sending logic
-    // For now, we'll just log that SMS would be sent
-    // In a future implementation, we can integrate with an SMS provider
-    
-    const message = `New lead assigned: ${lead.name || 'New contact'} in ${lead.territory_zip_code}. Log in to your dashboard to view details.`;
-    console.log("SMS message would be:", message);
-    
-    return false; // Return false for now since we're not actually sending SMS
-  } catch (error) {
-    console.error("Error preparing SMS notification:", error);
+  // Check if Twilio credentials are available
+  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
+    console.error("Twilio credentials are not configured");
     return false;
   }
+
+  try {
+    console.log("Sending SMS notification to:", validPhones);
+    
+    // Initialize Twilio client
+    const twilio = new Twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+    
+    // Create the message content
+    const message = `New lead assigned: ${lead.name || 'New contact'} in ${lead.territory_zip_code}. Log in to your dashboard to view details.`;
+    
+    // Send SMS to each phone number
+    const results = await Promise.all(
+      validPhones.map(async (phone) => {
+        try {
+          // Format the phone number if needed
+          const formattedPhone = formatPhoneNumber(phone);
+          
+          console.log(`Sending SMS to: ${formattedPhone}`);
+          const smsResult = await twilio.messages.create({
+            body: message,
+            from: TWILIO_PHONE_NUMBER,
+            to: formattedPhone
+          });
+          
+          console.log(`SMS sent successfully to ${formattedPhone}, SID: ${smsResult.sid}`);
+          return true;
+        } catch (smsError) {
+          console.error(`Failed to send SMS to ${phone}:`, smsError);
+          return false;
+        }
+      })
+    );
+    
+    // Check if at least one SMS was sent successfully
+    return results.includes(true);
+    
+  } catch (error) {
+    console.error("Error sending SMS notifications:", error);
+    return false;
+  }
+}
+
+// Helper function to format phone numbers for Twilio
+function formatPhoneNumber(phone: string): string {
+  // Remove any non-digit characters
+  const digitsOnly = phone.replace(/\D/g, '');
+  
+  // If the number doesn't start with a country code, add +1 (US)
+  if (digitsOnly.length === 10) {
+    return `+1${digitsOnly}`;
+  }
+  
+  // If it already has a country code, just add a + if needed
+  return digitsOnly.startsWith('+') ? digitsOnly : `+${digitsOnly}`;
 }
 
 const handler = async (req: Request): Promise<Response> => {
