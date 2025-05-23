@@ -56,6 +56,7 @@ serve(async (req) => {
     }
     
     console.log("User data retrieved:", userData.user.email);
+    console.log("User metadata:", userData.user.user_metadata);
     
     // Get user profile
     const { data: profileData, error: profileError } = await supabase
@@ -68,11 +69,17 @@ serve(async (req) => {
       console.error("Error fetching profile:", profileError);
     }
     
+    // Use metadata first, then fall back to profile data
+    const firstName = userData.user.user_metadata?.first_name || profileData?.first_name || "";
+    const lastName = userData.user.user_metadata?.last_name || profileData?.last_name || "";
+    
+    console.log("Extracted names - First:", firstName, "Last:", lastName);
+    
     const userDetails: UserDetails = {
       id: userId,
       email: userData.user.email || "",
-      first_name: profileData?.first_name || "",
-      last_name: profileData?.last_name || "",
+      first_name: firstName,
+      last_name: lastName,
       created_at: userData.user.created_at
     };
     
