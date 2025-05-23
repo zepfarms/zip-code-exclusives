@@ -98,80 +98,91 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
           
           // Calculate subscription info
           calculateSubscriptionInfo(edgeFunctionTerritories.territories, setSubscriptionInfo);
-          return;
         } else {
           console.log("Edge function approach failed for territories, falling back to standard query");
-        }
-      } catch (edgeError) {
-        console.error("Edge function error for territories:", edgeError);
-      }
-      
-      // Fall back to direct query
-      const { data: territories, error: territoriesError } = await supabase
-        .from('territories')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('active', true);
-      
-      if (territoriesError) {
-        console.error("Error fetching territories:", territoriesError);
-        toast.error("Could not load your territories. Please try refreshing.");
-        
-        // Use sessionStorage as fallback if available
-        if (justCreatedTerritory) {
-          const fallbackTerritory = {
-            id: 'pending-' + Date.now(),
-            user_id: userId,
-            zip_code: justCreatedTerritory.zip_code,
-            lead_type: justCreatedTerritory.lead_type || 'investor',
-            active: true,
-            start_date: justCreatedTerritory.timestamp,
-            next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            created_at: justCreatedTerritory.timestamp
-          };
           
-          setTerritories([fallbackTerritory]);
-          toast.info("Using cached territory data. The dashboard will update with your full territory information shortly.");
-        } else {
-          setTerritories([]);
+          // Fall back to direct query
+          const { data: territories, error: territoriesError } = await supabase
+            .from('territories')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('active', true);
+          
+          if (territoriesError) {
+            console.error("Error fetching territories:", territoriesError);
+            toast.error("Could not load your territories. Please try refreshing.");
+            
+            // Use sessionStorage as fallback if available
+            if (justCreatedTerritory) {
+              const fallbackTerritory = {
+                id: 'pending-' + Date.now(),
+                user_id: userId,
+                zip_code: justCreatedTerritory.zip_code,
+                lead_type: justCreatedTerritory.lead_type || 'investor',
+                active: true,
+                start_date: justCreatedTerritory.timestamp,
+                next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                created_at: justCreatedTerritory.timestamp
+              };
+              
+              setTerritories([fallbackTerritory]);
+              toast.info("Using cached territory data. The dashboard will update with your full territory information shortly.");
+            } else {
+              setTerritories([]);
+            }
+          } else {
+            console.log("Territories fetched:", territories?.length || 0);
+            setTerritories(territories || []);
+            
+            // Clear sessionStorage after successful fetch
+            if (justCreatedTerritory) {
+              sessionStorage.removeItem('justCreatedTerritory');
+            }
+            
+            // Calculate subscription info
+            calculateSubscriptionInfo(territories || [], setSubscriptionInfo);
+          }
         }
-      } else {
-        console.log("Territories fetched:", territories?.length || 0);
-        setTerritories(territories || []);
-        
-        // Clear sessionStorage after successful fetch
-        if (justCreatedTerritory) {
-          sessionStorage.removeItem('justCreatedTerritory');
-        }
-        
-        // Calculate subscription info
-        calculateSubscriptionInfo(territories || [], setSubscriptionInfo);
+      } catch (err) {
+        console.error("Error in territories fetch:", err);
+        setTerritories([]);
       }
     } catch (err) {
       console.error("Error in territories fetch:", err);
       setTerritories([]);
     }
 
-    // Try to get leads - use our improved debug helper and add better error handling
+    // IMPROVED: Try to get leads with more logging and error handling
     try {
       console.log("Fetching leads for user:", userId);
       
-      // Try edge function as first approach
+      // Try edge function as first approach with detailed request and error logging
       try {
+        console.log(`Invoking get-user-leads edge function with userId: ${userId}`);
         const { data: edgeFunctionLeads, error: edgeFunctionError } = await supabase.functions.invoke('get-user-leads', {
           body: { userId }
         });
         
-        if (!edgeFunctionError && edgeFunctionLeads?.leads) {
+        if (edgeFunctionError) {
+          console.error("Edge function error for leads:", edgeFunctionError);
+          throw edgeFunctionError;
+        }
+        
+        if (edgeFunctionLeads?.leads) {
           console.log("Leads fetched via edge function:", edgeFunctionLeads.leads.length);
+          console.log("Sample lead data (first item):", edgeFunctionLeads.leads.length > 0 ? edgeFunctionLeads.leads[0] : "No leads found");
           setLeads(edgeFunctionLeads.leads);
           return; // Exit early if this method works
+        } else {
+          console.log("Edge function returned no leads data, falling back to direct query");
         }
       } catch (edgeError) {
         console.error("Edge function error for leads:", edgeError);
+        console.log("Falling back to direct query for leads");
       }
       
-      // Standard approach - explicitly filter by user_id to ensure we get the right data
+      // Standard approach with improved error handling and logging
+      console.log(`Making direct query for leads with user_id: ${userId}`);
       const { data: leads, error: leadsError } = await supabase
         .from('leads')
         .select('*')
@@ -184,12 +195,18 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
         toast.error("Could not load your leads. Please try refreshing.");
         setLeads([]);
       } else {
-        console.log("Leads fetched:", leads?.length || 0);
+        console.log("Leads fetched directly:", leads?.length || 0);
+        if (leads && leads.length > 0) {
+          console.log("Sample lead from direct query:", leads[0]);
+        } else {
+          console.log("No leads found for user");
+        }
         setLeads(leads || []);
       }
     } catch (leadsError) {
       console.error("Error in leads fetch:", leadsError);
       setLeads([]);
+      toast.error("An error occurred while loading leads. Please try again.");
     }
 
   } catch (error: any) {

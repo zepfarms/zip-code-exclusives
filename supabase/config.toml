@@ -39,3 +39,6 @@ verify_jwt = true
 
 [functions.update-profile]
 verify_jwt = true
+
+[functions.get-user-leads]
+verify_jwt = true
