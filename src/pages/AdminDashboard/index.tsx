@@ -1,107 +1,80 @@
 
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from "sonner";
+import React, { useState } from 'react';
 import AdminLayout from './components/AdminLayout';
-import AdminHeader from './components/AdminHeader';
+import TerritoriesTable from './components/TerritoriesTable';
 import UsersTable from './components/UsersTable';
 import LeadsTable from './components/LeadsTable';
-import TerritoriesTable from './components/TerritoriesTable';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader } from 'lucide-react';
 import AddLeadForm from './components/AddLeadForm';
+import AddTerritoryForm from './components/AddTerritoryForm';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import TestSmsButton from './components/TestSmsButton';
 
 const AdminDashboard = () => {
-  const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    const checkAdminStatus = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Check if user is authenticated
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          toast.error("Please sign in to continue");
-          navigate('/login', { state: { redirectTo: '/admin' } });
-          return;
-        }
-        
-        // Only zepfarms@gmail.com is allowed to access admin
-        if (session.user.email === 'zepfarms@gmail.com') {
-          console.log("Admin access granted for zepfarms@gmail.com in inner component");
-          setIsAdmin(true);
-          setIsLoading(false);
-          return;
-        }
-
-        // Everyone else is denied access
-        toast.error("You don't have permission to access this page");
-        navigate('/dashboard');
-      } catch (error) {
-        console.error("Error checking admin status:", error);
-        toast.error("An error occurred. Please try again.");
-        navigate('/dashboard');
-      }
-    };
-
-    checkAdminStatus();
-  }, [navigate]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader className="h-8 w-8 animate-spin text-brand-600" />
-        <span className="ml-2">Loading admin panel...</span>
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return null; // This will not be rendered as the navigate will redirect
-  }
-
-  return (
-    <>
-      <Helmet>
-        <title>Admin Dashboard | LeadXclusive</title>
-      </Helmet>
-      
-      <AdminLayout>
-        <AdminHeader />
-        
-        <div className="container mx-auto px-4 py-6">
-          <Tabs defaultValue="leads">
-            <TabsList className="mb-8">
-              <TabsTrigger value="leads">Leads Management</TabsTrigger>
-              <TabsTrigger value="users">User Management</TabsTrigger>
-              <TabsTrigger value="territories">Territories</TabsTrigger>
-              <TabsTrigger value="add-lead">Add New Lead</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="leads">
-              <LeadsTable />
-            </TabsContent>
-            
-            <TabsContent value="users">
-              <UsersTable />
-            </TabsContent>
-            
-            <TabsContent value="territories">
-              <TerritoriesTable />
-            </TabsContent>
-            
-            <TabsContent value="add-lead">
-              <AddLeadForm />
-            </TabsContent>
-          </Tabs>
+  const [activeTab, setActiveTab] = useState('leads');
+  const [showAddForm, setShowAddForm] = useState(false);
+  
+  const renderAddButton = () => {
+    if (activeTab === 'territories') {
+      return (
+        <Button onClick={() => setShowAddForm(!showAddForm)}>
+          {showAddForm ? 'Cancel' : 'Add Territory'}
+        </Button>
+      );
+    } else if (activeTab === 'leads') {
+      return (
+        <div className="flex items-center">
+          <Button onClick={() => setShowAddForm(!showAddForm)}>
+            {showAddForm ? 'Cancel' : 'Add Lead'}
+          </Button>
+          <TestSmsButton />
         </div>
-      </AdminLayout>
-    </>
+      );
+    }
+    return null;
+  };
+  
+  return (
+    <AdminLayout>
+      <div className="container max-w-7xl mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+          {renderAddButton()}
+        </div>
+        
+        {showAddForm && activeTab === 'territories' && (
+          <div className="mb-8">
+            <AddTerritoryForm onComplete={() => setShowAddForm(false)} />
+          </div>
+        )}
+        
+        {showAddForm && activeTab === 'leads' && (
+          <div className="mb-8">
+            <AddLeadForm onComplete={() => setShowAddForm(false)} />
+          </div>
+        )}
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-6">
+            <TabsTrigger value="leads">Leads</TabsTrigger>
+            <TabsTrigger value="territories">Territories</TabsTrigger>
+            <TabsTrigger value="users">Users</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="leads">
+            <LeadsTable />
+          </TabsContent>
+          
+          <TabsContent value="territories">
+            <TerritoriesTable />
+          </TabsContent>
+          
+          <TabsContent value="users">
+            <UsersTable />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </AdminLayout>
   );
 };
 
