@@ -14,8 +14,14 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     persistSession: true,
     autoRefreshToken: true,
     storageKey: 'leadxclusive-auth-token',
-    storage: localStorage,
-    detectSessionInUrl: false, // Don't detect session in URL (can cause issues)
-    flowType: 'pkce' // Use PKCE flow for enhanced security
+    storage: window.localStorage,
+    detectSessionInUrl: false,
+    flowType: 'pkce'
+  },
+  global: {
+    // Add additional headers for better compatibility
+    headers: {
+      'X-Client-Info': 'leadxclusive-web'
+    }
   }
 });
