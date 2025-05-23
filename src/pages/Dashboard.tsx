@@ -8,11 +8,26 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { fetchUserData } from '@/utils/dashboardFunctions';
 import { updateUserProfile } from '@/utils/userProfile';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Eye } from 'lucide-react';
 import { formatPhoneNumber } from '@/utils/formatters';
+import LeadDetailsModal from '@/components/dashboard/LeadDetailsModal';
+
+interface Lead {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  territory_zip_code: string;
+  status: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 const Dashboard = () => {
   const [userId, setUserId] = useState<string | null>(null);
@@ -20,13 +35,17 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [territories, setTerritories] = useState<any[]>([]);
-  const [leads, setLeads] = useState<any[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [contacts, setContacts] = useState<{ emails: string[], phones: string[] }>({ emails: [], phones: [] });
   const [subscriptionInfo, setSubscriptionInfo] = useState<{ totalMonthly: number, nextRenewal: string | null, daysRemaining: number }>({
     totalMonthly: 0,
     nextRenewal: null,
     daysRemaining: 0
   });
+  
+  // Lead details modal state
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
   
   // Form states for profile editing
   const [firstName, setFirstName] = useState<string>('');
@@ -190,6 +209,34 @@ const Dashboard = () => {
     }
   };
 
+  const handleLeadClick = (lead: Lead) => {
+    setSelectedLead(lead);
+    setIsLeadModalOpen(true);
+  };
+
+  const handleLeadUpdated = (updatedLead: Lead) => {
+    setLeads(prev => prev.map(lead => 
+      lead.id === updatedLead.id ? updatedLead : lead
+    ));
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'new':
+        return <Badge className="bg-blue-100 text-blue-800">New</Badge>;
+      case 'working':
+        return <Badge className="bg-yellow-100 text-yellow-800">Working</Badge>;
+      case 'qualified':
+        return <Badge className="bg-green-100 text-green-800">Qualified</Badge>;
+      case 'closed':
+        return <Badge className="bg-purple-100 text-purple-800">Closed</Badge>;
+      case 'deleted':
+        return <Badge className="bg-red-100 text-red-800">Deleted</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
   if (!isAuthenticated && !isLoading) {
     // Redirect to login if not authenticated
     window.location.href = '/login?redirect=/dashboard';
@@ -323,7 +370,7 @@ const Dashboard = () => {
             <CardHeader>
               <CardTitle>Your Leads</CardTitle>
               <CardDescription>
-                Manage and track your exclusive leads
+                Manage and track your exclusive leads. Click on any lead to view details and update status.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -332,29 +379,44 @@ const Dashboard = () => {
                   <table className="w-full border-collapse">
                     <thead>
                       <tr className="border-b bg-muted/50">
-                        <th className="text-left p-2 font-medium">Name</th>
-                        <th className="text-left p-2 font-medium">Contact</th>
-                        <th className="text-left p-2 font-medium">Zip Code</th>
-                        <th className="text-left p-2 font-medium">Status</th>
-                        <th className="text-left p-2 font-medium">Date</th>
+                        <th className="text-left p-3 font-medium">Name</th>
+                        <th className="text-left p-3 font-medium">Contact</th>
+                        <th className="text-left p-3 font-medium">Zip Code</th>
+                        <th className="text-left p-3 font-medium">Status</th>
+                        <th className="text-left p-3 font-medium">Date</th>
+                        <th className="text-left p-3 font-medium">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {leads.map(lead => (
-                        <tr key={lead.id} className="border-b hover:bg-muted/50">
-                          <td className="p-2">{lead.name || 'Unknown'}</td>
-                          <td className="p-2">
-                            {lead.email && <div>{lead.email}</div>}
-                            {lead.phone && <div>{lead.phone}</div>}
+                        <tr 
+                          key={lead.id} 
+                          className="border-b hover:bg-muted/50 cursor-pointer transition-colors"
+                          onClick={() => handleLeadClick(lead)}
+                        >
+                          <td className="p-3 font-medium">{lead.name || 'Unknown'}</td>
+                          <td className="p-3">
+                            {lead.email && <div className="text-sm">{lead.email}</div>}
+                            {lead.phone && <div className="text-sm">{formatPhoneNumber(lead.phone)}</div>}
+                            {!lead.email && !lead.phone && <span className="text-gray-500 text-sm">No contact info</span>}
                           </td>
-                          <td className="p-2">{lead.territory_zip_code}</td>
-                          <td className="p-2">
-                            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
-                              {lead.status || 'New'}
-                            </span>
-                          </td>
-                          <td className="p-2 text-sm text-muted-foreground">
+                          <td className="p-3">{lead.territory_zip_code}</td>
+                          <td className="p-3">{getStatusBadge(lead.status || 'New')}</td>
+                          <td className="p-3 text-sm text-muted-foreground">
                             {new Date(lead.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="p-3">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleLeadClick(lead);
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </Button>
                           </td>
                         </tr>
                       ))}
@@ -535,6 +597,17 @@ const Dashboard = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Lead Details Modal */}
+      <LeadDetailsModal
+        lead={selectedLead}
+        isOpen={isLeadModalOpen}
+        onClose={() => {
+          setIsLeadModalOpen(false);
+          setSelectedLead(null);
+        }}
+        onLeadUpdated={handleLeadUpdated}
+      />
     </div>
   );
 };
