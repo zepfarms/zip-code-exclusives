@@ -9,19 +9,31 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    storageKey: 'leadxclusive-auth-token',
-    storage: window.localStorage,
-    detectSessionInUrl: false,
-    flowType: 'pkce'
-  },
-  global: {
-    // Add additional headers for better compatibility
-    headers: {
-      'X-Client-Info': 'leadxclusive-web'
-    }
+// Create a retry function for better network resilience
+const createClientWithRetry = () => {
+  try {
+    return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        storageKey: 'leadxclusive-auth-token',
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        detectSessionInUrl: false,
+        flowType: 'pkce'
+      },
+      global: {
+        // Add additional headers for better compatibility
+        headers: {
+          'X-Client-Info': 'leadxclusive-web'
+        }
+      }
+    });
+  } catch (e) {
+    console.error('Error creating Supabase client, retrying...', e);
+    // If we fail to create the client, we'll just return a minimal implementation
+    // that won't cause the entire app to crash
+    return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
   }
-});
+};
+
+export const supabase = createClientWithRetry();

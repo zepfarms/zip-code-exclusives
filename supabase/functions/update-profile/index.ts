@@ -45,9 +45,10 @@ serve(async (req) => {
     // Always update the updated_at timestamp
     sanitizedData.updated_at = new Date().toISOString();
 
-    // Log phone number specifically since that's what we're having issues with
-    if (sanitizedData.phone !== undefined) {
-      logStep("Phone number being set to", sanitizedData.phone);
+    // Ensure phone is stored as just digits for consistency
+    if (sanitizedData.phone) {
+      sanitizedData.phone = sanitizedData.phone.replace(/\D/g, '');
+      logStep("Phone number cleaned for storage", sanitizedData.phone);
     }
 
     logStep("Sanitized update data", sanitizedData);

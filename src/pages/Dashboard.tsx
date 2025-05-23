@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { fetchUserData } from '@/utils/dashboardFunctions';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { formatPhoneNumber } from '@/utils/formatters';
 
 const Dashboard = () => {
   const [userId, setUserId] = useState<string | null>(null);
@@ -31,6 +32,7 @@ const Dashboard = () => {
   const [firstName, setFirstName] = useState<string>('');
   const [lastName, setLastName] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
+  const [formattedPhone, setFormattedPhone] = useState<string>('');
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [notifyEmail, setNotifyEmail] = useState<boolean>(true);
   const [notifySms, setNotifySms] = useState<boolean>(false);
@@ -91,11 +93,24 @@ const Dashboard = () => {
     if (userProfile) {
       setFirstName(userProfile.first_name || '');
       setLastName(userProfile.last_name || '');
-      setPhone(userProfile.phone || '');
+      
+      // Display the phone number if it exists in profile
+      const phoneNumber = userProfile.phone || '';
+      setPhone(phoneNumber);
+      setFormattedPhone(formatPhoneNumber(phoneNumber));
+      
       setNotifyEmail(userProfile.notification_email ?? true);
       setNotifySms(userProfile.notification_sms ?? false);
     }
   }, [userProfile]);
+
+  // Handle phone number input with US formatting
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only allow digits
+    const input = e.target.value.replace(/\D/g, '');
+    setPhone(input);
+    setFormattedPhone(formatPhoneNumber(input));
+  };
 
   const handleSaveProfile = async () => {
     if (!userId) return;
@@ -103,8 +118,8 @@ const Dashboard = () => {
     setIsSaving(true);
     
     try {
-      // Format phone for consistency
-      const formattedPhone = phone ? phone.trim() : '';
+      // Format phone to store standardized format (digits only)
+      const formattedPhone = phone ? phone.replace(/\D/g, '') : '';
       
       console.log('Saving profile with phone:', formattedPhone);
       
@@ -116,7 +131,7 @@ const Dashboard = () => {
             last_name: lastName,
             phone: formattedPhone,
             notification_email: notifyEmail,
-            notification_sms: notifySms
+            notification_sms: notifySms && !!formattedPhone // Only enable SMS if phone is provided
           }
         }
       });
@@ -372,13 +387,14 @@ const Dashboard = () => {
                   <Label htmlFor="phone">Phone Number</Label>
                   <Input 
                     id="phone" 
-                    value={phone} 
-                    onChange={(e) => setPhone(e.target.value)} 
-                    placeholder="Your phone number"
+                    value={formattedPhone} 
+                    onChange={handlePhoneChange} 
+                    placeholder="(555) 123-4567"
                     type="tel"
+                    maxLength={14} // Account for formatting characters
                   />
                   <p className="text-sm text-muted-foreground">
-                    Format: +1xxxxxxxxxx (include country code)
+                    Format: (555) 123-4567 (US numbers only)
                   </p>
                 </div>
               </div>
@@ -400,6 +416,20 @@ const Dashboard = () => {
                     <div className="text-sm">{contacts.emails[0] || 'No email set'}</div>
                   </div>
                 </div>
+                
+                {phone && (
+                  <div className="space-y-2">
+                    <Label>Phone Number</Label>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                          PH
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="text-sm">{formatPhoneNumber(phone) || 'No phone number set'}</div>
+                    </div>
+                  </div>
+                )}
               </div>
               
               <Separator />
