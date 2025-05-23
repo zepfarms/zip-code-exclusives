@@ -30,6 +30,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Admin notification function called");
+    
     const { userId } = await req.json();
     
     if (!userId) {
@@ -38,12 +40,20 @@ serve(async (req) => {
     
     console.log("Processing admin notification for new user:", userId);
     
+    // Verify API key is present
+    if (!RESEND_API_KEY) {
+      throw new Error("RESEND_API_KEY is not configured");
+    }
+    
     // Get user details
     const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
     
     if (userError || !userData.user) {
+      console.error("Error fetching user:", userError);
       throw new Error(`Error fetching user: ${userError?.message || "User not found"}`);
     }
+    
+    console.log("User data retrieved:", userData.user.email);
     
     // Get user profile
     const { data: profileData, error: profileError } = await supabase
@@ -68,7 +78,7 @@ serve(async (req) => {
     
     // Send admin notification email
     const { data, error } = await resend.emails.send({
-      from: "LeadXclusive <noreply@leadxclusive.com>",
+      from: "LeadXclusive <help@leadxclusive.com>",
       to: "help@leadxclusive.com",
       subject: "New Account Created - LeadXclusive",
       html: generateAdminNotificationEmailHtml(userDetails)
@@ -85,6 +95,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         message: "Admin notification sent successfully",
+        emailId: data?.id
       }),
       {
         status: 200,
@@ -102,7 +113,7 @@ serve(async (req) => {
         message: error.message,
       }),
       {
-        status: 400,
+        status: 500,
         headers: {
           "Content-Type": "application/json",
           ...corsHeaders,

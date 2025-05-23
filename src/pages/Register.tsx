@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -88,21 +89,27 @@ const Register = () => {
         try {
           await ensureUserProfile(signInData.user.id);
           
-          // Send admin notification email
+          // Send admin notification email with improved error handling
           try {
-            const { error: adminNotificationError } = await supabase.functions.invoke('admin-new-account-notification', {
+            console.log("Attempting to send admin notification for user:", signInData.user.id);
+            
+            const { data: adminNotificationData, error: adminNotificationError } = await supabase.functions.invoke('admin-new-account-notification', {
               body: { userId: signInData.user.id }
             });
             
             if (adminNotificationError) {
               console.error("Failed to send admin notification:", adminNotificationError);
-              // Don't fail the registration for this
+              // Log the full error details for debugging
+              console.error("Admin notification error details:", {
+                message: adminNotificationError.message,
+                context: adminNotificationError.context,
+                details: adminNotificationError.details
+              });
             } else {
-              console.log("Admin notification sent successfully");
+              console.log("Admin notification sent successfully:", adminNotificationData);
             }
           } catch (notificationError) {
             console.error("Error sending admin notification:", notificationError);
-            // Don't fail the registration for this
           }
           
           toast.success("Account created and logged in successfully!");
