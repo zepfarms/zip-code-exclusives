@@ -12,9 +12,20 @@ import { Badge } from "@/components/ui/badge";
 import { fetchUserData } from '@/utils/dashboardFunctions';
 import { updateUserProfile } from '@/utils/userProfile';
 import { toast } from 'sonner';
-import { Loader2, Eye } from 'lucide-react';
+import { Loader2, Eye, AlertCircle, XCircle } from 'lucide-react';
 import { formatPhoneNumber } from '@/utils/formatters';
 import LeadDetailsModal from '@/components/dashboard/LeadDetailsModal';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Textarea } from '@/components/ui/textarea';
 
 interface Lead {
   id: string;
@@ -60,6 +71,12 @@ const Dashboard = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [notifyEmail, setNotifyEmail] = useState<boolean>(true);
   const [notifySms, setNotifySms] = useState<boolean>(false);
+
+  // New states for cancellation dialog
+  const [cancelDialogOpen, setCancelDialogOpen] = useState<boolean>(false);
+  const [cancellationReason, setCancellationReason] = useState<string>('');
+  const [selectedTerritory, setSelectedTerritory] = useState<any>(null);
+  const [isCancelling, setIsCancelling] = useState<boolean>(false);
 
   // Monitor authentication state
   useEffect(() => {
@@ -237,6 +254,55 @@ const Dashboard = () => {
     }
   };
 
+  // New function to handle cancellation request
+  const handleCancelRequest = async () => {
+    if (!userId || !selectedTerritory) return;
+    
+    setIsCancelling(true);
+    
+    try {
+      const response = await fetch(
+        'https://ietvubimwsfugzkiycus.supabase.co/functions/v1/admin-notification',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''}`
+          },
+          body: JSON.stringify({
+            userId,
+            territoryId: selectedTerritory.id,
+            zipCode: selectedTerritory.zip_code,
+            reason: cancellationReason
+          })
+        }
+      );
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to submit cancellation request');
+      }
+      
+      toast.success('Cancellation request submitted successfully');
+      setCancelDialogOpen(false);
+      setCancellationReason('');
+      setSelectedTerritory(null);
+      
+    } catch (error) {
+      console.error('Error submitting cancellation request:', error);
+      toast.error('Failed to submit cancellation request. Please try again.');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  // New function to open the cancellation dialog
+  const openCancelDialog = (territory: any) => {
+    setSelectedTerritory(territory);
+    setCancelDialogOpen(true);
+  };
+
   if (!isAuthenticated && !isLoading) {
     // Redirect to login if not authenticated
     window.location.href = '/login?redirect=/dashboard';
@@ -312,8 +378,19 @@ const Dashboard = () => {
                             Next billing: {new Date(territory.next_billing_date).toLocaleDateString()}
                           </p>
                         </div>
-                        <div className="bg-green-100 px-3 py-1 rounded text-green-800">
-                          Active
+                        <div className="flex gap-2">
+                          <div className="bg-green-100 px-3 py-1 rounded text-green-800">
+                            Active
+                          </div>
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            onClick={() => openCancelDialog(territory)}
+                            className="flex items-center gap-1"
+                          >
+                            <XCircle className="h-4 w-4" />
+                            Cancel
+                          </Button>
                         </div>
                       </div>
                     ))}
@@ -608,6 +685,56 @@ const Dashboard = () => {
         }}
         onLeadUpdated={handleLeadUpdated}
       />
+
+      {/* Cancellation Dialog */}
+      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-500" />
+              Cancel Territory Subscription
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel this territory subscription? 
+              This will notify our team of your cancellation request.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="py-4">
+            <Label htmlFor="cancellationReason">
+              Please provide a reason for cancellation (optional):
+            </Label>
+            <Textarea
+              id="cancellationReason"
+              value={cancellationReason}
+              onChange={(e) => setCancellationReason(e.target.value)}
+              placeholder="Why are you cancelling this subscription?"
+              className="mt-2"
+            />
+          </div>
+          
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isCancelling}>Nevermind</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={(e) => {
+                e.preventDefault();
+                handleCancelRequest();
+              }}
+              disabled={isCancelling}
+            >
+              {isCancelling ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                'Confirm Cancellation'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

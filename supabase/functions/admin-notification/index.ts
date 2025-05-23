@@ -3,8 +3,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Replace with your admin email
-const ADMIN_EMAIL = "admin@leadxclusive.com";
+// Admin email to receive notifications
+const ADMIN_EMAIL = "help@leadxclusive.com";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -13,9 +13,9 @@ serve(async (req) => {
   }
   
   try {
-    const { userId, zipCode } = await req.json();
+    const { userId, territoryId, zipCode, reason } = await req.json();
     
-    if (!userId || !zipCode) {
+    if (!userId || !territoryId || !zipCode) {
       throw new Error("Missing required parameters");
     }
     
@@ -32,42 +32,54 @@ serve(async (req) => {
     if (userError || !user) {
       throw new Error("User not found");
     }
+
+    // Get territory info
+    const { data: territory, error: territoryError } = await supabase
+      .from("territories")
+      .select("*")
+      .eq("id", territoryId)
+      .single();
     
-    // Log notification (for development)
-    console.log(`
-      ADMIN NOTIFICATION EMAIL:
-      To: ${ADMIN_EMAIL}
-      Subject: New Territory Request
-      
-      A user has requested a new territory:
-      
-      User Email: ${user.email}
-      User ID: ${userId}
-      Requested Zip Code: ${zipCode}
-      Timestamp: ${new Date().toISOString()}
-      
-      Please log in to the admin dashboard to process this request.
-    `);
+    if (territoryError) {
+      console.error("Error fetching territory:", territoryError);
+    }
     
-    // Record the request in the database for admin to process
+    // Record the cancellation request in the database
     const { error: insertError } = await supabase
-      .from("territory_requests")
+      .from("cancellation_requests")
       .insert({
         user_id: userId,
         user_email: user.email,
+        territory_id: territoryId,
         zip_code: zipCode,
+        reason: reason || "No reason provided",
         status: 'pending',
         created_at: new Date().toISOString()
       });
     
     if (insertError) {
-      console.error("Error recording territory request:", insertError);
-      throw new Error("Failed to record territory request");
+      console.error("Error recording cancellation request:", insertError);
     }
+    
+    // Log the notification (this will appear in edge function logs)
+    console.log(`
+      CANCELLATION REQUEST:
+      From: ${user.email}
+      User ID: ${userId}
+      Territory ID: ${territoryId}
+      Zip Code: ${zipCode}
+      Reason: ${reason || "No reason provided"}
+      Timestamp: ${new Date().toISOString()}
+      
+      This notification would be emailed to: ${ADMIN_EMAIL}
+    `);
+    
+    // In production, you would send an actual email here using a service like Resend
+    // For now, we'll just log it and record it in the database
     
     return new Response(JSON.stringify({ 
       success: true,
-      message: "Territory request submitted for admin approval"
+      message: "Cancellation request submitted successfully"
     }), { 
       status: 200,
       headers: {
@@ -77,7 +89,7 @@ serve(async (req) => {
     });
     
   } catch (error) {
-    console.error("Error in admin-notification function:", error);
+    console.error("Error in cancellation notification function:", error);
     
     return new Response(JSON.stringify({
       error: error.message || "An unknown error occurred"
