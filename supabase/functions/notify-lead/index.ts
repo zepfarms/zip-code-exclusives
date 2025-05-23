@@ -2,8 +2,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
 import { Resend } from "npm:resend@1.0.0";
-import { Twilio } from "npm:twilio@4.26.0";
 
+// Import Twilio with proper type safety
+import { Twilio as TwilioClient } from "npm:twilio@4.26.0";
+
+// Get environment variables - use optional chaining for safety
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "re_YDeatYqf_7PMsHrt7Szf17r69LZRQ6qJo";
 const TWILIO_ACCOUNT_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
 const TWILIO_AUTH_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
@@ -82,6 +85,7 @@ async function sendEmail(emails: string[], lead: any) {
 }
 
 async function sendSms(phones: string[], lead: any) {
+  // Exit early if no phones provided or the array is empty
   if (!phones || phones.length === 0) {
     console.log("No phone numbers provided for SMS notification");
     return false;
@@ -106,21 +110,28 @@ async function sendSms(phones: string[], lead: any) {
   }
 
   try {
-    console.log("Sending SMS notification to:", validPhones);
+    console.log("Preparing to send SMS notifications to:", validPhones);
     
-    // Initialize Twilio client in a safe way
-    let twilio;
+    // Initialize Twilio client - only once outside the loop to prevent repeated initialization
+    let twilio: TwilioClient | null = null;
+    
     try {
-      twilio = new Twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+      twilio = new TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+      console.log("Twilio client initialized successfully");
     } catch (twilioInitError) {
       console.error("Failed to initialize Twilio client:", twilioInitError);
+      return false;
+    }
+    
+    if (!twilio) {
+      console.error("Failed to initialize Twilio client: client is null");
       return false;
     }
     
     // Create the message content
     const message = `New lead assigned: ${lead.name || 'New contact'} in ${lead.territory_zip_code}. Log in to your dashboard to view details.`;
     
-    // Send SMS to each phone number
+    // Send SMS to each phone number with improved error handling
     const results = await Promise.all(
       validPhones.map(async (phone) => {
         try {
@@ -132,24 +143,20 @@ async function sendSms(phones: string[], lead: any) {
           
           console.log(`Attempting to send SMS to: ${formattedPhone}`);
           
-          try {
-            const smsResult = await twilio.messages.create({
-              body: message,
-              from: TWILIO_PHONE_NUMBER,
-              to: formattedPhone
-            });
-            
-            console.log(`SMS sent successfully to ${formattedPhone}, SID: ${smsResult.sid}`);
-            return true;
-          } catch (sendError) {
-            console.error(`Error sending SMS to ${formattedPhone}:`, sendError.message);
-            if (sendError.code) {
-              console.error(`Twilio error code: ${sendError.code}`);
-            }
-            return false;
+          const smsResult = await twilio.messages.create({
+            body: message,
+            from: TWILIO_PHONE_NUMBER,
+            to: formattedPhone
+          });
+          
+          console.log(`SMS sent successfully to ${formattedPhone}, SID: ${smsResult.sid}`);
+          return true;
+        } catch (sendError: any) {
+          console.error(`Error sending SMS to ${phone}:`, sendError.message);
+          // Log more details about the error if available
+          if (sendError.code) {
+            console.error(`Twilio error code: ${sendError.code}`);
           }
-        } catch (phoneError) {
-          console.error(`Invalid phone format for ${phone}:`, phoneError);
           return false;
         }
       })
@@ -159,8 +166,8 @@ async function sendSms(phones: string[], lead: any) {
     const successCount = results.filter(Boolean).length;
     console.log(`SMS sending completed. Success: ${successCount}/${validPhones.length}`);
     
-    // Check if at least one SMS was sent successfully
-    return results.some(Boolean);
+    // Return true if at least one SMS was sent successfully
+    return successCount > 0;
     
   } catch (error) {
     console.error("Error in SMS sending process:", error);
@@ -172,17 +179,23 @@ async function sendSms(phones: string[], lead: any) {
 function formatPhoneNumber(phone: string): string {
   if (!phone) return "";
   
-  // Remove any non-digit characters
+  // Remove all non-digit characters
   const digitsOnly = phone.replace(/\D/g, '');
   
   if (!digitsOnly) return "";
+  
+  // US numbers need to be 10 or 11 digits (with country code)
+  if (digitsOnly.length < 10) {
+    console.log(`Phone number too short: ${phone} (${digitsOnly.length} digits)`);
+    return "";
+  }
   
   // If the number doesn't start with a country code, add +1 (US)
   if (digitsOnly.length === 10) {
     return `+1${digitsOnly}`;
   }
   
-  // If it already has a country code, just add a + if needed
+  // If it already has a country code, just add a +
   return digitsOnly.startsWith('+') ? digitsOnly : `+${digitsOnly}`;
 }
 
@@ -197,6 +210,7 @@ const handler = async (req: Request): Promise<Response> => {
     let payload: LeadNotificationPayload;
     try {
       payload = await req.json() as LeadNotificationPayload;
+      console.log("Request payload received:", payload);
     } catch (parseError) {
       console.error("Failed to parse request body:", parseError);
       throw new Error("Invalid request format");
@@ -205,7 +219,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { leadId, userId } = payload;
     
     if (!leadId || !userId) {
-      throw new Error("Missing required parameters");
+      throw new Error("Missing required parameters: leadId and userId must be provided");
     }
     
     console.log(`Processing notification for lead: ${leadId} to user: ${userId}`);
@@ -281,14 +295,24 @@ const handler = async (req: Request): Promise<Response> => {
       phones: allPhones
     });
     
-    // Send email notification if enabled
+    // Send email notification if enabled and emails are available
     if (userProfile.notification_email && allEmails.length > 0) {
       notificationResults.email = await sendEmail(allEmails, lead);
+    } else {
+      console.log("Email notification skipped:", {
+        notificationEnabled: userProfile.notification_email,
+        emailsAvailable: allEmails.length > 0
+      });
     }
     
-    // Send SMS notification if enabled and phone is available
+    // Send SMS notification if enabled and phones are available
     if (userProfile.notification_sms && allPhones.length > 0) {
       notificationResults.sms = await sendSms(allPhones, lead);
+    } else {
+      console.log("SMS notification skipped:", {
+        notificationEnabled: userProfile.notification_sms,
+        phonesAvailable: allPhones.length > 0
+      });
     }
     
     console.log("Notification results:", notificationResults);
