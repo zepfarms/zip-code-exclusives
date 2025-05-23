@@ -15,8 +15,8 @@ import {
   ArrowRight,
   CheckCircle,
   Home,
-  DollarSign,
-  Calendar
+  Calendar,
+  Lightbulb
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -59,27 +59,27 @@ const floatVariants = {
 const AboutUsPage = () => {
   const stats = [
     {
-      number: "20+",
-      label: "Years Combined Experience",
+      number: "10+",
+      label: "Years Experience",
       icon: <Calendar className="h-8 w-8" />,
       color: "from-blue-500 to-cyan-500"
     },
     {
-      number: "500+",
-      label: "Deals Closed",
-      icon: <Home className="h-8 w-8" />,
+      number: "100+",
+      label: "Successful Partnerships",
+      icon: <Users className="h-8 w-8" />,
       color: "from-green-500 to-emerald-500"
     },
     {
-      number: "95%",
+      number: "98%",
       label: "Client Satisfaction",
       icon: <Star className="h-8 w-8" />,
       color: "from-yellow-500 to-orange-500"
     },
     {
-      number: "$50M+",
-      label: "Revenue Generated",
-      icon: <DollarSign className="h-8 w-8" />,
+      number: "24/7",
+      label: "Support Available",
+      icon: <Heart className="h-8 w-8" />,
       color: "from-purple-500 to-pink-500"
     }
   ];
@@ -87,44 +87,44 @@ const AboutUsPage = () => {
   const values = [
     {
       icon: <Shield className="h-12 w-12" />,
-      title: "Exclusivity First",
-      description: "Every territory belongs to one client only. No competition, no sharing leads.",
+      title: "Exclusive Territory Protection",
+      description: "Your investment deserves protection. We ensure every territory belongs to one client only.",
       color: "from-blue-50 to-indigo-50 border-blue-200"
     },
     {
       icon: <Target className="h-12 w-12" />,
-      title: "Quality Over Quantity",
-      description: "Pre-screened, motivated sellers ready to make deals happen quickly.",
+      title: "Quality Lead Generation",
+      description: "We focus on delivering motivated sellers who are ready to work with you.",
       color: "from-emerald-50 to-green-50 border-emerald-200"
     },
     {
       icon: <Heart className="h-12 w-12" />,
-      title: "Client Success",
-      description: "Your success is our success. We're invested in your real estate journey.",
+      title: "Genuine Partnership",
+      description: "Your success drives our mission. We're here to support your real estate journey.",
       color: "from-rose-50 to-pink-50 border-rose-200"
     },
     {
-      icon: <TrendingUp className="h-12 w-12" />,
-      title: "Continuous Innovation",
-      description: "AI-powered lead generation that evolves with market trends and opportunities.",
+      icon: <Lightbulb className="h-12 w-12" />,
+      title: "Continuous Improvement",
+      description: "We constantly evolve our processes to better serve you and generate better results.",
       color: "from-amber-50 to-yellow-50 border-amber-200"
     }
   ];
 
   const teamMembers = [
     {
-      name: "The Founding Team",
-      role: "Real Estate Veterans",
-      description: "Former investors and flippers with deep market knowledge and proven track records.",
-      achievements: ["150+ Personal Flips", "Market Analysis Experts", "Technology Innovators"]
+      name: "Our Experienced Team",
+      role: "Real Estate Professionals",
+      description: "Our team brings years of hands-on experience in real estate to help you succeed.",
+      achievements: ["Market Analysis Expertise", "Lead Generation Specialists", "Client Success Focus"]
     }
   ];
 
   return (
     <div className="min-h-screen flex flex-col">
       <Helmet>
-        <title>About Us - Founded by Real Estate Investors | LeadXclusive</title>
-        <meta name="description" content="Learn about LeadXclusive's founding team of real estate investors with 20+ years of combined experience and 500+ deals closed. Discover our mission to provide exclusive leads." />
+        <title>About Us - Experienced Real Estate Professionals | LeadXclusive</title>
+        <meta name="description" content="Learn about LeadXclusive's experienced team of real estate professionals dedicated to helping you succeed with exclusive lead generation services." />
       </Helmet>
 
       <Header />
@@ -150,29 +150,29 @@ const AboutUsPage = () => {
               <motion.div variants={itemVariants} className="mb-8">
                 <div className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-full px-6 py-3 mb-6">
                   <Building className="h-5 w-5" />
-                  <span className="text-sm font-medium">Founded by Real Estate Pros</span>
+                  <span className="text-sm font-medium">Real Estate Professionals</span>
                 </div>
                 <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-                  Built by Investors,
+                  Experience You Can Trust,
                   <span className="block bg-gradient-to-r from-accent-400 to-yellow-400 bg-clip-text text-transparent">
-                    For Investors
+                    Results You Deserve
                   </span>
                 </h1>
                 <p className="text-xl md:text-2xl text-brand-100 max-w-3xl mx-auto leading-relaxed">
-                  We've walked in your shoes. After years of competing for overpriced leads, 
-                  we created the solution we always wanted: exclusive territories and qualified sellers.
+                  We're dedicated professionals who understand the real estate market and are 
+                  committed to helping you achieve your goals through exclusive lead generation.
                 </p>
               </motion.div>
 
               <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link to="/check-availability">
-                  <Button size="lg" className="bg-accent-600 hover:bg-accent-700 text-white px-8 py-6 text-lg rounded-full shadow-lg hover:shadow-xl transition-all">
-                    Start Your Journey
+                  <Button size="lg" className="bg-white text-brand-800 hover:bg-gray-100 px-8 py-6 text-lg rounded-full shadow-lg hover:shadow-xl transition-all font-semibold">
+                    Get Started Today
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
                 <Link to="/how-it-works">
-                  <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10 px-8 py-6 text-lg rounded-full">
+                  <Button size="lg" className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-brand-800 px-8 py-6 text-lg rounded-full font-semibold transition-all">
                     Learn Our Process
                   </Button>
                 </Link>
@@ -206,10 +206,10 @@ const AboutUsPage = () => {
             >
               <motion.div variants={itemVariants} className="text-center mb-16">
                 <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-                  Our Track Record Speaks
+                  Our Commitment to Excellence
                 </h2>
                 <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-                  Two decades of hands-on experience in real estate investing and deal-making.
+                  Years of experience helping real estate professionals succeed.
                 </p>
               </motion.div>
 
@@ -251,28 +251,26 @@ const AboutUsPage = () => {
                   <div className="mb-8">
                     <div className="inline-flex items-center gap-2 bg-brand-100 text-brand-700 rounded-full px-4 py-2 text-sm font-medium mb-6">
                       <Trophy className="h-4 w-4" />
-                      Our Origin Story
+                      Our Story
                     </div>
                     <h2 className="text-3xl md:text-4xl font-bold mb-6 text-gray-900">
-                      From Frustrated Investors to Industry Innovators
+                      Built on Experience, Driven by Results
                     </h2>
                   </div>
 
                   <div className="space-y-6 text-lg text-gray-700 leading-relaxed">
                     <p>
-                      It all started with a simple frustration: paying premium prices for leads that 
-                      were being sold to dozens of other investors in the same market. We were 
-                      competing not just on price, but on who could call first.
+                      LeadXclusive was founded with a simple mission: to provide real estate 
+                      professionals with the exclusive, high-quality leads they need to succeed.
                     </p>
                     <p>
-                      After years of this inefficient cycle, our founding team of experienced 
-                      real estate investors decided to build the solution we always wanted. 
-                      A service that provides <strong>exclusive territory rights</strong> at a fair price.
+                      Our team understands the challenges you face in today's competitive market. 
+                      That's why we've developed a system that ensures <strong>exclusive territory rights</strong> 
+                      and delivers motivated sellers who are ready to work with you.
                     </p>
                     <p>
-                      Today, LeadXclusive serves investors and agents across the country, 
-                      delivering on our promise of exclusivity and quality. Because we've been 
-                      where you are, we know exactly what you need to succeed.
+                      We believe in building genuine partnerships with our clients, providing ongoing 
+                      support, and continuously improving our services to help you achieve your goals.
                     </p>
                   </div>
 
@@ -285,8 +283,8 @@ const AboutUsPage = () => {
                       ))}
                     </div>
                     <div>
-                      <div className="font-semibold text-gray-900">The Founding Team</div>
-                      <div className="text-gray-600">Real Estate Veterans</div>
+                      <div className="font-semibold text-gray-900">Our Team</div>
+                      <div className="text-gray-600">Real Estate Professionals</div>
                     </div>
                   </div>
                 </motion.div>
@@ -296,7 +294,7 @@ const AboutUsPage = () => {
                     <CardContent className="p-8">
                       <div className="mb-6">
                         <Users className="h-12 w-12 text-brand-600 mb-4" />
-                        <h3 className="text-2xl font-bold text-gray-900 mb-4">Meet Our Founders</h3>
+                        <h3 className="text-2xl font-bold text-gray-900 mb-4">Our Team</h3>
                       </div>
                       
                       {teamMembers.map((member, index) => (
@@ -342,7 +340,7 @@ const AboutUsPage = () => {
                   What Drives Us Every Day
                 </h2>
                 <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-                  These principles guide every decision we make and every feature we build.
+                  These principles guide how we serve you and deliver results.
                 </p>
               </motion.div>
 
@@ -394,7 +392,7 @@ const AboutUsPage = () => {
                   Our Mission & Vision
                 </h2>
                 <p className="text-xl text-brand-100">
-                  Building the future of real estate lead generation.
+                  Helping you succeed in real estate.
                 </p>
               </motion.div>
 
@@ -404,9 +402,9 @@ const AboutUsPage = () => {
                     <Target className="h-12 w-12 text-accent-400 mb-6" />
                     <h3 className="text-2xl font-bold mb-4">Our Mission</h3>
                     <p className="text-lg text-brand-100 leading-relaxed">
-                      To revolutionize real estate lead generation by providing exclusive, 
-                      high-quality leads that eliminate competition and maximize conversion rates 
-                      for investors and agents nationwide.
+                      To help real estate professionals succeed by providing exclusive, 
+                      high-quality leads that eliminate competition and maximize 
+                      opportunities for meaningful connections with motivated sellers.
                     </p>
                   </div>
                 </motion.div>
@@ -416,9 +414,9 @@ const AboutUsPage = () => {
                     <TrendingUp className="h-12 w-12 text-accent-400 mb-6" />
                     <h3 className="text-2xl font-bold mb-4">Our Vision</h3>
                     <p className="text-lg text-brand-100 leading-relaxed">
-                      To become the most trusted name in exclusive real estate leads, 
-                      empowering thousands of investors and agents to build successful 
-                      businesses through our innovative technology and proven processes.
+                      To become the most trusted partner for real estate professionals 
+                      seeking exclusive leads, empowering them to build successful 
+                      businesses through our dedication to quality and service.
                     </p>
                   </div>
                 </motion.div>
@@ -439,21 +437,21 @@ const AboutUsPage = () => {
             >
               <motion.div variants={itemVariants}>
                 <h2 className="text-3xl md:text-4xl font-bold mb-6">
-                  Ready to Join Our Success Story?
+                  Ready to Experience the Difference?
                 </h2>
                 <p className="text-xl text-brand-100 mb-8 max-w-2xl mx-auto">
-                  Experience the difference that comes from working with a team that 
-                  truly understands your challenges and goals.
+                  Join the real estate professionals who trust us to deliver 
+                  exclusive leads and exceptional service.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Link to="/check-availability">
-                    <Button size="lg" className="bg-accent-600 hover:bg-accent-700 text-white px-8 py-6 text-lg rounded-full shadow-lg hover:shadow-xl transition-all">
+                    <Button size="lg" className="bg-white text-brand-800 hover:bg-gray-100 px-8 py-6 text-lg rounded-full shadow-lg hover:shadow-xl transition-all font-semibold">
                       Check Territory Availability
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </Button>
                   </Link>
                   <Link to="/how-it-works">
-                    <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10 px-8 py-6 text-lg rounded-full">
+                    <Button size="lg" className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-brand-800 px-8 py-6 text-lg rounded-full font-semibold transition-all">
                       Learn How It Works
                     </Button>
                   </Link>
