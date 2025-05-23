@@ -141,7 +141,7 @@ function generateWelcomeEmailHtml(user: UserDetails): string {
       
       <div style="background-color: #f7f9fc; border-left: 4px solid #4a6cf7; padding: 15px; margin: 25px 0;">
         <h2 style="color: #4a6cf7; margin-top: 0;">What happens next?</h2>
-        <p style="margin-bottom: 10px;">Our team is currently setting up your exclusive territory for zip code <strong>${user.zip_code}</strong>. Here's what you can expect:</p>
+        <p style="margin-bottom: 10px;">Our team is currently setting up your exclusive territory. Here's what you can expect:</p>
         <ul style="padding-left: 20px;">
           <li style="margin-bottom: 8px;"><strong>Account Setup (Next 7 Days):</strong> We're configuring your territory and preparing our systems to deliver leads directly to you.</li>
           <li style="margin-bottom: 8px;"><strong>Activation Email:</strong> In approximately 7 days, you'll receive an activation email letting you know when your leads will start flowing.</li>
