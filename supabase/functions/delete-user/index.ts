@@ -58,8 +58,22 @@ Deno.serve(async (req) => {
     
     console.log(`Admin requested deletion of user ID: ${userId}`);
     
-    // First handle database dependencies - Delete user profile
-    // This fixes the foreign key constraint issue
+    // First handle database dependencies in the correct order to avoid foreign key constraints
+    
+    // 1. Delete leads first (they reference user_id)
+    const { error: deleteLeadsError } = await supabaseClient
+      .from('leads')
+      .delete()
+      .eq('user_id', userId);
+    
+    if (deleteLeadsError) {
+      console.warn("Error deleting leads:", deleteLeadsError);
+      // Continue with deletion even if this fails
+    } else {
+      console.log("Successfully deleted leads for user");
+    }
+    
+    // 2. Delete user profile
     const { error: deleteProfileError } = await supabaseClient
       .from('user_profiles')
       .delete()
@@ -73,7 +87,7 @@ Deno.serve(async (req) => {
       );
     }
     
-    // Then delete territories
+    // 3. Delete territories
     const { error: deleteTerritoriesError } = await supabaseClient
       .from('territories')
       .delete()
@@ -84,7 +98,7 @@ Deno.serve(async (req) => {
       // Continue with deletion even if this fails
     }
     
-    // Next, check for and delete any territory requests
+    // 4. Delete territory requests
     const { error: deleteRequestsError } = await supabaseClient
       .from('territory_requests')
       .delete()
@@ -95,7 +109,7 @@ Deno.serve(async (req) => {
       // Continue with deletion even if this fails
     }
     
-    // Now delete the user from auth.users
+    // 5. Finally, delete the user from auth.users
     const { error } = await supabaseClient.auth.admin.deleteUser(userId);
     
     if (error) {
