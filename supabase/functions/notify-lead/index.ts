@@ -1,7 +1,6 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
-import { Resend } from "npm:resend@1.0.0"; // Using npm: prefix instead of esm.sh
+import { Resend } from "npm:resend@1.0.0";
 import { Twilio } from "npm:twilio@4.26.0";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "re_YDeatYqf_7PMsHrt7Szf17r69LZRQ6qJo";
@@ -105,9 +104,20 @@ async function sendSms(phones: string[], lead: any) {
 
   try {
     console.log("Sending SMS notification to:", validPhones);
+    console.log("Using Twilio credentials:", { 
+      accountSid: TWILIO_ACCOUNT_SID ? "Present" : "Missing", 
+      authToken: TWILIO_AUTH_TOKEN ? "Present" : "Missing", 
+      phoneNumber: TWILIO_PHONE_NUMBER 
+    });
     
-    // Initialize Twilio client
-    const twilio = new Twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+    // Initialize Twilio client with proper error handling
+    let twilio;
+    try {
+      twilio = new Twilio(TWILIO_ACCOUNT_SID || "", TWILIO_AUTH_TOKEN || "");
+    } catch (twilioInitError) {
+      console.error("Failed to initialize Twilio client:", twilioInitError);
+      return false;
+    }
     
     // Create the message content
     const message = `New lead assigned: ${lead.name || 'New contact'} in ${lead.territory_zip_code}. Log in to your dashboard to view details.`;
@@ -116,38 +126,56 @@ async function sendSms(phones: string[], lead: any) {
     const results = await Promise.all(
       validPhones.map(async (phone) => {
         try {
-          // Format the phone number if needed
+          // Format the phone number
           const formattedPhone = formatPhoneNumber(phone);
           
-          console.log(`Sending SMS to: ${formattedPhone}`);
-          const smsResult = await twilio.messages.create({
-            body: message,
-            from: TWILIO_PHONE_NUMBER,
-            to: formattedPhone
-          });
+          console.log(`Attempting to send SMS to: ${formattedPhone}`);
           
-          console.log(`SMS sent successfully to ${formattedPhone}, SID: ${smsResult.sid}`);
-          return true;
-        } catch (smsError) {
-          console.error(`Failed to send SMS to ${phone}:`, smsError);
+          // Send the SMS with additional logging
+          try {
+            const smsResult = await twilio.messages.create({
+              body: message,
+              from: TWILIO_PHONE_NUMBER || "",
+              to: formattedPhone
+            });
+            
+            console.log(`SMS sent successfully to ${formattedPhone}, SID: ${smsResult.sid}`);
+            return true;
+          } catch (sendError) {
+            console.error(`Error sending SMS to ${formattedPhone}:`, sendError.message);
+            if (sendError.code) {
+              console.error(`Twilio error code: ${sendError.code}`);
+            }
+            return false;
+          }
+        } catch (phoneError) {
+          console.error(`Invalid phone format for ${phone}:`, phoneError);
           return false;
         }
       })
     );
     
+    // Log results summary
+    const successCount = results.filter(Boolean).length;
+    console.log(`SMS sending completed. Success: ${successCount}/${validPhones.length}`);
+    
     // Check if at least one SMS was sent successfully
-    return results.includes(true);
+    return results.some(Boolean);
     
   } catch (error) {
-    console.error("Error sending SMS notifications:", error);
+    console.error("Error in SMS sending process:", error);
     return false;
   }
 }
 
 // Helper function to format phone numbers for Twilio
 function formatPhoneNumber(phone: string): string {
+  if (!phone) return "";
+  
   // Remove any non-digit characters
   const digitsOnly = phone.replace(/\D/g, '');
+  
+  if (!digitsOnly) return "";
   
   // If the number doesn't start with a country code, add +1 (US)
   if (digitsOnly.length === 10) {
