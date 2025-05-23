@@ -44,13 +44,13 @@ const AdminDashboard = () => {
         
         {showAddForm && activeTab === 'territories' && (
           <div className="mb-8">
-            <AddTerritoryForm onComplete={() => setShowAddForm(false)} />
+            <AddTerritoryForm />
           </div>
         )}
         
         {showAddForm && activeTab === 'leads' && (
           <div className="mb-8">
-            <AddLeadForm onComplete={() => setShowAddForm(false)} />
+            <AddLeadForm />
           </div>
         )}
         
