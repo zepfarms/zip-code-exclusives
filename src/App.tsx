@@ -1,11 +1,11 @@
 
+import React, { useEffect, lazy, Suspense, useState, Component, ErrorInfo, ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation, useNavigationType } from "react-router-dom";
 import { HelmetProvider } from 'react-helmet-async';
-import { useEffect, lazy, Suspense, useState } from "react";
 import BreadcrumbNav from "./components/BreadcrumbNav";
 
 // Lazy load pages for better performance
@@ -41,7 +41,12 @@ const ScrollToTop = () => {
 };
 
 // Enhanced error boundary to handle module loading failures
-const ErrorFallback = ({ error, resetErrorBoundary }) => {
+interface ErrorFallbackProps {
+  error: Error;
+  resetErrorBoundary: () => void;
+}
+
+const ErrorFallback = ({ error, resetErrorBoundary }: ErrorFallbackProps) => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
       <h2 className="text-2xl font-bold text-red-600 mb-4">Something went wrong</h2>
@@ -67,25 +72,34 @@ const ErrorFallback = ({ error, resetErrorBoundary }) => {
   );
 };
 
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
 // Custom error boundary component
-class ErrorBoundary extends React.Component {
-  constructor(props) {
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error, errorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     console.error("React Error Boundary caught an error:", error, errorInfo);
   }
 
   render() {
     if (this.state.hasError) {
       return <ErrorFallback 
-        error={this.state.error} 
+        error={this.state.error as Error} 
         resetErrorBoundary={() => this.setState({ hasError: false, error: null })} 
       />;
     }
