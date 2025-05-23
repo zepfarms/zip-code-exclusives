@@ -10,6 +10,9 @@ export const formatPhoneNumber = (phoneString: string): string => {
   // Remove all non-digit characters
   const cleaned = phoneString.replace(/\D/g, '');
   
+  // If the string is empty after cleaning, return empty string
+  if (!cleaned) return '';
+  
   // Format as US phone number
   const match = cleaned.match(/^(1|)?(\d{3})(\d{3})(\d{4})$/);
   
@@ -23,6 +26,6 @@ export const formatPhoneNumber = (phoneString: string): string => {
   }
   
   // If the input doesn't match our expected format
-  // Just return the cleaned string (digits only)
+  // Just return what we have (might be partial number)
   return cleaned;
 };
