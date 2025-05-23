@@ -29,6 +29,9 @@ export const ensureUserProfile = async (userId: string) => {
       throw new Error(result.error || 'Failed to ensure profile');
     }
     
+    // Log the returned profile for debugging
+    console.log('Profile returned from server:', result.profile);
+    
     return result.profile;
   } catch (error) {
     console.error('Profile operation failed:', error);

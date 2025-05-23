@@ -22,7 +22,7 @@ serve(async (req) => {
     }
 
     if (!profileData || typeof profileData !== 'object') {
-      throw new Error("profileData must be a valid object");
+      throw new Error("profileData must be an object");
     }
 
     logStep("Processing profile update request for user", userId);
@@ -38,106 +38,52 @@ serve(async (req) => {
       }
     });
 
-    // Make sure we never modify the user_type (this can violate a check constraint)
-    const sanitizedData = { ...profileData };
-    delete sanitizedData.user_type;
+    // Sanitize the update data to prevent unwanted updates
+    const allowedFields = [
+      'first_name', 
+      'last_name', 
+      'company', 
+      'phone', 
+      'notification_phone',
+      'notification_email', 
+      'notification_sms', 
+      'secondary_emails', 
+      'secondary_phones',
+      'license_state',
+      'license_number'
+    ];
     
-    // Always update the updated_at timestamp
+    const sanitizedData: any = {};
+    
+    for (const field of allowedFields) {
+      if (field in profileData) {
+        sanitizedData[field] = profileData[field];
+      }
+    }
+    
+    // Always add updated_at timestamp
     sanitizedData.updated_at = new Date().toISOString();
-
-    // Ensure phone numbers are stored as just digits for consistency
-    if (sanitizedData.phone !== undefined) {
-      // Only clean if it's not null or empty string
-      if (sanitizedData.phone) {
-        sanitizedData.phone = sanitizedData.phone.replace(/\D/g, '');
-        logStep("Phone number cleaned for storage", sanitizedData.phone);
-      }
-      
-      // If phone is explicitly set to empty string, convert to null
-      if (sanitizedData.phone === '') {
-        sanitizedData.phone = null;
-        logStep("Empty phone converted to null");
-      }
-    }
-
-    // Handle the notification_phone field
-    if (sanitizedData.notification_phone !== undefined) {
-      // Clean notification phone if it's not null or empty
-      if (sanitizedData.notification_phone) {
-        sanitizedData.notification_phone = sanitizedData.notification_phone.replace(/\D/g, '');
-        logStep("Notification phone cleaned for storage", sanitizedData.notification_phone);
-      }
-      
-      // Convert empty string to null
-      if (sanitizedData.notification_phone === '') {
-        sanitizedData.notification_phone = null;
-        logStep("Empty notification_phone converted to null");
-      }
-    }
-
-    logStep("Sanitized update data", sanitizedData);
-
-    // Check if the profile exists first
-    const { data: existingProfile, error: checkError } = await supabaseAdmin
-      .from('user_profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-      
-    if (checkError) {
-      logStep("Error checking existing profile", checkError);
-      throw checkError;
-    }
     
-    if (!existingProfile) {
-      logStep("Profile doesn't exist, creating new profile");
-      // Create a new profile if it doesn't exist
-      const { data: insertData, error: insertError } = await supabaseAdmin
-        .from('user_profiles')
-        .insert({
-          id: userId,
-          ...sanitizedData
-        })
-        .select('*');
-        
-      if (insertError) {
-        logStep("Error creating profile", insertError);
-        throw insertError;
-      }
-      
-      logStep("Successfully created profile", { 
-        id: insertData[0].id, 
-        phone: insertData[0].phone || '(no phone)',
-        notification_phone: insertData[0].notification_phone || '(no notification phone)',
-        notification_sms: insertData[0].notification_sms 
-      });
-      
-      return new Response(JSON.stringify({ 
-        success: true, 
-        message: "Profile created successfully", 
-        profile: insertData[0] 
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    }
+    logStep("Sanitized update data", sanitizedData);
 
     // Update the profile
     const { data, error } = await supabaseAdmin
       .from('user_profiles')
       .update(sanitizedData)
       .eq('id', userId)
-      .select('*'); // Select all columns to return the complete profile
-
+      .select();
+      
     if (error) {
       logStep("Error updating profile", error);
-      throw error;
+      throw new Error(`Failed to update profile: ${error.message}`);
     }
-
+    
     if (!data || data.length === 0) {
-      throw new Error("No profile data returned after update");
+      logStep("No profile found", { userId });
+      throw new Error("Profile not found for this user");
     }
 
+    // Log success with detailed data for debugging
     logStep("Successfully updated profile", { 
       id: data[0].id, 
       phone: data[0].phone || '(no phone)',
@@ -149,13 +95,13 @@ serve(async (req) => {
     return new Response(JSON.stringify({ 
       success: true, 
       message: "Profile updated successfully", 
-      profile: data[0] 
+      profile: data[0]
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error: any) {
-    logStep("Error in update-profile function", { message: error.message });
+    logStep("Error updating profile", { message: error.message });
     return new Response(JSON.stringify({ 
       success: false, 
       error: error.message 

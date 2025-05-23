@@ -36,17 +36,27 @@ const AdminDashboard = () => {
         
         // First try to check admin status using edge function (most reliable)
         try {
-          const { data: adminCheck, error: adminCheckError } = await supabase.functions.invoke('check-admin-status', {
-            body: { userId: session.user.id }
-          });
+          const response = await fetch(
+            `https://ietvubimwsfugzkiycus.supabase.co/functions/v1/check-admin-status`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.user.access_token}`
+              },
+              body: JSON.stringify({ userId: session.user.id })
+            }
+          );
           
-          if (!adminCheckError && adminCheck?.isAdmin === true) {
+          const adminCheck = await response.json();
+          
+          if (!response.ok) {
+            console.error("Edge function error:", adminCheck);
+          } else if (adminCheck?.isAdmin === true) {
             console.log("Admin access granted via edge function");
             setIsAdmin(true);
             setIsLoading(false);
             return;
-          } else if (adminCheckError) {
-            console.error("Edge function error:", adminCheckError);
           }
         } catch (err) {
           console.error("Error calling admin check edge function:", err);

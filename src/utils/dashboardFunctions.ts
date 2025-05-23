@@ -33,16 +33,19 @@ export const fetchUserData = async (
       
       // Handle phones: primary from profile, secondary from profile
       const primaryPhone = userProfile?.phone || '';
+      const notificationPhone = userProfile?.notification_phone || '';
       const secondaryPhones = userProfile?.secondary_phones || [];
       
       console.log("Setting contacts with primary email:", primaryEmail);
       console.log("Secondary emails:", secondaryEmails);
       console.log("Primary phone:", primaryPhone);
+      console.log("Notification phone:", notificationPhone);
       console.log("Secondary phones:", secondaryPhones);
+      console.log("Notification SMS enabled:", userProfile?.notification_sms);
       
       setContacts({
         emails: [primaryEmail, ...secondaryEmails],
-        phones: [primaryPhone, ...secondaryPhones].filter(Boolean) // Filter out empty strings
+        phones: [primaryPhone, notificationPhone, ...secondaryPhones].filter(Boolean) // Filter out empty strings
       });
     }
     
