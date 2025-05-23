@@ -142,7 +142,8 @@ serve(async (req) => {
       id: data[0].id, 
       phone: data[0].phone || '(no phone)',
       notification_phone: data[0].notification_phone || '(no notification phone)',
-      notification_sms: data[0].notification_sms 
+      notification_sms: data[0].notification_sms,
+      fullData: data[0] // Log the full profile data to help with debugging
     });
 
     return new Response(JSON.stringify({ 

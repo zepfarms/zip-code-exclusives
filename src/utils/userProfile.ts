@@ -92,12 +92,14 @@ export const updateUserProfile = async (userId: string, profileData: any) => {
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('Edge function error response:', errorText);
       throw new Error(`Edge function error: ${errorText}`);
     }
 
     const result = await response.json();
     
     if (!result.success) {
+      console.error('Unsuccessful result from edge function:', result);
       throw new Error(result.error || 'Failed to update profile');
     }
     

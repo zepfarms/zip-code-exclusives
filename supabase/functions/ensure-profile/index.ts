@@ -70,7 +70,8 @@ serve(async (req) => {
         first_name: profile.first_name,
         last_name: profile.last_name,
         user_type: profile.user_type,
-        phone: profile.phone || ''
+        phone: profile.phone || '',
+        notification_phone: profile.notification_phone || ''
       });
       
       return new Response(JSON.stringify({ 
@@ -114,7 +115,8 @@ serve(async (req) => {
 
     logStep("Successfully created profile", { 
       id: createdProfile.id, 
-      phone: createdProfile.phone || '(no phone)' 
+      phone: createdProfile.phone || '(no phone)',
+      notification_phone: createdProfile.notification_phone || '(no notification phone)'
     });
 
     return new Response(JSON.stringify({ 
