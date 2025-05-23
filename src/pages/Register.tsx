@@ -87,12 +87,28 @@ const Register = () => {
       if (signInData.user) {
         try {
           await ensureUserProfile(signInData.user.id);
+          
+          // Send admin notification email
+          try {
+            const { error: adminNotificationError } = await supabase.functions.invoke('admin-new-account-notification', {
+              body: { userId: signInData.user.id }
+            });
+            
+            if (adminNotificationError) {
+              console.error("Failed to send admin notification:", adminNotificationError);
+              // Don't fail the registration for this
+            } else {
+              console.log("Admin notification sent successfully");
+            }
+          } catch (notificationError) {
+            console.error("Error sending admin notification:", notificationError);
+            // Don't fail the registration for this
+          }
+          
           toast.success("Account created and logged in successfully!");
-          // Direct to dashboard immediately after successful registration and login
           navigate('/dashboard');
         } catch (profileError) {
           console.error("Failed to ensure user profile:", profileError);
-          // Still navigate to dashboard as this is not a critical error
           toast.success("Account created and logged in successfully!");
           navigate('/dashboard');
         }
