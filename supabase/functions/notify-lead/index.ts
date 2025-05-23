@@ -1,9 +1,10 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
 import { Resend } from "npm:resend@1.0.0";
 
-// Import Twilio with proper type safety - update to a valid version
-import { Twilio as TwilioClient } from "npm:twilio@4.19.0";
+// Import Twilio correctly - it exports a default, not a named export
+import twilio from "npm:twilio@4.19.0";
 
 // Get environment variables - use optional chaining for safety
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "re_YDeatYqf_7PMsHrt7Szf17r69LZRQ6qJo";
@@ -112,18 +113,19 @@ async function sendSms(phones: string[], lead: any) {
   try {
     console.log("Preparing to send SMS notifications to:", validPhones);
     
-    // Initialize Twilio client - only once outside the loop to prevent repeated initialization
-    let twilio: TwilioClient | null = null;
+    // Initialize Twilio client - use the correct import method
+    let twilioClient = null;
     
     try {
-      twilio = new TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+      // Create Twilio client using the imported module correctly
+      twilioClient = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
       console.log("Twilio client initialized successfully");
     } catch (twilioInitError) {
       console.error("Failed to initialize Twilio client:", twilioInitError);
       return false;
     }
     
-    if (!twilio) {
+    if (!twilioClient) {
       console.error("Failed to initialize Twilio client: client is null");
       return false;
     }
@@ -143,7 +145,7 @@ async function sendSms(phones: string[], lead: any) {
           
           console.log(`Attempting to send SMS to: ${formattedPhone}`);
           
-          const smsResult = await twilio.messages.create({
+          const smsResult = await twilioClient.messages.create({
             body: message,
             from: TWILIO_PHONE_NUMBER,
             to: formattedPhone
