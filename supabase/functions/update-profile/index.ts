@@ -52,20 +52,23 @@ serve(async (req) => {
       .from('user_profiles')
       .update(sanitizedData)
       .eq('id', userId)
-      .select()
-      .single();
+      .select('*'); // Select all columns to return the complete profile
 
     if (error) {
       logStep("Error updating profile", error);
       throw error;
     }
 
-    logStep("Successfully updated profile", { id: data.id });
+    if (!data || data.length === 0) {
+      throw new Error("No profile data returned after update");
+    }
+
+    logStep("Successfully updated profile", { id: data[0].id });
 
     return new Response(JSON.stringify({ 
       success: true, 
       message: "Profile updated successfully", 
-      profile: data 
+      profile: data[0] 
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

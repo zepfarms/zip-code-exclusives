@@ -65,21 +65,27 @@ export const updateUserProfile = async (userId: string, profileData: any) => {
     
     console.log('Updating profile with data:', updatedData);
 
-    // First try direct update approach
+    // First try direct update approach with a more reliable select
     try {
       const { data, error } = await supabase
         .from('user_profiles')
         .update(updatedData)
         .eq('id', userId)
-        .select();
+        .select('*');  // Use .select('*') to ensure we get all profile data
         
       if (error) {
         console.error('Direct update error, falling back to service function:', error);
         throw error; // Throw to trigger the fallback approach
       }
       
-      toast.success('Profile updated successfully!');
-      return data;
+      if (data && data.length > 0) {
+        console.log('Profile updated successfully via direct update:', data[0]);
+        toast.success('Profile updated successfully!');
+        return data[0];
+      } else {
+        console.error('No profile data returned from direct update');
+        throw new Error('No profile data returned');
+      }
     } catch (directUpdateError) {
       console.log('Using edge function fallback for profile update');
       
@@ -111,6 +117,7 @@ export const updateUserProfile = async (userId: string, profileData: any) => {
         throw new Error(result.error || 'Failed to update profile');
       }
       
+      console.log('Profile updated successfully via edge function:', result.profile);
       toast.success('Profile updated successfully!');
       return result.profile;
     }
