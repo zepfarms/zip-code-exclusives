@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -62,25 +61,24 @@ const LeadDetailsModal = ({ lead, isOpen, onClose, onLeadUpdated }: LeadDetailsM
 
     try {
       setIsUpdating(true);
-
-      const { data, error } = await supabase
-        .from('leads')
-        .update({ 
+      
+      // Use the edge function instead of direct database update
+      const { data, error } = await supabase.functions.invoke('update-lead', {
+        body: {
+          leadId: lead.id,
           status,
-          notes,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', lead.id)
-        .select()
-        .single();
+          notes
+        }
+      });
 
       if (error) throw error;
+      if (!data.success) throw new Error(data.error || 'Failed to update lead');
 
       const updatedLead = {
         ...lead,
         status,
         notes,
-        updated_at: data.updated_at
+        updated_at: data.lead.updated_at
       };
 
       onLeadUpdated(updatedLead);

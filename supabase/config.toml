@@ -12,3 +12,6 @@ verify_jwt = true
 
 [functions.contact-support]
 verify_jwt = true
+
+[functions.update-lead]
+verify_jwt = true
