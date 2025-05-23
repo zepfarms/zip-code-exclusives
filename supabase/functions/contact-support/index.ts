@@ -2,8 +2,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Resend } from "npm:resend@2.0.0";
 
 const SUPPORT_EMAIL = "help@leadxclusive.com";
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -43,17 +45,6 @@ User Details:
       }
     }
     
-    // Log the support request (this will appear in edge function logs)
-    console.log(`
-      SUPPORT REQUEST:
-      From: ${userEmail}
-      User ID: ${userId || 'Not provided'}
-      Message: ${message}
-      Timestamp: ${new Date().toISOString()}
-      
-      This notification would be emailed to: ${SUPPORT_EMAIL}
-    `);
-    
     // Record the support request in the database for tracking
     const { error: insertError } = await supabase
       .from("support_requests")
@@ -70,8 +61,28 @@ User Details:
       // Don't fail the request if we can't record it, just log the error
     }
     
-    // In production, you would send an actual email here using a service like Resend
-    // For now, we'll just log it and record it in the database
+    // Send the actual email using Resend
+    const emailContent = `
+      <h2>New Support Request</h2>
+      <p><strong>From:</strong> ${userEmail}</p>
+      <p><strong>User ID:</strong> ${userId || 'Not provided'}</p>
+      ${userContext ? `<p><strong>User Context:</strong><pre>${userContext}</pre></p>` : ''}
+      <p><strong>Message:</strong></p>
+      <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 10px 0;">
+        ${message.replace(/\n/g, '<br>')}
+      </div>
+      <p><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
+    `;
+    
+    const emailResponse = await resend.emails.send({
+      from: "LeadXclusive Support <noreply@leadxclusive.com>",
+      to: [SUPPORT_EMAIL],
+      replyTo: userEmail,
+      subject: `Support Request from ${userEmail}`,
+      html: emailContent
+    });
+    
+    console.log("Support email sent successfully:", emailResponse);
     
     return new Response(JSON.stringify({ 
       success: true,
