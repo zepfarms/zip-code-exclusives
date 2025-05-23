@@ -3,12 +3,12 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
 import { Resend } from "npm:resend@1.0.0";
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 const resend = new Resend(RESEND_API_KEY);
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,6 +35,7 @@ serve(async (req) => {
     const { userId } = await req.json();
     
     if (!userId) {
+      console.error("Missing userId parameter");
       throw new Error("Missing userId parameter");
     }
     
@@ -42,6 +43,7 @@ serve(async (req) => {
     
     // Verify API key is present
     if (!RESEND_API_KEY) {
+      console.error("RESEND_API_KEY is not configured");
       throw new Error("RESEND_API_KEY is not configured");
     }
     

@@ -89,7 +89,27 @@ const Register = () => {
         try {
           await ensureUserProfile(signInData.user.id);
           
-          // Send admin notification email with improved error handling
+          // Send welcome email to the user
+          try {
+            console.log("Sending welcome email to new user:", signInData.user.email);
+            
+            const { data: welcomeEmailData, error: welcomeEmailError } = await supabase.functions.invoke('welcome-email', {
+              body: { 
+                userId: signInData.user.id,
+                zipCode: "00000" // Default zip code, can be updated later
+              }
+            });
+            
+            if (welcomeEmailError) {
+              console.error("Failed to send welcome email:", welcomeEmailError);
+            } else {
+              console.log("Welcome email sent successfully:", welcomeEmailData);
+            }
+          } catch (welcomeError) {
+            console.error("Error sending welcome email:", welcomeError);
+          }
+          
+          // Send admin notification email
           try {
             console.log("Attempting to send admin notification for user:", signInData.user.id);
             
@@ -99,7 +119,6 @@ const Register = () => {
             
             if (adminNotificationError) {
               console.error("Failed to send admin notification:", adminNotificationError);
-              // Log the full error details for debugging
               console.error("Admin notification error details:", {
                 message: adminNotificationError.message,
                 context: adminNotificationError.context,
