@@ -111,15 +111,6 @@ const AboutUsPage = () => {
     }
   ];
 
-  const teamMembers = [
-    {
-      name: "Our Experienced Team",
-      role: "Real Estate Professionals",
-      description: "Our team brings years of hands-on experience in real estate to help you succeed.",
-      achievements: ["Market Analysis Expertise", "Lead Generation Specialists", "Client Success Focus"]
-    }
-  ];
-
   return (
     <div className="min-h-screen flex flex-col">
       <Helmet>
@@ -265,27 +256,13 @@ const AboutUsPage = () => {
                     </p>
                     <p>
                       Our team understands the challenges you face in today's competitive market. 
-                      That's why we've developed a system that ensures <strong>exclusive territory rights</strong> 
+                      That's why we've developed a system that ensures <strong>exclusive territory rights </strong> 
                       and delivers motivated sellers who are ready to work with you.
                     </p>
                     <p>
                       We believe in building genuine partnerships with our clients, providing ongoing 
                       support, and continuously improving our services to help you achieve your goals.
                     </p>
-                  </div>
-
-                  <div className="flex items-center gap-4 mt-8">
-                    <div className="flex -space-x-2">
-                      {[1,2,3].map((i) => (
-                        <div key={i} className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-500 to-teal-500 border-4 border-white flex items-center justify-center text-white font-bold">
-                          {i}
-                        </div>
-                      ))}
-                    </div>
-                    <div>
-                      <div className="font-semibold text-gray-900">Our Team</div>
-                      <div className="text-gray-600">Real Estate Professionals</div>
-                    </div>
                   </div>
                 </motion.div>
 
@@ -294,25 +271,27 @@ const AboutUsPage = () => {
                     <CardContent className="p-8">
                       <div className="mb-6">
                         <Users className="h-12 w-12 text-brand-600 mb-4" />
-                        <h3 className="text-2xl font-bold text-gray-900 mb-4">Our Team</h3>
+                        <h3 className="text-2xl font-bold text-gray-900 mb-4">Why Choose Us?</h3>
                       </div>
                       
-                      {teamMembers.map((member, index) => (
-                        <div key={index} className="mb-6">
-                          <h4 className="text-xl font-semibold text-gray-900 mb-2">{member.name}</h4>
-                          <p className="text-brand-600 font-medium mb-3">{member.role}</p>
-                          <p className="text-gray-700 mb-4">{member.description}</p>
-                          
-                          <div className="space-y-2">
-                            {member.achievements.map((achievement, idx) => (
-                              <div key={idx} className="flex items-center gap-3">
-                                <CheckCircle className="h-5 w-5 text-green-600" />
-                                <span className="text-gray-700">{achievement}</span>
-                              </div>
-                            ))}
-                          </div>
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                          <span className="text-gray-700">Proven track record of success</span>
                         </div>
-                      ))}
+                        <div className="flex items-center gap-3">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                          <span className="text-gray-700">Dedicated to your growth</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                          <span className="text-gray-700">Exclusive territory protection</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                          <span className="text-gray-700">Continuous support and guidance</span>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 </motion.div>
