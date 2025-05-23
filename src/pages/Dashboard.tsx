@@ -248,6 +248,16 @@ const Dashboard = () => {
           profileForm.setValue('email', session.user.email);
         }
       });
+
+      // Set phone contacts state
+      setContacts(prev => ({
+        ...prev,
+        phones: [userProfile.phone || '', ...(userProfile.secondary_phones || [])],
+        emails: [session?.user?.email || '', ...(userProfile.secondary_emails || [])]
+      }));
+      
+      console.log("Setting contacts with primary phone:", userProfile.phone);
+      console.log("Secondary phones:", userProfile.secondary_phones);
     }
   }, [userProfile]);
 
@@ -257,15 +267,21 @@ const Dashboard = () => {
       if (!session) throw new Error('Not authenticated');
       
       // Get secondary emails and phones (excluding the primary ones)
-      const secondaryEmails = contacts.emails.slice(1);
-      const secondaryPhones = contacts.phones.slice(1);
+      const secondaryEmails = contacts.emails.slice(1).filter(Boolean);
+      const secondaryPhones = contacts.phones.slice(1).filter(Boolean);
+      
+      // Get primary phone
+      const primaryPhone = contacts.phones[0] || '';
+      
+      console.log("Submitting profile with primary phone:", primaryPhone);
+      console.log("Secondary phones:", secondaryPhones);
       
       // Use our utility function to update the profile
       await updateUserProfile(session.user.id, {
         first_name: values.firstName,
         last_name: values.lastName,
         company: values.company,
-        phone: contacts.phones[0], // Primary phone
+        phone: primaryPhone, // Primary phone
         secondary_phones: secondaryPhones, // Additional phones
         secondary_emails: secondaryEmails, // Additional emails
         notification_email: values.notificationEmail,

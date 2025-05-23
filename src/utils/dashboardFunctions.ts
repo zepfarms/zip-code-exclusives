@@ -2,72 +2,49 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from "sonner";
 import { ensureUserProfile } from './userProfile';
 
-export const fetchUserData = async (userId: string, setUserProfile: any, setTerritories: any, setLeads: any, setContacts: any, setSubscriptionInfo: any, setIsLoading: any) => {
-  setIsLoading(true);
-  console.log("Starting to fetch user data for:", userId);
-  
+/**
+ * Fetches all user data for dashboard display
+ */
+export const fetchUserData = async (
+  userId: string,
+  setUserProfile: React.Dispatch<React.SetStateAction<any>>,
+  setTerritories: React.Dispatch<React.SetStateAction<any[]>>,
+  setLeads: React.Dispatch<React.SetStateAction<any[]>>,
+  setContacts: React.Dispatch<React.SetStateAction<{ emails: string[], phones: string[] }>>,
+  setSubscriptionInfo: React.Dispatch<React.SetStateAction<{ totalMonthly: number, nextRenewal: string | null, daysRemaining: number }>>,
+  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>
+) => {
   try {
-    // Ensure user profile exists
-    let profile = null;
-    try {
-      console.log("Fetching user profile for:", userId);
+    console.log("Starting to fetch user data for:", userId);
+    setIsLoading(true);
+    
+    // Step 1: Get user profile (using the edge function for reliability)
+    console.log("Fetching user profile for:", userId);
+    const userProfile = await fetchUserProfile(userId);
+    setUserProfile(userProfile);
+    
+    // Step 2: Set contact information
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      // Handle emails: primary email from auth session, secondary from profile
+      const primaryEmail = session.user.email || '';
+      const secondaryEmails = userProfile?.secondary_emails || [];
       
-      // First try using the edge function (bypasses RLS issues)
-      try {
-        console.log("Using edge function to get profile");
-        const { data: profileData, error: profileFunctionError } = await supabase.functions.invoke('ensure-profile', {
-          body: { userId }
-        });
-        
-        if (!profileFunctionError && profileData?.profile) {
-          profile = profileData.profile;
-          console.log("Got profile from edge function:", profile);
-        } else {
-          console.log("Edge function failed, falling back to client-side profile fetching");
-          profile = await ensureUserProfile(userId);
-        }
-      } catch (edgeFunctionError) {
-        console.error("Edge function error:", edgeFunctionError);
-        // Fall back to client-side profile fetching
-        profile = await ensureUserProfile(userId);
-      }
+      // Handle phones: primary from profile, secondary from profile
+      const primaryPhone = userProfile?.phone || '';
+      const secondaryPhones = userProfile?.secondary_phones || [];
       
-      if (profile) {
-        console.log("Setting user profile:", profile);
-        setUserProfile(profile);
-        
-        // Initialize contact information
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            // Get secondary emails and phones with type safety
-            const secondaryEmails = Array.isArray(profile.secondary_emails) ? profile.secondary_emails : [];
-            const primaryEmail = session?.user?.email || '';
-            
-            // Initialize secondary phones array to an empty array by default
-            const secondaryPhones = Array.isArray(profile.secondary_phones) ? profile.secondary_phones : [];
-            const primaryPhone = typeof profile.phone === 'string' ? profile.phone : '';
-            
-            console.log("Setting contacts with primary email:", primaryEmail);
-            console.log("Secondary emails:", secondaryEmails);
-            console.log("Primary phone:", primaryPhone);
-            console.log("Secondary phones:", secondaryPhones);
-            
-            // Set contacts with primary and secondary emails
-            setContacts({
-              emails: [primaryEmail, ...secondaryEmails].filter(Boolean),
-              phones: [primaryPhone, ...secondaryPhones].filter(Boolean)
-            });
-          }
-        } catch (contactError) {
-          console.error("Error setting up contacts:", contactError);
-        }
-      }
-    } catch (profileError) {
-      console.error("Error with user profile:", profileError);
-      // Don't show error toast as we have a fallback profile
+      console.log("Setting contacts with primary email:", primaryEmail);
+      console.log("Secondary emails:", secondaryEmails);
+      console.log("Primary phone:", primaryPhone);
+      console.log("Secondary phones:", secondaryPhones);
+      
+      setContacts({
+        emails: [primaryEmail, ...secondaryEmails],
+        phones: [primaryPhone, ...secondaryPhones]
+      });
     }
-
+    
     // Try to get territories - use the edge function first
     try {
       console.log("Fetching territories for user:", userId);
@@ -150,7 +127,7 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
       console.error("Error in territories fetch:", err);
       setTerritories([]);
     }
-
+    
     // IMPROVED: Try to get leads with more logging and error handling
     try {
       console.log("Fetching leads for user:", userId);
@@ -207,9 +184,11 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
       setLeads([]);
       toast.error("An error occurred while loading leads. Please try again.");
     }
-
-  } catch (error: any) {
-    console.error('Error fetching user data:', error);
+    
+  } catch (error) {
+    console.error("Error fetching user data:", error);
+    setIsLoading(false);
+    toast.error("Failed to load dashboard data. Please try again.");
   } finally {
     setIsLoading(false);
   }
@@ -237,5 +216,26 @@ const calculateSubscriptionInfo = (territories: any[], setSubscriptionInfo: any)
     }
   } catch (subscriptionError) {
     console.error("Error calculating subscription info:", subscriptionError);
+  }
+};
+
+// Helper function to fetch user profile using the edge function
+const fetchUserProfile = async (userId: string) => {
+  try {
+    console.log("Using edge function to get profile");
+    const { data: profileData, error: profileFunctionError } = await supabase.functions.invoke('ensure-profile', {
+      body: { userId }
+    });
+    
+    if (!profileFunctionError && profileData?.profile) {
+      return profileData.profile;
+    } else {
+      console.log("Edge function failed, falling back to client-side profile fetching");
+      return await ensureUserProfile(userId);
+    }
+  } catch (edgeFunctionError) {
+    console.error("Edge function error:", edgeFunctionError);
+    // Fall back to client-side profile fetching
+    return await ensureUserProfile(userId);
   }
 };

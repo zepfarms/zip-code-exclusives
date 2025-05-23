@@ -55,7 +55,7 @@ serve(async (req) => {
     // Check if profile exists
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('user_profiles')
-      .select('id, first_name, last_name, user_type')
+      .select('*') // Select all fields to ensure we get the complete profile
       .eq('id', userId)
       .maybeSingle();
 
@@ -65,7 +65,7 @@ serve(async (req) => {
     }
 
     if (profile) {
-      logStep("Found existing profile", { id: profile.id });
+      logStep("Found existing profile", profile);
       return new Response(JSON.stringify({ 
         success: true, 
         message: "Profile already exists", 
