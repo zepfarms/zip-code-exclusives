@@ -2,8 +2,8 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
 import { Resend } from "npm:resend@1.0.0";
 
-// Import Twilio with proper type safety
-import { Twilio as TwilioClient } from "npm:twilio@4.26.0";
+// Import Twilio with proper type safety - update to a valid version
+import { Twilio as TwilioClient } from "npm:twilio@4.19.0";
 
 // Get environment variables - use optional chaining for safety
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "re_YDeatYqf_7PMsHrt7Szf17r69LZRQ6qJo";

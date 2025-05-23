@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,7 +41,7 @@ const AdminDashboard = () => {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.user.access_token}`
+                'Authorization': `Bearer ${session.access_token}`
               },
               body: JSON.stringify({ userId: session.user.id })
             }
