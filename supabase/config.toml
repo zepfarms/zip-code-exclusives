@@ -6,3 +6,9 @@ verify_jwt = true
 
 [functions.test-sms]
 verify_jwt = true
+
+[functions.admin-notification]
+verify_jwt = true
+
+[functions.contact-support]
+verify_jwt = true

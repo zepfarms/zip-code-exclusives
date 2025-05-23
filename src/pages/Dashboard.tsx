@@ -12,9 +12,10 @@ import { Badge } from "@/components/ui/badge";
 import { fetchUserData } from '@/utils/dashboardFunctions';
 import { updateUserProfile } from '@/utils/userProfile';
 import { toast } from 'sonner';
-import { Loader2, Eye, AlertCircle, XCircle } from 'lucide-react';
+import { Loader2, Eye, AlertCircle, XCircle, HelpCircle } from 'lucide-react';
 import { formatPhoneNumber } from '@/utils/formatters';
 import LeadDetailsModal from '@/components/dashboard/LeadDetailsModal';
+import ContactSupportModal from '@/components/dashboard/ContactSupportModal';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -303,6 +304,9 @@ const Dashboard = () => {
     setCancelDialogOpen(true);
   };
 
+  // New state for contact support modal
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+
   if (!isAuthenticated && !isLoading) {
     // Redirect to login if not authenticated
     window.location.href = '/login?redirect=/dashboard';
@@ -320,7 +324,17 @@ const Dashboard = () => {
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
-      <h1 className="text-3xl font-bold mb-8">Your Dashboard</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Your Dashboard</h1>
+        <Button
+          variant="outline"
+          onClick={() => setIsSupportModalOpen(true)}
+          className="flex items-center gap-2"
+        >
+          <HelpCircle className="h-4 w-4" />
+          Contact Support
+        </Button>
+      </div>
       
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="mb-8">
@@ -684,6 +698,13 @@ const Dashboard = () => {
           setSelectedLead(null);
         }}
         onLeadUpdated={handleLeadUpdated}
+      />
+
+      {/* Contact Support Modal */}
+      <ContactSupportModal
+        isOpen={isSupportModalOpen}
+        onClose={() => setIsSupportModalOpen(false)}
+        userId={userId}
       />
 
       {/* Cancellation Dialog */}
