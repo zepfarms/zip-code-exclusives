@@ -11,7 +11,7 @@ export const ensureUserProfile = async (userId: string) => {
     
     // Call the Edge Function to ensure the profile exists
     const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ensure-profile`,
+      `https://ietvubimwsfugzkiycus.supabase.co/functions/v1/ensure-profile`,
       {
         method: 'POST',
         headers: {
@@ -65,11 +65,28 @@ export const updateUserProfile = async (userId: string, profileData: any) => {
     
     console.log('Updating profile with data:', updatedData);
 
-    // Use the service function for reliable updates
+    // First try direct update approach
     try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .update(updatedData)
+        .eq('id', userId)
+        .select();
+        
+      if (error) {
+        console.error('Direct update error, falling back to service function:', error);
+        throw error; // Throw to trigger the fallback approach
+      }
+      
+      toast.success('Profile updated successfully!');
+      return data;
+    } catch (directUpdateError) {
+      console.log('Using edge function fallback for profile update');
+      
+      // Fall back to the service function for reliable updates
       const session = await supabase.auth.getSession();
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-profile`,
+        `https://ietvubimwsfugzkiycus.supabase.co/functions/v1/update-profile`,
         {
           method: 'POST',
           headers: {
@@ -83,6 +100,11 @@ export const updateUserProfile = async (userId: string, profileData: any) => {
         }
       );
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Edge function error: ${errorText}`);
+      }
+
       const result = await response.json();
       
       if (!result.success) {
@@ -91,24 +113,6 @@ export const updateUserProfile = async (userId: string, profileData: any) => {
       
       toast.success('Profile updated successfully!');
       return result.profile;
-    } catch (edgeFunctionError) {
-      console.error('Edge function error, falling back to direct update:', edgeFunctionError);
-      
-      // Direct update fallback
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .update(updatedData)
-        .eq('id', userId)
-        .select();
-        
-      if (error) {
-        console.error('Error updating profile:', error);
-        toast.error('Failed to update profile. Please try again.');
-        throw error;
-      }
-      
-      toast.success('Profile updated successfully!');
-      return data;
     }
   } catch (error) {
     console.error('Failed to update profile:', error);
