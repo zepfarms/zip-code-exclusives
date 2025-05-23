@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "sonner";
 
@@ -65,62 +64,41 @@ export const updateUserProfile = async (userId: string, profileData: any) => {
     
     console.log('Updating profile with data:', updatedData);
 
-    // First try direct update approach with a more reliable select
-    try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .update(updatedData)
-        .eq('id', userId)
-        .select('*');  // Use .select('*') to ensure we get all profile data
-        
-      if (error) {
-        console.error('Direct update error, falling back to service function:', error);
-        throw error; // Throw to trigger the fallback approach
+    // Always try the edge function approach first as it's more reliable (bypasses RLS issues)
+    console.log('Using edge function for profile update');
+    
+    const session = await supabase.auth.getSession();
+    const response = await fetch(
+      `https://ietvubimwsfugzkiycus.supabase.co/functions/v1/update-profile`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.data.session?.access_token}`
+        },
+        body: JSON.stringify({
+          userId,
+          profileData: updatedData
+        })
       }
-      
-      if (data && data.length > 0) {
-        console.log('Profile updated successfully via direct update:', data[0]);
-        toast.success('Profile updated successfully!');
-        return data[0];
-      } else {
-        console.error('No profile data returned from direct update');
-        throw new Error('No profile data returned');
-      }
-    } catch (directUpdateError) {
-      console.log('Using edge function fallback for profile update');
-      
-      // Fall back to the service function for reliable updates
-      const session = await supabase.auth.getSession();
-      const response = await fetch(
-        `https://ietvubimwsfugzkiycus.supabase.co/functions/v1/update-profile`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.data.session?.access_token}`
-          },
-          body: JSON.stringify({
-            userId,
-            profileData: updatedData
-          })
-        }
-      );
+    );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Edge function error: ${errorText}`);
-      }
-
-      const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to update profile');
-      }
-      
-      console.log('Profile updated successfully via edge function:', result.profile);
-      toast.success('Profile updated successfully!');
-      return result.profile;
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Edge function error: ${errorText}`);
     }
+
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to update profile');
+    }
+    
+    console.log('Profile updated successfully via edge function:', result.profile);
+    toast.success('Profile updated successfully!');
+    
+    // Return the updated profile data
+    return result.profile;
   } catch (error) {
     console.error('Failed to update profile:', error);
     toast.error('Failed to update profile. Please try again.');

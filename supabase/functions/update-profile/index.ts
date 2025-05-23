@@ -63,7 +63,7 @@ serve(async (req) => {
       throw new Error("No profile data returned after update");
     }
 
-    logStep("Successfully updated profile", { id: data[0].id });
+    logStep("Successfully updated profile", { id: data[0].id, fullData: data[0] });
 
     return new Response(JSON.stringify({ 
       success: true, 

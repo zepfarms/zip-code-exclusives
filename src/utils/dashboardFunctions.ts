@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "sonner";
 import { ensureUserProfile } from './userProfile';
@@ -14,6 +15,7 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
       
       // First try using the edge function (bypasses RLS issues)
       try {
+        console.log("Using edge function to get profile");
         const { data: profileData, error: profileFunctionError } = await supabase.functions.invoke('ensure-profile', {
           body: { userId }
         });
@@ -32,6 +34,7 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
       }
       
       if (profile) {
+        console.log("Setting user profile:", profile);
         setUserProfile(profile);
         
         // Initialize contact information
@@ -45,6 +48,11 @@ export const fetchUserData = async (userId: string, setUserProfile: any, setTerr
             // Initialize secondary phones array to an empty array by default
             const secondaryPhones = Array.isArray(profile.secondary_phones) ? profile.secondary_phones : [];
             const primaryPhone = typeof profile.phone === 'string' ? profile.phone : '';
+            
+            console.log("Setting contacts with primary email:", primaryEmail);
+            console.log("Secondary emails:", secondaryEmails);
+            console.log("Primary phone:", primaryPhone);
+            console.log("Secondary phones:", secondaryPhones);
             
             // Set contacts with primary and secondary emails
             setContacts({
