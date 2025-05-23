@@ -26,8 +26,8 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Helmet>
-        <title>LeadXclusive | Exclusive Real Estate Leads With No Competition</title>
-        <meta name="description" content="Get exclusive real estate leads with one investor or agent per zip code. High-quality seller leads for investors and realtors with no competition." />
+        <title>LeadXclusive | Exclusive Real Estate Seller Leads With No Competition</title>
+        <meta name="description" content="Get exclusive real estate seller leads with one investor or agent per zip code. High-quality seller leads for investors and realtors with no competition." />
         <link rel="canonical" href="https://leadxclusive.com/" />
       </Helmet>
       
@@ -39,10 +39,10 @@ const Index = () => {
           <div className="container mx-auto px-4 relative z-10">
             <div className="max-w-3xl mx-auto text-center">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-                Exclusive Real Estate Leads in <span className="text-accent-500">Your Territory</span>
+                Exclusive Real Estate Seller Leads in <span className="text-accent-500">Your Territory</span>
               </h1>
               <p className="text-xl md:text-2xl opacity-90 mb-10">
-                One investor or agent per zip code. No competition. Premium leads delivered directly to you.
+                One investor or agent per zip code. No competition. Premium seller leads delivered directly to you.
               </p>
               <div className="flex flex-col md:flex-row gap-4 justify-center">
                 <Button 
@@ -76,7 +76,7 @@ const Index = () => {
                 Check Your Area's Availability
               </h2>
               <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Enter your desired zip code to see if it's available for exclusive lead generation.
+                Enter your desired zip code to see if it's available for exclusive seller lead generation.
               </p>
             </div>
             

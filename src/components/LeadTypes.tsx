@@ -25,9 +25,9 @@ const LeadTypes = () => {
     <div className="py-12 bg-gray-50">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Exclusive Lead Generation</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Exclusive Seller Lead Generation</h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            We offer premium real estate leads with exclusive zip code territories to increase your closing rate.
+            We offer premium real estate seller leads with exclusive zip code territories to increase your closing rate.
           </p>
         </div>
 
