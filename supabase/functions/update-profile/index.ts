@@ -60,7 +60,7 @@ serve(async (req) => {
       }
     }
 
-    // Handle the new notification_phone field
+    // Handle the notification_phone field
     if (sanitizedData.notification_phone !== undefined) {
       // Clean notification phone if it's not null or empty
       if (sanitizedData.notification_phone) {

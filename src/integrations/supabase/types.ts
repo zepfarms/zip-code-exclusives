@@ -164,6 +164,7 @@ export type Database = {
           license_number: string | null
           license_state: string | null
           notification_email: boolean | null
+          notification_phone: string | null
           notification_sms: boolean | null
           phone: string | null
           secondary_emails: string[] | null
@@ -182,6 +183,7 @@ export type Database = {
           license_number?: string | null
           license_state?: string | null
           notification_email?: boolean | null
+          notification_phone?: string | null
           notification_sms?: boolean | null
           phone?: string | null
           secondary_emails?: string[] | null
@@ -200,6 +202,7 @@ export type Database = {
           license_number?: string | null
           license_state?: string | null
           notification_email?: boolean | null
+          notification_phone?: string | null
           notification_sms?: boolean | null
           phone?: string | null
           secondary_emails?: string[] | null

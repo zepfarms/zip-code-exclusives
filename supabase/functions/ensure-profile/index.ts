@@ -91,6 +91,7 @@ serve(async (req) => {
       user_type: 'investor', // Using 'investor' as it appears to be allowed
       notification_email: true,
       notification_sms: false,
+      notification_phone: null,
       secondary_emails: [],
       secondary_phones: [],
       phone: '',
