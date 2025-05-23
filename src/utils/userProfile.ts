@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "sonner";
 
@@ -68,6 +69,11 @@ export const updateUserProfile = async (userId: string, profileData: any) => {
     console.log('Using edge function for profile update');
     
     const session = await supabase.auth.getSession();
+    
+    if (!session.data.session) {
+      throw new Error('No active session found');
+    }
+    
     const response = await fetch(
       `https://ietvubimwsfugzkiycus.supabase.co/functions/v1/update-profile`,
       {

@@ -296,6 +296,13 @@ const handler = async (req: Request): Promise<Response> => {
       phones: allPhones,
       requestedType: notificationType
     });
+
+    // Debug phone number
+    if (userProfile.phone) {
+      console.log("Primary phone from profile:", userProfile.phone);
+    } else {
+      console.log("No primary phone number found in profile");
+    }
     
     // Send email notification if enabled and emails are available
     if ((notificationType === "all" || notificationType === "email") && 

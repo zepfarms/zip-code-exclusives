@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { fetchUserData } from '@/utils/dashboardFunctions';
+import { updateUserProfile } from '@/utils/userProfile';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { formatPhoneNumber } from '@/utils/formatters';
@@ -101,6 +102,12 @@ const Dashboard = () => {
       
       setNotifyEmail(userProfile.notification_email ?? true);
       setNotifySms(userProfile.notification_sms ?? false);
+      
+      console.log("Updated form state from profile:", {
+        phone: phoneNumber,
+        formattedPhone: formatPhoneNumber(phoneNumber),
+        notifySms: userProfile.notification_sms
+      });
     }
   }, [userProfile]);
 
@@ -123,38 +130,31 @@ const Dashboard = () => {
       
       console.log('Saving profile with phone:', formattedPhone);
       
-      const { data: response, error } = await supabase.functions.invoke('update-profile', {
-        body: { 
-          userId,
-          profileData: {
-            first_name: firstName,
-            last_name: lastName,
-            phone: formattedPhone,
-            notification_email: notifyEmail,
-            notification_sms: notifySms && !!formattedPhone // Only enable SMS if phone is provided
-          }
-        }
+      const updatedProfile = await updateUserProfile(userId, {
+        first_name: firstName,
+        last_name: lastName,
+        phone: formattedPhone,
+        notification_email: notifyEmail,
+        notification_sms: notifySms && !!formattedPhone // Only enable SMS if phone is provided
       });
       
-      if (error) {
-        console.error('Error updating profile:', error);
-        toast.error('Failed to update profile. Please try again.');
-        return;
-      }
-      
-      if (response?.profile) {
-        setUserProfile(response.profile);
+      // Update local state with the returned profile
+      if (updatedProfile) {
+        setUserProfile(updatedProfile);
         
         // Update contacts state to reflect the changes
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           setContacts({
-            emails: [session.user.email || '', ...(response.profile.secondary_emails || [])],
-            phones: [response.profile.phone || '', ...(response.profile.secondary_phones || [])]
+            emails: [session.user.email || '', ...(updatedProfile.secondary_emails || [])],
+            phones: [updatedProfile.phone || '', ...(updatedProfile.secondary_phones || [])]
           });
         }
         
-        toast.success('Profile updated successfully');
+        console.log("Profile updated successfully:", {
+          phone: updatedProfile.phone,
+          notification_sms: updatedProfile.notification_sms
+        });
       }
     } catch (err) {
       console.error('Error in profile update:', err);
@@ -417,19 +417,17 @@ const Dashboard = () => {
                   </div>
                 </div>
                 
-                {phone && (
-                  <div className="space-y-2">
-                    <Label>Phone Number</Label>
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                          PH
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="text-sm">{formatPhoneNumber(phone) || 'No phone number set'}</div>
-                    </div>
+                <div className="space-y-2">
+                  <Label>Phone Number</Label>
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                        PH
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="text-sm">{formatPhoneNumber(userProfile?.phone || '') || 'No phone number set'}</div>
                   </div>
-                )}
+                </div>
               </div>
               
               <Separator />
@@ -458,8 +456,14 @@ const Dashboard = () => {
                     </div>
                     <Switch 
                       id="notifySms" 
-                      checked={notifySms && !!phone} 
-                      onCheckedChange={setNotifySms}
+                      checked={notifySms} 
+                      onCheckedChange={checked => {
+                        setNotifySms(checked);
+                        // If enabling SMS but no phone number, show a warning
+                        if (checked && !phone) {
+                          toast.warning("A phone number is required for SMS notifications");
+                        }
+                      }}
                       disabled={!phone}
                     />
                   </div>

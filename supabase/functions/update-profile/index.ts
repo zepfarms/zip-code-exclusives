@@ -46,12 +46,65 @@ serve(async (req) => {
     sanitizedData.updated_at = new Date().toISOString();
 
     // Ensure phone is stored as just digits for consistency
-    if (sanitizedData.phone) {
-      sanitizedData.phone = sanitizedData.phone.replace(/\D/g, '');
-      logStep("Phone number cleaned for storage", sanitizedData.phone);
+    if (sanitizedData.phone !== undefined) {
+      // Only clean if it's not null or empty string
+      if (sanitizedData.phone) {
+        sanitizedData.phone = sanitizedData.phone.replace(/\D/g, '');
+        logStep("Phone number cleaned for storage", sanitizedData.phone);
+      }
+      
+      // If phone is explicitly set to empty string, convert to null
+      if (sanitizedData.phone === '') {
+        sanitizedData.phone = null;
+        logStep("Empty phone converted to null");
+      }
     }
 
     logStep("Sanitized update data", sanitizedData);
+
+    // Check if the profile exists first
+    const { data: existingProfile, error: checkError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+      
+    if (checkError) {
+      logStep("Error checking existing profile", checkError);
+      throw checkError;
+    }
+    
+    if (!existingProfile) {
+      logStep("Profile doesn't exist, creating new profile");
+      // Create a new profile if it doesn't exist
+      const { data: insertData, error: insertError } = await supabaseAdmin
+        .from('user_profiles')
+        .insert({
+          id: userId,
+          ...sanitizedData
+        })
+        .select('*');
+        
+      if (insertError) {
+        logStep("Error creating profile", insertError);
+        throw insertError;
+      }
+      
+      logStep("Successfully created profile", { 
+        id: insertData[0].id, 
+        phone: insertData[0].phone || '(no phone)',
+        notification_sms: insertData[0].notification_sms 
+      });
+      
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: "Profile created successfully", 
+        profile: insertData[0] 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
     // Update the profile
     const { data, error } = await supabaseAdmin
