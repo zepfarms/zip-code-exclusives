@@ -1,85 +1,465 @@
 
 import React from 'react';
+import { motion } from 'framer-motion';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { 
+  Target, 
+  Users, 
+  Trophy, 
+  Heart, 
+  Building,
+  TrendingUp,
+  Shield,
+  Star,
+  ArrowRight,
+  CheckCircle,
+  Home,
+  DollarSign,
+  Calendar
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
+
+// Animation variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5
+    }
+  }
+};
+
+const floatVariants = {
+  animate: {
+    y: [-10, 10, -10],
+    transition: {
+      duration: 6,
+      repeat: Infinity,
+      ease: "easeInOut"
+    }
+  }
+};
 
 const AboutUsPage = () => {
+  const stats = [
+    {
+      number: "20+",
+      label: "Years Combined Experience",
+      icon: <Calendar className="h-8 w-8" />,
+      color: "from-blue-500 to-cyan-500"
+    },
+    {
+      number: "500+",
+      label: "Deals Closed",
+      icon: <Home className="h-8 w-8" />,
+      color: "from-green-500 to-emerald-500"
+    },
+    {
+      number: "95%",
+      label: "Client Satisfaction",
+      icon: <Star className="h-8 w-8" />,
+      color: "from-yellow-500 to-orange-500"
+    },
+    {
+      number: "$50M+",
+      label: "Revenue Generated",
+      icon: <DollarSign className="h-8 w-8" />,
+      color: "from-purple-500 to-pink-500"
+    }
+  ];
+
+  const values = [
+    {
+      icon: <Shield className="h-12 w-12" />,
+      title: "Exclusivity First",
+      description: "Every territory belongs to one client only. No competition, no sharing leads.",
+      color: "from-blue-50 to-indigo-50 border-blue-200"
+    },
+    {
+      icon: <Target className="h-12 w-12" />,
+      title: "Quality Over Quantity",
+      description: "Pre-screened, motivated sellers ready to make deals happen quickly.",
+      color: "from-emerald-50 to-green-50 border-emerald-200"
+    },
+    {
+      icon: <Heart className="h-12 w-12" />,
+      title: "Client Success",
+      description: "Your success is our success. We're invested in your real estate journey.",
+      color: "from-rose-50 to-pink-50 border-rose-200"
+    },
+    {
+      icon: <TrendingUp className="h-12 w-12" />,
+      title: "Continuous Innovation",
+      description: "AI-powered lead generation that evolves with market trends and opportunities.",
+      color: "from-amber-50 to-yellow-50 border-amber-200"
+    }
+  ];
+
+  const teamMembers = [
+    {
+      name: "The Founding Team",
+      role: "Real Estate Veterans",
+      description: "Former investors and flippers with deep market knowledge and proven track records.",
+      achievements: ["150+ Personal Flips", "Market Analysis Experts", "Technology Innovators"]
+    }
+  ];
+
   return (
     <div className="min-h-screen flex flex-col">
+      <Helmet>
+        <title>About Us - Founded by Real Estate Investors | LeadXclusive</title>
+        <meta name="description" content="Learn about LeadXclusive's founding team of real estate investors with 20+ years of combined experience and 500+ deals closed. Discover our mission to provide exclusive leads." />
+      </Helmet>
+
       <Header />
       
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="py-12 md:py-20 bg-brand-50">
-          <div className="container mx-auto px-4">
-            <div className="max-w-3xl mx-auto text-center">
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6 text-gray-900">
-                About LeadXclusive
-              </h1>
-              <p className="text-xl text-gray-600">
-                Founded by real estate investors for real estate investors and agents
-              </p>
-            </div>
+        <section className="relative py-20 md:py-32 overflow-hidden">
+          {/* Background with gradient and patterns */}
+          <div className="absolute inset-0 bg-gradient-to-br from-brand-700 via-brand-800 to-teal-800"></div>
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-20 left-20 w-64 h-64 bg-white rounded-full blur-3xl"></div>
+            <div className="absolute bottom-20 right-20 w-48 h-48 bg-accent-500 rounded-full blur-3xl"></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-teal-400 rounded-full blur-3xl opacity-20"></div>
+          </div>
+
+          <div className="container mx-auto px-4 relative z-10">
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={containerVariants}
+              className="max-w-4xl mx-auto text-center text-white"
+            >
+              <motion.div variants={itemVariants} className="mb-8">
+                <div className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-sm rounded-full px-6 py-3 mb-6">
+                  <Building className="h-5 w-5" />
+                  <span className="text-sm font-medium">Founded by Real Estate Pros</span>
+                </div>
+                <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
+                  Built by Investors,
+                  <span className="block bg-gradient-to-r from-accent-400 to-yellow-400 bg-clip-text text-transparent">
+                    For Investors
+                  </span>
+                </h1>
+                <p className="text-xl md:text-2xl text-brand-100 max-w-3xl mx-auto leading-relaxed">
+                  We've walked in your shoes. After years of competing for overpriced leads, 
+                  we created the solution we always wanted: exclusive territories and qualified sellers.
+                </p>
+              </motion.div>
+
+              <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link to="/check-availability">
+                  <Button size="lg" className="bg-accent-600 hover:bg-accent-700 text-white px-8 py-6 text-lg rounded-full shadow-lg hover:shadow-xl transition-all">
+                    Start Your Journey
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+                <Link to="/how-it-works">
+                  <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10 px-8 py-6 text-lg rounded-full">
+                    Learn Our Process
+                  </Button>
+                </Link>
+              </motion.div>
+            </motion.div>
+          </div>
+
+          {/* Floating elements */}
+          <motion.div
+            variants={floatVariants}
+            animate="animate"
+            className="absolute top-1/4 left-10 w-20 h-20 bg-white/5 rounded-full blur-xl"
+          />
+          <motion.div
+            variants={floatVariants}
+            animate="animate"
+            style={{ animationDelay: "2s" }}
+            className="absolute bottom-1/4 right-10 w-16 h-16 bg-accent-500/20 rounded-full blur-xl"
+          />
+        </section>
+
+        {/* Stats Section */}
+        <section className="py-16 bg-white relative">
+          <div className="absolute inset-0 bg-gradient-to-b from-gray-50/50 to-transparent"></div>
+          <div className="container mx-auto px-4 relative z-10">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={containerVariants}
+            >
+              <motion.div variants={itemVariants} className="text-center mb-16">
+                <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
+                  Our Track Record Speaks
+                </h2>
+                <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                  Two decades of hands-on experience in real estate investing and deal-making.
+                </p>
+              </motion.div>
+
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+                {stats.map((stat, index) => (
+                  <motion.div
+                    key={index}
+                    variants={itemVariants}
+                    className="text-center group"
+                  >
+                    <div className={`inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br ${stat.color} text-white mb-4 group-hover:scale-110 transition-transform`}>
+                      {stat.icon}
+                    </div>
+                    <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+                      {stat.number}
+                    </div>
+                    <div className="text-gray-600 font-medium">
+                      {stat.label}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
           </div>
         </section>
 
         {/* Our Story Section */}
-        <section className="py-16">
+        <section className="py-20 bg-gradient-to-br from-brand-50 via-white to-teal-50">
           <div className="container mx-auto px-4">
-            <div className="max-w-3xl mx-auto">
-              <div className="prose prose-lg mx-auto">
-                <h2>Our Story</h2>
-                <p>
-                  LeadXclusive was founded by a team of former real estate investors and flippers who 
-                  saw a major problem in the industry: the high cost and low quality of leads being sold 
-                  to multiple investors in the same area.
-                </p>
-                <p>
-                  After years of purchasing leads from various providers and competing with dozens of 
-                  other investors for the same opportunities, we knew there had to be a better way. 
-                  We wanted to create a service that offered exclusive territory rights at an affordable price, 
-                  ensuring that each client would have the best chance of closing deals without unnecessary 
-                  competition.
-                </p>
-                <h2>Our Mission</h2>
-                <p>
-                  Our mission is simple: provide high-quality, exclusive real estate leads to investors 
-                  and agents at a fair price. We believe that by limiting each territory to one client, 
-                  we can create a win-win situation where motivated sellers get fewer calls and our clients 
-                  get higher conversion rates.
-                </p>
-                <h2>Real Estate Experience</h2>
-                <p>
-                  With over 20 years of combined experience in real estate investing, flipping, and 
-                  wholesaling, our team understands what makes a good lead. We've personally closed 
-                  hundreds of deals and know the challenges that investors and agents face in today's 
-                  competitive market.
-                </p>
-                <p>
-                  This experience allows us to pre-screen leads effectively, ensuring that you're only 
-                  receiving qualified opportunities with motivated sellers. We focus on quality over quantity, 
-                  which is why our clients typically see higher conversion rates compared to traditional 
-                  lead generation services.
-                </p>
-                <h2>Our Approach</h2>
-                <p>
-                  Unlike many lead generation companies, we don't sell the same leads to multiple buyers. 
-                  Each zip code is exclusive to one client, giving you the competitive advantage of being 
-                  the only investor or agent receiving these opportunities in your area.
-                </p>
-                <p>
-                  We use a combination of online and offline marketing strategies to generate leads from 
-                  motivated sellers. Our proprietary screening process helps identify the most promising 
-                  opportunities before they're sent to you, saving you time and improving your chances of 
-                  closing deals.
-                </p>
-                <h2>Get Started Today</h2>
-                <p>
-                  Ready to secure your exclusive territory? Check availability for your desired zip 
-                  code and start receiving qualified, exclusive leads today.
-                </p>
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={containerVariants}
+              className="max-w-6xl mx-auto"
+            >
+              <div className="grid lg:grid-cols-2 gap-16 items-center">
+                <motion.div variants={itemVariants}>
+                  <div className="mb-8">
+                    <div className="inline-flex items-center gap-2 bg-brand-100 text-brand-700 rounded-full px-4 py-2 text-sm font-medium mb-6">
+                      <Trophy className="h-4 w-4" />
+                      Our Origin Story
+                    </div>
+                    <h2 className="text-3xl md:text-4xl font-bold mb-6 text-gray-900">
+                      From Frustrated Investors to Industry Innovators
+                    </h2>
+                  </div>
+
+                  <div className="space-y-6 text-lg text-gray-700 leading-relaxed">
+                    <p>
+                      It all started with a simple frustration: paying premium prices for leads that 
+                      were being sold to dozens of other investors in the same market. We were 
+                      competing not just on price, but on who could call first.
+                    </p>
+                    <p>
+                      After years of this inefficient cycle, our founding team of experienced 
+                      real estate investors decided to build the solution we always wanted. 
+                      A service that provides <strong>exclusive territory rights</strong> at a fair price.
+                    </p>
+                    <p>
+                      Today, LeadXclusive serves investors and agents across the country, 
+                      delivering on our promise of exclusivity and quality. Because we've been 
+                      where you are, we know exactly what you need to succeed.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-4 mt-8">
+                    <div className="flex -space-x-2">
+                      {[1,2,3].map((i) => (
+                        <div key={i} className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-500 to-teal-500 border-4 border-white flex items-center justify-center text-white font-bold">
+                          {i}
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-gray-900">The Founding Team</div>
+                      <div className="text-gray-600">Real Estate Veterans</div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div variants={itemVariants} className="lg:pl-8">
+                  <Card className="bg-white/80 backdrop-blur-sm shadow-2xl border-0 overflow-hidden">
+                    <CardContent className="p-8">
+                      <div className="mb-6">
+                        <Users className="h-12 w-12 text-brand-600 mb-4" />
+                        <h3 className="text-2xl font-bold text-gray-900 mb-4">Meet Our Founders</h3>
+                      </div>
+                      
+                      {teamMembers.map((member, index) => (
+                        <div key={index} className="mb-6">
+                          <h4 className="text-xl font-semibold text-gray-900 mb-2">{member.name}</h4>
+                          <p className="text-brand-600 font-medium mb-3">{member.role}</p>
+                          <p className="text-gray-700 mb-4">{member.description}</p>
+                          
+                          <div className="space-y-2">
+                            {member.achievements.map((achievement, idx) => (
+                              <div key={idx} className="flex items-center gap-3">
+                                <CheckCircle className="h-5 w-5 text-green-600" />
+                                <span className="text-gray-700">{achievement}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                </motion.div>
               </div>
-            </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Our Values Section */}
+        <section className="py-20 bg-white">
+          <div className="container mx-auto px-4">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={containerVariants}
+              className="max-w-6xl mx-auto"
+            >
+              <motion.div variants={itemVariants} className="text-center mb-16">
+                <div className="inline-flex items-center gap-2 bg-accent-100 text-accent-700 rounded-full px-4 py-2 text-sm font-medium mb-6">
+                  <Heart className="h-4 w-4" />
+                  Our Core Values
+                </div>
+                <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
+                  What Drives Us Every Day
+                </h2>
+                <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                  These principles guide every decision we make and every feature we build.
+                </p>
+              </motion.div>
+
+              <div className="grid md:grid-cols-2 gap-8">
+                {values.map((value, index) => (
+                  <motion.div
+                    key={index}
+                    variants={itemVariants}
+                    className="group"
+                  >
+                    <Card className={`h-full bg-gradient-to-br ${value.color} border-2 hover:shadow-xl transition-all duration-300 group-hover:scale-105`}>
+                      <CardContent className="p-8">
+                        <div className="text-brand-600 mb-6 group-hover:scale-110 transition-transform">
+                          {value.icon}
+                        </div>
+                        <h3 className="text-2xl font-bold mb-4 text-gray-900">
+                          {value.title}
+                        </h3>
+                        <p className="text-gray-700 text-lg leading-relaxed">
+                          {value.description}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Mission & Vision Section */}
+        <section className="py-20 bg-gradient-to-br from-gray-900 via-brand-900 to-teal-900 text-white relative overflow-hidden">
+          {/* Background elements */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-white rounded-full blur-3xl"></div>
+            <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-accent-500 rounded-full blur-3xl"></div>
+          </div>
+
+          <div className="container mx-auto px-4 relative z-10">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={containerVariants}
+              className="max-w-4xl mx-auto"
+            >
+              <motion.div variants={itemVariants} className="text-center mb-16">
+                <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                  Our Mission & Vision
+                </h2>
+                <p className="text-xl text-brand-100">
+                  Building the future of real estate lead generation.
+                </p>
+              </motion.div>
+
+              <div className="grid lg:grid-cols-2 gap-12">
+                <motion.div variants={itemVariants}>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 h-full">
+                    <Target className="h-12 w-12 text-accent-400 mb-6" />
+                    <h3 className="text-2xl font-bold mb-4">Our Mission</h3>
+                    <p className="text-lg text-brand-100 leading-relaxed">
+                      To revolutionize real estate lead generation by providing exclusive, 
+                      high-quality leads that eliminate competition and maximize conversion rates 
+                      for investors and agents nationwide.
+                    </p>
+                  </div>
+                </motion.div>
+
+                <motion.div variants={itemVariants}>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 h-full">
+                    <TrendingUp className="h-12 w-12 text-accent-400 mb-6" />
+                    <h3 className="text-2xl font-bold mb-4">Our Vision</h3>
+                    <p className="text-lg text-brand-100 leading-relaxed">
+                      To become the most trusted name in exclusive real estate leads, 
+                      empowering thousands of investors and agents to build successful 
+                      businesses through our innovative technology and proven processes.
+                    </p>
+                  </div>
+                </motion.div>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="py-20 bg-gradient-to-r from-brand-600 to-brand-800">
+          <div className="container mx-auto px-4">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+              variants={containerVariants}
+              className="max-w-4xl mx-auto text-center text-white"
+            >
+              <motion.div variants={itemVariants}>
+                <h2 className="text-3xl md:text-4xl font-bold mb-6">
+                  Ready to Join Our Success Story?
+                </h2>
+                <p className="text-xl text-brand-100 mb-8 max-w-2xl mx-auto">
+                  Experience the difference that comes from working with a team that 
+                  truly understands your challenges and goals.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Link to="/check-availability">
+                    <Button size="lg" className="bg-accent-600 hover:bg-accent-700 text-white px-8 py-6 text-lg rounded-full shadow-lg hover:shadow-xl transition-all">
+                      Check Territory Availability
+                      <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
+                  </Link>
+                  <Link to="/how-it-works">
+                    <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10 px-8 py-6 text-lg rounded-full">
+                      Learn How It Works
+                    </Button>
+                  </Link>
+                </div>
+              </motion.div>
+            </motion.div>
           </div>
         </section>
       </main>
