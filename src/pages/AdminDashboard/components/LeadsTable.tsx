@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -38,7 +39,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Loader, Search, Edit, UserPlus, Bell } from 'lucide-react';
+import { Loader, Search, Edit, UserPlus, Bell, Mail, MessageSquare } from 'lucide-react';
+import { formatPhoneNumber } from '@/utils/formatters';
 
 interface Lead {
   id: string;
@@ -83,6 +85,7 @@ const LeadsTable = () => {
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [isNotifying, setIsNotifying] = useState(false);
+  const [isSendingSms, setIsSendingSms] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   // Fetch leads
@@ -213,7 +216,7 @@ const LeadsTable = () => {
     fetchUsers(); // Ensure users are loaded
   };
 
-  const handleResendNotification = async (lead: Lead) => {
+  const handleResendEmailNotification = async (lead: Lead) => {
     if (!lead.user_id) {
       toast.error("This lead is not assigned to any user");
       return;
@@ -221,31 +224,69 @@ const LeadsTable = () => {
     
     try {
       setIsNotifying(true);
-      console.log("Sending notification for lead:", lead.id, "to user:", lead.user_id);
+      console.log("Sending email notification for lead:", lead.id, "to user:", lead.user_id);
       
       const { data: notificationResult, error: notificationError } = await supabase.functions.invoke('notify-lead', {
         body: {
           leadId: lead.id,
-          userId: lead.user_id
+          userId: lead.user_id,
+          notificationType: "email"
         }
       });
 
       if (notificationError) {
-        console.error("Error sending lead notification:", notificationError);
-        toast.error("Failed to send notification");
+        console.error("Error sending email notification:", notificationError);
+        toast.error("Failed to send email notification");
       } else {
-        console.log("Notification result:", notificationResult);
+        console.log("Email notification result:", notificationResult);
         if (notificationResult.notificationResults.email) {
-          toast.success("Notification sent successfully");
+          toast.success("Email notification sent successfully");
         } else {
-          toast.warning("Notification partially sent or failed");
+          toast.warning("Email notification failed. User may not have email notifications enabled.");
         }
       }
     } catch (error) {
-      console.error("Failed to send lead notification:", error);
-      toast.error("Failed to send notification");
+      console.error("Failed to send email notification:", error);
+      toast.error("Failed to send email notification");
     } finally {
       setIsNotifying(false);
+    }
+  };
+
+  const handleResendSmsNotification = async (lead: Lead) => {
+    if (!lead.user_id) {
+      toast.error("This lead is not assigned to any user");
+      return;
+    }
+    
+    try {
+      setIsSendingSms(true);
+      console.log("Sending SMS notification for lead:", lead.id, "to user:", lead.user_id);
+      
+      const { data: notificationResult, error: notificationError } = await supabase.functions.invoke('notify-lead', {
+        body: {
+          leadId: lead.id,
+          userId: lead.user_id,
+          notificationType: "sms"
+        }
+      });
+
+      if (notificationError) {
+        console.error("Error sending SMS notification:", notificationError);
+        toast.error("Failed to send SMS notification");
+      } else {
+        console.log("SMS notification result:", notificationResult);
+        if (notificationResult.notificationResults.sms) {
+          toast.success("SMS notification sent successfully");
+        } else {
+          toast.warning("SMS notification failed. User may not have SMS notifications enabled or a valid phone number.");
+        }
+      }
+    } catch (error) {
+      console.error("Failed to send SMS notification:", error);
+      toast.error("Failed to send SMS notification");
+    } finally {
+      setIsSendingSms(false);
     }
   };
 
@@ -353,6 +394,11 @@ const LeadsTable = () => {
     }
   };
 
+  const formatPhone = (phone: string | null) => {
+    if (!phone) return '';
+    return formatPhoneNumber(phone);
+  };
+
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-6">
@@ -413,7 +459,7 @@ const LeadsTable = () => {
                   </TableCell>
                   <TableCell>
                     {lead.email && <div>{lead.email}</div>}
-                    {lead.phone && <div>{lead.phone}</div>}
+                    {lead.phone && <div>{formatPhone(lead.phone)}</div>}
                   </TableCell>
                   <TableCell>{lead.territory_zip_code}</TableCell>
                   <TableCell>
@@ -449,16 +495,28 @@ const LeadsTable = () => {
                         <Edit className="h-4 w-4 mr-1" /> Notes
                       </Button>
                       {lead.user_id && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleResendNotification(lead)}
-                          disabled={isNotifying}
-                          title="Resend notification to assigned user"
-                        >
-                          <Bell className="h-4 w-4 mr-1" />
-                          Notify
-                        </Button>
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleResendEmailNotification(lead)}
+                            disabled={isNotifying}
+                            title="Resend email notification to assigned user"
+                          >
+                            <Mail className="h-4 w-4 mr-1" />
+                            Email
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleResendSmsNotification(lead)}
+                            disabled={isSendingSms}
+                            title="Resend SMS notification to assigned user"
+                          >
+                            <MessageSquare className="h-4 w-4 mr-1" />
+                            SMS
+                          </Button>
+                        </>
                       )}
                       <Button
                         variant={lead.archived ? "outline" : "secondary"}

@@ -29,6 +29,7 @@ const corsHeaders = {
 interface LeadNotificationPayload {
   leadId: string;
   userId: string;
+  notificationType?: "email" | "sms" | "all";
 }
 
 async function sendEmail(emails: string[], lead: any) {
@@ -216,13 +217,13 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Invalid request format");
     }
     
-    const { leadId, userId } = payload;
+    const { leadId, userId, notificationType = "all" } = payload;
     
     if (!leadId || !userId) {
       throw new Error("Missing required parameters: leadId and userId must be provided");
     }
     
-    console.log(`Processing notification for lead: ${leadId} to user: ${userId}`);
+    console.log(`Processing notification for lead: ${leadId} to user: ${userId}, type: ${notificationType}`);
     
     // Get the lead data
     const { data: lead, error: leadError } = await supabase
@@ -292,26 +293,31 @@ const handler = async (req: Request): Promise<Response> => {
       email: userProfile.notification_email, 
       sms: userProfile.notification_sms,
       emails: allEmails,
-      phones: allPhones
+      phones: allPhones,
+      requestedType: notificationType
     });
     
     // Send email notification if enabled and emails are available
-    if (userProfile.notification_email && allEmails.length > 0) {
+    if ((notificationType === "all" || notificationType === "email") && 
+        userProfile.notification_email && allEmails.length > 0) {
       notificationResults.email = await sendEmail(allEmails, lead);
     } else {
       console.log("Email notification skipped:", {
         notificationEnabled: userProfile.notification_email,
-        emailsAvailable: allEmails.length > 0
+        emailsAvailable: allEmails.length > 0,
+        requestedType: notificationType
       });
     }
     
     // Send SMS notification if enabled and phones are available
-    if (userProfile.notification_sms && allPhones.length > 0) {
+    if ((notificationType === "all" || notificationType === "sms") && 
+        userProfile.notification_sms && allPhones.length > 0) {
       notificationResults.sms = await sendSms(allPhones, lead);
     } else {
       console.log("SMS notification skipped:", {
         notificationEnabled: userProfile.notification_sms,
-        phonesAvailable: allPhones.length > 0
+        phonesAvailable: allPhones.length > 0,
+        requestedType: notificationType
       });
     }
     
