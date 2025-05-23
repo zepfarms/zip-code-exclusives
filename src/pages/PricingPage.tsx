@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -55,15 +54,15 @@ const PricingPage = () => {
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto">
               {/* Pricing Card */}
-              <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border-2 border-brand-100 relative mt-8">
-                {/* Popular Badge - Fixed positioning */}
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
-                  <div className="bg-accent-600 text-white px-6 py-2 rounded-full text-sm font-semibold shadow-lg">
+              <div className="bg-white rounded-2xl shadow-2xl overflow-hidden border-2 border-brand-100 relative mt-12">
+                {/* Popular Badge - Better positioning */}
+                <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 z-10">
+                  <div className="bg-accent-600 text-white px-6 py-3 rounded-full text-sm font-semibold shadow-lg">
                     Most Popular Choice
                   </div>
                 </div>
 
-                <div className="p-6 md:p-12 hero-gradient text-white text-center pt-12 md:pt-16">
+                <div className="p-6 md:p-12 hero-gradient text-white text-center pt-16 md:pt-20">
                   <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4">Exclusive Territory Rights</h2>
                   <p className="text-lg md:text-xl opacity-90 mb-6">
                     Get unlimited qualified seller leads delivered directly to you with zero competition
