@@ -168,36 +168,31 @@ const TerritoriesTable = () => {
     try {
       setIsUpdating(true);
       
-      const { error } = await supabase
-        .from('territories')
-        .update({ active: !territory.active })
-        .eq('id', territory.id);
+      // Use the edge function instead of direct database access to avoid RLS issues
+      const { data, error } = await supabase.functions.invoke('create-territory', {
+        body: {
+          territoryId: territory.id,
+          userId: territory.user_id,
+          zipCode: territory.zip_code,
+          active: !territory.active,
+          updateOnly: true
+        }
+      });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating territory status:", error);
+        throw error;
+      }
       
       // Update territories state
       setTerritories(prev => prev.map(t => 
         t.id === territory.id ? { ...t, active: !territory.active } : t
       ));
-
-      // Also update the zip_codes table to maintain consistency
-      const { error: zipCodeError } = await supabase
-        .from('zip_codes')
-        .upsert({
-          zip_code: territory.zip_code,
-          available: territory.active, // If deactivating territory, make zip available
-          user_id: !territory.active ? territory.user_id : null // If activating, assign user
-        });
-
-      if (zipCodeError) {
-        console.error("Error updating zip_codes:", zipCodeError);
-        toast.warning("Territory status changed, but zip code record was not fully updated");
-      }
       
       toast.success(`Territory ${!territory.active ? 'activated' : 'deactivated'} successfully`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating territory status:", error);
-      toast.error("Failed to update territory status");
+      toast.error("Failed to update territory status: " + (error.message || "Unknown error"));
     } finally {
       setIsUpdating(false);
     }
@@ -228,7 +223,7 @@ const TerritoriesTable = () => {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={fetchTerritoriesData}
+              onClick={refreshTerritories}
               disabled={isLoading}
               className="flex items-center"
             >

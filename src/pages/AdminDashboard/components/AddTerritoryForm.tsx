@@ -198,105 +198,23 @@ const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
     setIsAdding(true);
     
     try {
-      // Check if the territory already exists but is inactive
-      const { data: existingTerritory, error: checkError } = await supabase
-        .from('territories')
-        .select('id')
-        .eq('zip_code', zipCode)
-        .maybeSingle();
+      console.log("Adding territory for user:", userId, "with zip code:", zipCode);
       
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw checkError;
-      }
-      
-      let territoryId;
-      
-      if (existingTerritory) {
-        // If territory exists, update it
-        console.log("Updating existing territory:", existingTerritory.id);
-        const { data, error } = await supabase
-          .from('territories')
-          .update({
-            user_id: userId,
-            active: true,
-            start_date: new Date().toISOString(),
-            next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
-          })
-          .eq('id', existingTerritory.id)
-          .select();
-        
-        if (error) throw error;
-        territoryId = existingTerritory.id;
-      } else {
-        // Add the territory directly to the territories table
-        console.log("Creating new territory for zip code:", zipCode);
-        const { data, error } = await supabase
-          .from('territories')
-          .insert({
-            zip_code: zipCode,
-            user_id: userId,
-            active: true,
-            lead_type: 'investor',
-            start_date: new Date().toISOString(),
-            next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
-          })
-          .select();
-        
-        if (error) throw error;
-        territoryId = data[0].id;
-      }
-      
-      // Update or create the zip_codes entry
-      const { error: zipCodeError } = await supabase
-        .from('zip_codes')
-        .upsert({
-          zip_code: zipCode,
-          available: false,
-          claimed_at: new Date().toISOString(),
-          user_id: userId
-        });
-      
-      if (zipCodeError) {
-        console.error("Warning: Could not update zip_codes table:", zipCodeError);
-      }
-      
-      // Create a sample lead for this territory to trigger notifications
-      const { data: leadData, error: leadError } = await supabase
-        .from('leads')
-        .insert({
-          name: 'Welcome Lead',
-          territory_zip_code: zipCode,
-          user_id: userId,
-          status: 'New',
-          notes: 'This is a welcome lead created when the territory was assigned.',
-          address: `Zip Code: ${zipCode}`,
-          phone: '',
-          email: ''
-        })
-        .select();
-
-      if (leadError) {
-        console.error("Error creating welcome lead:", leadError);
-      } else if (leadData && leadData[0]) {
-        // Trigger lead notification
-        try {
-          console.log("Sending notification for new lead:", leadData[0].id, "to user:", userId);
-          const { data: notificationResult, error: notificationError } = await supabase.functions.invoke('notify-lead', {
-            body: {
-              leadId: leadData[0].id,
-              userId: userId
-            }
-          });
-
-          if (notificationError) {
-            console.error("Error sending lead notification:", notificationError);
-          } else {
-            console.log("Notification result:", notificationResult);
-          }
-        } catch (notifyError) {
-          console.error("Failed to send lead notification:", notifyError);
+      // Use the edge function to create the territory (bypasses RLS)
+      const { data, error } = await supabase.functions.invoke('create-territory', {
+        body: {
+          userId: userId,
+          zipCode: zipCode,
+          leadType: 'investor'  // Default to investor type
         }
+      });
+      
+      if (error) {
+        console.error("Error from create-territory edge function:", error);
+        throw new Error("Failed to add territory: " + error.message);
       }
+      
+      console.log("Territory created successfully:", data);
       
       toast.success(`Territory ${zipCode} successfully assigned to user`);
       
@@ -363,7 +281,7 @@ const AddTerritoryForm = ({ onTerritoryAdded }: AddTerritoryFormProps) => {
                   </SelectItem>
                 ))
               ) : (
-                <SelectItem value="loading" disabled>
+                <SelectItem value="no-users" disabled>
                   {isLoadingUsers ? "Loading users..." : "No users found"}
                 </SelectItem>
               )}

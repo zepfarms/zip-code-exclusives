@@ -10,9 +10,77 @@ serve(async (req) => {
   }
 
   try {
-    // Get the zipCode and userId from the request
-    const { zipCode, userId, leadType } = await req.json();
+    // Parse the request body with better error handling
+    const requestBody = await req.json().catch(error => {
+      console.error("Error parsing request body:", error);
+      return {};
+    });
     
+    const { zipCode, userId, leadType, territoryId, active, updateOnly } = requestBody;
+    
+    console.log("Create territory request params:", { zipCode, userId, leadType, territoryId, active, updateOnly });
+    
+    // For territory status toggle, we only need territoryId and active status
+    if (updateOnly && territoryId) {
+      if (active === undefined) {
+        console.error("Missing active parameter for update operation");
+        return new Response(
+          JSON.stringify({ error: "Missing active parameter" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      console.log(`Updating territory ${territoryId} - setting active: ${active}`);
+      
+      // Initialize the admin service client to bypass RLS
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+        { auth: { persistSession: false } }
+      );
+      
+      // Update the territory status
+      const { data: updatedTerritory, error: updateError } = await supabaseAdmin
+        .from("territories")
+        .update({ active })
+        .eq("id", territoryId)
+        .select()
+        .single();
+      
+      if (updateError) {
+        console.error("Error updating territory status:", updateError);
+        return new Response(
+          JSON.stringify({ error: "Failed to update territory status: " + updateError.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Also update the zip code availability
+      try {
+        const { error: zipCodeError } = await supabaseAdmin
+          .from("zip_codes")
+          .update({ 
+            available: !active,
+            user_id: active ? updatedTerritory.user_id : null
+          })
+          .eq("zip_code", updatedTerritory.zip_code);
+          
+        if (zipCodeError) {
+          console.error("Warning: Error updating zip code availability:", zipCodeError);
+          // Continue even if this fails
+        }
+      } catch (zipError) {
+        console.error("Error in zip code update:", zipError);
+        // Continue execution
+      }
+      
+      return new Response(
+        JSON.stringify({ success: true, territory: updatedTerritory }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Regular territory creation logic
     if (!zipCode || !userId) {
       console.error("Missing required parameters:", { zipCode, userId });
       return new Response(
