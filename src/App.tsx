@@ -1,4 +1,3 @@
-
 import React, { useEffect, lazy, Suspense, useState, Component, ErrorInfo, ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -24,6 +23,7 @@ const AboutUsPage = lazy(() => import("./pages/AboutUsPage"));
 const SellerLeadsPage = lazy(() => import("./pages/SellerLeadsPage"));
 const AddTerritory = lazy(() => import("./pages/AddTerritory"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
+const InvestorToolsPage = lazy(() => import("./pages/InvestorToolsPage"));
 
 // Scroll restoration component
 const ScrollToTop = () => {
@@ -207,6 +207,7 @@ const App = () => {
                   <Route path="/seller-leads" element={<SellerLeadsPage />} />
                   <Route path="/add-territory" element={<AddTerritory />} />
                   <Route path="/terms-of-service" element={<TermsOfService />} />
+                  <Route path="/investor-tools" element={<InvestorToolsPage />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
