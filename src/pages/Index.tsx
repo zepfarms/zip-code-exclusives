@@ -27,7 +27,7 @@ const Index = () => {
     <div className="min-h-screen flex flex-col">
       <Helmet>
         <title>LeadXclusive | Exclusive Real Estate Seller Leads With No Competition</title>
-        <meta name="description" content="Get exclusive real estate seller leads with one investor or agent per zip code. High-quality seller leads for investors and realtors with no competition." />
+        <meta name="description" content="Get exclusive real estate seller leads with one investor or agent per zip code. High-quality motivated seller leads with no competition in your territory." />
         <link rel="canonical" href="https://leadxclusive.com/" />
       </Helmet>
       
@@ -62,7 +62,7 @@ const Index = () => {
           </div>
           
           {/* Abstract shapes in the background */}
-          <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-full overflow-hidden" aria-hidden="true">
             <div className="absolute top-1/4 left-0 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
             <div className="absolute bottom-1/3 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
           </div>

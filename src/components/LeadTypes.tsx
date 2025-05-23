@@ -22,7 +22,7 @@ const LeadTypes = () => {
   ];
 
   return (
-    <div className="py-12 bg-gray-50">
+    <section className="py-12 bg-gray-50" id="lead-types">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Exclusive Seller Lead Generation</h2>
@@ -41,7 +41,7 @@ const LeadTypes = () => {
                 <ul className="space-y-3">
                   {type.features.map((feature, i) => (
                     <li key={i} className="flex items-start">
-                      <svg className="h-5 w-5 text-accent-600 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="h-5 w-5 text-accent-600 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <span>{feature}</span>
@@ -55,7 +55,7 @@ const LeadTypes = () => {
                 <Link to={type.link}>
                   <Button className="w-full bg-accent-600 hover:bg-accent-700 group">
                     Learn More
-                    <ArrowRight className="ml-2 h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="ml-2 h-4 w-4 transform group-hover:translate-x-1 transition-transform" aria-hidden="true" />
                   </Button>
                 </Link>
               </div>
@@ -63,7 +63,7 @@ const LeadTypes = () => {
           ))}
         </div>
       </div>
-    </div>
+    </section>
   );
 };
 

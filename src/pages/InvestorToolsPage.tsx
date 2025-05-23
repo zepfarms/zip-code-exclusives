@@ -45,6 +45,7 @@ const InvestorToolsPage = () => {
       <Helmet>
         <title>Investor Tools - AutoPilotRE | Free Real Estate Investment Platform</title>
         <meta name="description" content="Discover AutoPilotRE.com - a comprehensive free platform for real estate investors with deal analysis tools, market analytics, and business management features." />
+        <link rel="canonical" href="https://leadxclusive.com/investor-tools" />
       </Helmet>
       
       <Header />
@@ -68,7 +69,7 @@ const InvestorToolsPage = () => {
               >
                 <Button className="px-8 py-6 text-lg bg-accent-600 hover:bg-accent-700 group">
                   Visit AutoPilotRE.com
-                  <ExternalLink className="ml-2 h-5 w-5" />
+                  <ExternalLink className="ml-2 h-5 w-5" aria-hidden="true" />
                 </Button>
               </a>
             </div>
@@ -120,7 +121,7 @@ const InvestorToolsPage = () => {
                 <div key={index} className="bg-white rounded-lg p-6 shadow-md border border-gray-100">
                   <div className="flex items-center mb-4">
                     <div className="p-2 bg-accent-100 rounded-lg mr-3">
-                      <feature.icon className="h-6 w-6 text-accent-600" />
+                      <feature.icon className="h-6 w-6 text-accent-600" aria-hidden="true" />
                     </div>
                     <h3 className="text-xl font-semibold text-gray-900">{feature.title}</h3>
                   </div>
@@ -175,7 +176,7 @@ const InvestorToolsPage = () => {
             >
               <Button className="px-8 py-6 text-lg bg-accent-600 hover:bg-accent-700 group">
                 Get Started with AutoPilotRE
-                <ExternalLink className="ml-2 h-5 w-5" />
+                <ExternalLink className="ml-2 h-5 w-5" aria-hidden="true" />
               </Button>
             </a>
           </div>

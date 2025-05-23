@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 
@@ -9,11 +10,11 @@ const Footer = () => {
       <div className="container px-4 py-12 mx-auto md:px-6">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           <div className="space-y-4 col-span-2 md:col-span-1">
-            <Link to="/" className="inline-block">
+            <Link to="/" className="inline-block" aria-label="LeadXclusive home">
               <span className="text-2xl font-bold text-brand-700">LeadXclusive</span>
             </Link>
             <p className="text-gray-600">
-              Premium real estate leads with exclusive zip code territories. Increase your closing rate with qualified leads.
+              Premium real estate seller leads with exclusive zip code territories. Increase your closing rate with qualified leads.
             </p>
           </div>
 

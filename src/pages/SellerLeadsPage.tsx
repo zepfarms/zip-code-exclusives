@@ -5,10 +5,17 @@ import Footer from '@/components/Footer';
 import { CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 
 const SellerLeadsPage = () => {
   return (
     <div className="min-h-screen flex flex-col">
+      <Helmet>
+        <title>Exclusive Seller Leads | LeadXclusive</title>
+        <meta name="description" content="Connect with motivated sellers looking to sell their properties in your exclusive territory. No competition, just quality seller leads delivered directly to you." />
+        <link rel="canonical" href="https://leadxclusive.com/seller-leads" />
+      </Helmet>
+      
       <Header />
       
       <main className="flex-1">
@@ -49,19 +56,19 @@ const SellerLeadsPage = () => {
                   <h3 className="text-xl font-semibold mb-4 text-gray-900">What Makes Our Seller Leads Different</h3>
                   <ul className="space-y-4">
                     <li className="flex">
-                      <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" />
+                      <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" aria-hidden="true" />
                       <span className="text-gray-600">Motivated sellers actively looking to sell their property</span>
                     </li>
                     <li className="flex">
-                      <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" />
+                      <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" aria-hidden="true" />
                       <span className="text-gray-600">Properties ranging from distressed to well-maintained homes</span>
                     </li>
                     <li className="flex">
-                      <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" />
+                      <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" aria-hidden="true" />
                       <span className="text-gray-600">Sellers open to various transaction types and offers</span>
                     </li>
                     <li className="flex">
-                      <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" />
+                      <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" aria-hidden="true" />
                       <span className="text-gray-600">Opportunities for investors, agents, and all real estate professionals</span>
                     </li>
                   </ul>
@@ -71,19 +78,19 @@ const SellerLeadsPage = () => {
                   <h3 className="text-xl font-semibold mb-4 text-gray-900">Types of Opportunities</h3>
                   <ul className="space-y-4">
                     <li className="flex">
-                      <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" />
+                      <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" aria-hidden="true" />
                       <span className="text-gray-600">Pre-foreclosure and distressed properties for investors</span>
                     </li>
                     <li className="flex">
-                      <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" />
+                      <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" aria-hidden="true" />
                       <span className="text-gray-600">Primary residences from homeowners ready to upgrade</span>
                     </li>
                     <li className="flex">
-                      <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" />
+                      <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" aria-hidden="true" />
                       <span className="text-gray-600">Inherited properties from out-of-state owners</span>
                     </li>
                     <li className="flex">
-                      <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" />
+                      <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" aria-hidden="true" />
                       <span className="text-gray-600">Properties from owners experiencing major life transitions</span>
                     </li>
                   </ul>
@@ -100,7 +107,7 @@ const SellerLeadsPage = () => {
                 </p>
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="flex items-start">
-                    <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" />
+                    <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" aria-hidden="true" />
                     <div>
                       <h4 className="font-medium text-gray-900">No Competition</h4>
                       <p className="text-gray-600 mt-1">You won't be competing against others for the same property.</p>
@@ -108,7 +115,7 @@ const SellerLeadsPage = () => {
                   </div>
                   
                   <div className="flex items-start">
-                    <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" />
+                    <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" aria-hidden="true" />
                     <div>
                       <h4 className="font-medium text-gray-900">Higher Conversion Rates</h4>
                       <p className="text-gray-600 mt-1">Sellers aren't overwhelmed by calls from multiple professionals.</p>
@@ -116,7 +123,7 @@ const SellerLeadsPage = () => {
                   </div>
                   
                   <div className="flex items-start">
-                    <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" />
+                    <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" aria-hidden="true" />
                     <div>
                       <h4 className="font-medium text-gray-900">Better Negotiating Position</h4>
                       <p className="text-gray-600 mt-1">You have time to properly analyze deals without rushing.</p>
@@ -124,7 +131,7 @@ const SellerLeadsPage = () => {
                   </div>
                   
                   <div className="flex items-start">
-                    <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" />
+                    <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" aria-hidden="true" />
                     <div>
                       <h4 className="font-medium text-gray-900">More Profitable Deals</h4>
                       <p className="text-gray-600 mt-1">Exclusive access typically leads to better outcomes.</p>
