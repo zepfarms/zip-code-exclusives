@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from "@/components/ui/button";
@@ -34,6 +33,11 @@ const Dashboard = () => {
   const [lastName, setLastName] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
   const [formattedPhone, setFormattedPhone] = useState<string>('');
+  
+  // New states for notification phone
+  const [notificationPhone, setNotificationPhone] = useState<string>('');
+  const [formattedNotificationPhone, setFormattedNotificationPhone] = useState<string>('');
+  
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [notifyEmail, setNotifyEmail] = useState<boolean>(true);
   const [notifySms, setNotifySms] = useState<boolean>(false);
@@ -95,10 +99,15 @@ const Dashboard = () => {
       setFirstName(userProfile.first_name || '');
       setLastName(userProfile.last_name || '');
       
-      // Display the phone number if it exists in profile
+      // Display the regular phone number if it exists in profile
       const phoneNumber = userProfile.phone || '';
       setPhone(phoneNumber);
       setFormattedPhone(formatPhoneNumber(phoneNumber));
+      
+      // Display the notification phone if it exists
+      const notificationPhoneNumber = userProfile.notification_phone || '';
+      setNotificationPhone(notificationPhoneNumber);
+      setFormattedNotificationPhone(formatPhoneNumber(notificationPhoneNumber));
       
       setNotifyEmail(userProfile.notification_email ?? true);
       setNotifySms(userProfile.notification_sms ?? false);
@@ -106,6 +115,8 @@ const Dashboard = () => {
       console.log("Updated form state from profile:", {
         phone: phoneNumber,
         formattedPhone: formatPhoneNumber(phoneNumber),
+        notificationPhone: notificationPhoneNumber,
+        formattedNotificationPhone: formatPhoneNumber(notificationPhoneNumber),
         notifySms: userProfile.notification_sms
       });
     }
@@ -118,6 +129,14 @@ const Dashboard = () => {
     setPhone(input);
     setFormattedPhone(formatPhoneNumber(input));
   };
+  
+  // Handle notification phone input with US formatting
+  const handleNotificationPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only allow digits
+    const input = e.target.value.replace(/\D/g, '');
+    setNotificationPhone(input);
+    setFormattedNotificationPhone(formatPhoneNumber(input));
+  };
 
   const handleSaveProfile = async () => {
     if (!userId) return;
@@ -127,15 +146,20 @@ const Dashboard = () => {
     try {
       // Format phone to store standardized format (digits only)
       const formattedPhone = phone ? phone.replace(/\D/g, '') : '';
+      const formattedNotificationPhone = notificationPhone ? notificationPhone.replace(/\D/g, '') : '';
       
-      console.log('Saving profile with phone:', formattedPhone);
+      console.log('Saving profile with phones:', {
+        regularPhone: formattedPhone,
+        notificationPhone: formattedNotificationPhone
+      });
       
       const updatedProfile = await updateUserProfile(userId, {
         first_name: firstName,
         last_name: lastName,
         phone: formattedPhone,
+        notification_phone: formattedNotificationPhone,
         notification_email: notifyEmail,
-        notification_sms: notifySms && !!formattedPhone // Only enable SMS if phone is provided
+        notification_sms: notifySms && !!formattedNotificationPhone // Only enable SMS if notification phone is provided
       });
       
       // Update local state with the returned profile
@@ -147,12 +171,14 @@ const Dashboard = () => {
         if (session) {
           setContacts({
             emails: [session.user.email || '', ...(updatedProfile.secondary_emails || [])],
-            phones: [updatedProfile.phone || '', ...(updatedProfile.secondary_phones || [])]
+            phones: [updatedProfile.phone || '', updatedProfile.notification_phone || '', ...(updatedProfile.secondary_phones || [])]
+              .filter(Boolean) // Remove empty strings
           });
         }
         
         console.log("Profile updated successfully:", {
           phone: updatedProfile.phone,
+          notification_phone: updatedProfile.notification_phone,
           notification_sms: updatedProfile.notification_sms
         });
       }
@@ -347,7 +373,7 @@ const Dashboard = () => {
           </Card>
         </TabsContent>
         
-        {/* Settings Tab */}
+        {/* Settings Tab - updated with notification phone field */}
         <TabsContent value="settings" className="space-y-6">
           <Card>
             <CardHeader>
@@ -436,6 +462,24 @@ const Dashboard = () => {
               <div className="space-y-4">
                 <h3 className="text-lg font-medium">Notification Preferences</h3>
                 
+                {/* New field for notification phone */}
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="notificationPhone" className="font-medium">Cell Phone for Lead Notifications</Label>
+                    <Input 
+                      id="notificationPhone" 
+                      value={formattedNotificationPhone} 
+                      onChange={handleNotificationPhoneChange} 
+                      placeholder="(555) 123-4567"
+                      type="tel"
+                      maxLength={14} // Account for formatting characters
+                    />
+                    <p className="text-sm text-blue-700">
+                      This phone number will be used exclusively for lead notifications via SMS.
+                    </p>
+                  </div>
+                </div>
+                
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -459,18 +503,18 @@ const Dashboard = () => {
                       checked={notifySms} 
                       onCheckedChange={checked => {
                         setNotifySms(checked);
-                        // If enabling SMS but no phone number, show a warning
-                        if (checked && !phone) {
-                          toast.warning("A phone number is required for SMS notifications");
+                        // If enabling SMS but no notification phone, show a warning
+                        if (checked && !notificationPhone) {
+                          toast.warning("A cell phone number is required for SMS notifications");
                         }
                       }}
-                      disabled={!phone}
+                      disabled={!notificationPhone}
                     />
                   </div>
                   
-                  {notifySms && !phone && (
+                  {notifySms && !notificationPhone && (
                     <p className="text-sm text-amber-600">
-                      A phone number is required for SMS notifications. Please add your phone number above.
+                      A cell phone number is required for SMS notifications. Please add your cell phone number above.
                     </p>
                   )}
                 </div>

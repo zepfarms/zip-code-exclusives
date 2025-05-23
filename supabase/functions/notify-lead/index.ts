@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
 import { Resend } from "npm:resend@1.0.0";
@@ -283,9 +282,22 @@ const handler = async (req: Request): Promise<Response> => {
       ...(userProfile.secondary_emails || [])
     ].filter(Boolean);
     
-    // Collect all phone numbers
+    // Collect all phone numbers - prioritize the notification_phone if available
+    const notificationPhone = userProfile.notification_phone;
+    const regularPhone = userProfile.phone;
+    
+    // Log the available phone numbers for debugging
+    console.log("Phone numbers available for SMS:", {
+      notificationPhone: notificationPhone || "(not set)",
+      regularPhone: regularPhone || "(not set)",
+      secondaryPhones: userProfile.secondary_phones || []
+    });
+    
+    // Use the notification_phone first if available, otherwise fall back to the regular phone
+    const primaryPhone = notificationPhone || regularPhone;
+    
     const allPhones = [
-      userProfile.phone,
+      primaryPhone,
       ...(userProfile.secondary_phones || [])
     ].filter(Boolean);
     
@@ -298,8 +310,13 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     // Debug phone number
-    if (userProfile.phone) {
-      console.log("Primary phone from profile:", userProfile.phone);
+    if (primaryPhone) {
+      console.log("Primary phone for notification:", primaryPhone);
+      if (notificationPhone) {
+        console.log("Using dedicated notification phone number");
+      } else {
+        console.log("Using regular phone number (no dedicated notification phone set)");
+      }
     } else {
       console.log("No primary phone number found in profile");
     }

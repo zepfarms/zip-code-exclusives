@@ -37,6 +37,7 @@ export const ensureUserProfile = async (userId: string) => {
       id: userId,
       notification_email: true,
       notification_sms: false,
+      notification_phone: null,
       user_type: 'investor', // Using 'investor' as the default type
       secondary_emails: [],
       secondary_phones: [],

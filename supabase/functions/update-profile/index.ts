@@ -45,7 +45,7 @@ serve(async (req) => {
     // Always update the updated_at timestamp
     sanitizedData.updated_at = new Date().toISOString();
 
-    // Ensure phone is stored as just digits for consistency
+    // Ensure phone numbers are stored as just digits for consistency
     if (sanitizedData.phone !== undefined) {
       // Only clean if it's not null or empty string
       if (sanitizedData.phone) {
@@ -57,6 +57,21 @@ serve(async (req) => {
       if (sanitizedData.phone === '') {
         sanitizedData.phone = null;
         logStep("Empty phone converted to null");
+      }
+    }
+
+    // Handle the new notification_phone field
+    if (sanitizedData.notification_phone !== undefined) {
+      // Clean notification phone if it's not null or empty
+      if (sanitizedData.notification_phone) {
+        sanitizedData.notification_phone = sanitizedData.notification_phone.replace(/\D/g, '');
+        logStep("Notification phone cleaned for storage", sanitizedData.notification_phone);
+      }
+      
+      // Convert empty string to null
+      if (sanitizedData.notification_phone === '') {
+        sanitizedData.notification_phone = null;
+        logStep("Empty notification_phone converted to null");
       }
     }
 
@@ -93,6 +108,7 @@ serve(async (req) => {
       logStep("Successfully created profile", { 
         id: insertData[0].id, 
         phone: insertData[0].phone || '(no phone)',
+        notification_phone: insertData[0].notification_phone || '(no notification phone)',
         notification_sms: insertData[0].notification_sms 
       });
       
@@ -125,6 +141,7 @@ serve(async (req) => {
     logStep("Successfully updated profile", { 
       id: data[0].id, 
       phone: data[0].phone || '(no phone)',
+      notification_phone: data[0].notification_phone || '(no notification phone)',
       notification_sms: data[0].notification_sms 
     });
 
