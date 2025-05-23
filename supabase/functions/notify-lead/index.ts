@@ -80,10 +80,34 @@ async function sendEmail(emails: string[], lead: any) {
 }
 
 async function sendSms(phones: string[], lead: any) {
-  // We'll keep this for future implementation
-  // For now, just log that SMS would be sent
-  console.log(`SMS notification would be sent to ${phones.length} recipients`);
-  return false;
+  if (!phones || phones.length === 0) {
+    console.log("No phone numbers provided for SMS notification");
+    return false;
+  }
+
+  // Filter out empty strings and invalid numbers
+  const validPhones = phones.filter(phone => phone && phone.trim());
+  
+  if (validPhones.length === 0) {
+    console.log("No valid phone numbers found after filtering");
+    return false;
+  }
+
+  try {
+    console.log("Would send SMS notification to:", validPhones);
+    
+    // This is where we would implement the actual SMS sending logic
+    // For now, we'll just log that SMS would be sent
+    // In a future implementation, we can integrate with an SMS provider
+    
+    const message = `New lead assigned: ${lead.name || 'New contact'} in ${lead.territory_zip_code}. Log in to your dashboard to view details.`;
+    console.log("SMS message would be:", message);
+    
+    return false; // Return false for now since we're not actually sending SMS
+  } catch (error) {
+    console.error("Error preparing SMS notification:", error);
+    return false;
+  }
 }
 
 const handler = async (req: Request): Promise<Response> => {

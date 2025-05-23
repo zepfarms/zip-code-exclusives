@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "sonner";
 import { ensureUserProfile } from './userProfile';
@@ -231,7 +230,7 @@ const calculateSubscriptionInfo = (territories: any[], setSubscriptionInfo: any)
       const daysRemaining = Math.ceil((nextRenewal.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       
       setSubscriptionInfo({
-        totalMonthly: territories.length * 0, // $0.00 per territory for testing
+        totalMonthly: territories.length * 199, // $199.00 per territory
         nextRenewal: nextRenewal,
         daysRemaining: daysRemaining
       });

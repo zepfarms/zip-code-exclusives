@@ -46,3 +46,5 @@ verify_jwt = true
 [functions.create-territory]
 verify_jwt = true
 
+[functions.notify-lead]
+verify_jwt = true

@@ -26,9 +26,8 @@ const Pricing = () => {
             
             <div className="p-8 md:p-12 text-center">
               <div className="mb-6">
-                <span className="text-5xl font-bold">$0</span>
+                <span className="text-5xl font-bold">$199</span>
                 <span className="text-xl text-gray-500 ml-2">/month per area</span>
-                <div className="mt-2 text-sm text-rose-600">(FREE for testing - normally $199)</div>
               </div>
               
               <p className="text-gray-600 mb-8">

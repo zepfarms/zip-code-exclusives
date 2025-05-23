@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -208,7 +207,7 @@ serve(async (req) => {
       }
     }
 
-    // Create a Stripe checkout session for a $1 payment
+    // Create a Stripe checkout session for a $199 payment
     try {
       console.log("Creating Stripe checkout session for zip code:", zipCode);
       const session = await stripe.client.checkout.sessions.create({
@@ -222,7 +221,7 @@ serve(async (req) => {
                 name: `Exclusive Territory: ${zipCode}`,
                 description: `Exclusive rights to receive leads in zip code ${zipCode}`
               },
-              unit_amount: 100, // $1.00 in cents
+              unit_amount: 19900, // $199.00 in cents
             },
             quantity: 1,
           },
