@@ -45,6 +45,11 @@ serve(async (req) => {
     // Always update the updated_at timestamp
     sanitizedData.updated_at = new Date().toISOString();
 
+    // Log phone number specifically since that's what we're having issues with
+    if (sanitizedData.phone !== undefined) {
+      logStep("Phone number being set to", sanitizedData.phone);
+    }
+
     logStep("Sanitized update data", sanitizedData);
 
     // Update the profile
@@ -63,7 +68,11 @@ serve(async (req) => {
       throw new Error("No profile data returned after update");
     }
 
-    logStep("Successfully updated profile", { id: data[0].id, fullData: data[0] });
+    logStep("Successfully updated profile", { 
+      id: data[0].id, 
+      phone: data[0].phone || '(no phone)',
+      notification_sms: data[0].notification_sms 
+    });
 
     return new Response(JSON.stringify({ 
       success: true, 

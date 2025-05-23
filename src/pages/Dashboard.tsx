@@ -1,851 +1,462 @@
+
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import { toast } from "sonner";
-import { useNavigate } from 'react-router-dom';
-import { z } from 'zod';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
 import { supabase } from '@/integrations/supabase/client';
-import { X, Plus, Loader } from 'lucide-react';
-import AddTerritoryCard from '@/components/dashboard/AddTerritoryCard';
-import { ensureUserProfile, updateUserProfile } from '@/utils/userProfile';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import { fetchUserData } from '@/utils/dashboardFunctions';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  const [leads, setLeads] = useState([]);
-  const [territories, setTerritories] = useState([]);
-  const [userProfile, setUserProfile] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [contacts, setContacts] = useState({
-    emails: [''],
-    phones: ['']
-  });
-  const [subscriptionInfo, setSubscriptionInfo] = useState({
+  const [userId, setUserId] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [territories, setTerritories] = useState<any[]>([]);
+  const [leads, setLeads] = useState<any[]>([]);
+  const [contacts, setContacts] = useState<{ emails: string[], phones: string[] }>({ emails: [], phones: [] });
+  const [subscriptionInfo, setSubscriptionInfo] = useState<{ totalMonthly: number, nextRenewal: string | null, daysRemaining: number }>({
     totalMonthly: 0,
     nextRenewal: null,
     daysRemaining: 0
   });
+  
+  // Form states for profile editing
+  const [firstName, setFirstName] = useState<string>('');
+  const [lastName, setLastName] = useState<string>('');
+  const [phone, setPhone] = useState<string>('');
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [notifyEmail, setNotifyEmail] = useState<boolean>(true);
+  const [notifySms, setNotifySms] = useState<boolean>(false);
 
+  // Monitor authentication state
   useEffect(() => {
-    // Check if user is logged in
-    const checkAuth = async () => {
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          throw sessionError;
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        console.info('Auth state changed:', event, session?.user.email);
+        if (session?.user) {
+          setUserId(session.user.id);
+          setIsAuthenticated(true);
         }
-        
-        if (!session) {
-          toast.error('You must be logged in to view this page');
-          navigate('/login');
-          return;
-        }
+      } else if (event === 'SIGNED_OUT') {
+        setIsAuthenticated(false);
+        setUserId(null);
+      }
+    });
 
-        console.log("User authenticated, loading data for:", session.user.id);
-        
-        // Load user data
-        await fetchUserData(
-          session.user.id, 
-          setUserProfile, 
-          setTerritories, 
-          setLeads, 
-          setContacts, 
-          setSubscriptionInfo, 
-          setIsLoading
-        );
-        
-        // Check for payments that may need processing
-        const sessionId = new URLSearchParams(window.location.search).get('session_id');
-        if (sessionId) {
-          console.log("Found session ID in URL, checking payment status:", sessionId);
-          // Potential redirect from payment, force refresh data
-          setTimeout(() => {
-            refreshData(true);
-          }, 1000);
-        }
-      } catch (error) {
-        console.error("Authentication error:", error);
-        toast.error('Authentication error. Please try logging in again.');
-        navigate('/login');
+    // Check initial session
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && session.user) {
+        setUserId(session.user.id);
+        setIsAuthenticated(true);
+      } else {
+        setIsLoading(false);
       }
     };
-
-    checkAuth();
-  }, [navigate]);
-
-  const handleAddArea = () => {
-    navigate('/add-territory');
-  };
-
-  const handleRemoveArea = async (territoryId, zipCode) => {
-    const confirm = window.confirm(
-      `Are you sure you want to cancel your subscription for ${zipCode}? ` +
-      `Your territory will remain active until the end of the current billing cycle.`
-    );
     
-    if (confirm) {
-      try {
-        const { error } = await supabase
-          .from('territories')
-          .update({ active: false })
-          .eq('id', territoryId);
-        
-        if (error) throw error;
-        
-        toast.success(`Territory ${zipCode} has been cancelled. It will remain active until the end of the current billing cycle.`);
-        
-        // Refresh territories list
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const { data, error: fetchError } = await supabase
-            .from('territories')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .eq('active', true);
-          
-          if (fetchError) throw fetchError;
-          setTerritories(data);
-        }
-      } catch (error) {
-        console.error('Error cancelling territory:', error);
-        toast.error('Failed to cancel territory');
-      }
-    }
-  };
+    checkSession();
+    
+    // Clean up subscription
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, []);
 
-  const handleUpdateLeadStatus = async (leadId, newStatus) => {
-    try {
-      const { error } = await supabase
-        .from('leads')
-        .update({ status: newStatus })
-        .eq('id', leadId);
+  // Load data when authenticated
+  useEffect(() => {
+    if (isAuthenticated && userId) {
+      console.info('User authenticated, loading data for:', userId);
       
-      if (error) throw error;
-      toast.success(`Lead status updated to ${newStatus}`);
-      
-      // Update in the local state
-      setLeads(leads.map(lead => 
-        lead.id === leadId ? { ...lead, status: newStatus } : lead
-      ));
-    } catch (error) {
-      console.error('Error updating lead status:', error);
-      toast.error('Failed to update lead status');
+      fetchUserData(
+        userId,
+        setUserProfile,
+        setTerritories,
+        setLeads,
+        setContacts,
+        setSubscriptionInfo,
+        setIsLoading
+      );
     }
-  };
+  }, [isAuthenticated, userId]);
 
-  // Handle adding a new contact email field
-  const handleAddEmail = () => {
-    if (contacts.emails.length < 3) {
-      setContacts(prev => ({
-        ...prev,
-        emails: [...prev.emails, '']
-      }));
-    } else {
-      toast.error('Maximum of 3 email addresses allowed');
-    }
-  };
-
-  // Handle adding a new contact phone field
-  const handleAddPhone = () => {
-    if (contacts.phones.length < 3) {
-      setContacts(prev => ({
-        ...prev,
-        phones: [...prev.phones, '']
-      }));
-    } else {
-      toast.error('Maximum of 3 phone numbers allowed');
-    }
-  };
-
-  // Handle removing a contact field
-  const handleRemoveEmail = (index) => {
-    if (index === 0) {
-      toast.error('Primary email cannot be removed');
-      return;
-    }
-    setContacts(prev => ({
-      ...prev,
-      emails: prev.emails.filter((_, i) => i !== index)
-    }));
-  };
-
-  const handleRemovePhone = (index) => {
-    if (index === 0) {
-      toast.error('Primary phone cannot be removed');
-      return;
-    }
-    setContacts(prev => ({
-      ...prev,
-      phones: prev.phones.filter((_, i) => i !== index)
-    }));
-  };
-
-  // Handle changing a contact value
-  const handleEmailChange = (index, value) => {
-    setContacts(prev => {
-      const newEmails = [...prev.emails];
-      newEmails[index] = value;
-      return { ...prev, emails: newEmails };
-    });
-  };
-
-  const handlePhoneChange = (index, value) => {
-    setContacts(prev => {
-      const newPhones = [...prev.phones];
-      newPhones[index] = value;
-      return { ...prev, phones: newPhones };
-    });
-  };
-
-  // Profile form schema
-  const profileSchema = z.object({
-    firstName: z.string().optional(),
-    lastName: z.string().optional(),
-    company: z.string().optional(),
-    email: z.string().email(),
-    notificationEmail: z.boolean(),
-    notificationSms: z.boolean()
-  });
-
-  // Profile form
-  const profileForm = useForm({
-    resolver: zodResolver(profileSchema),
-    defaultValues: {
-      firstName: userProfile?.first_name || '',
-      lastName: userProfile?.last_name || '',
-      company: userProfile?.company || '',
-      email: '',
-      notificationEmail: userProfile?.notification_email !== false, // Default to true if null
-      notificationSms: userProfile?.notification_sms === true // Default to false if null
-    }
-  });
-
-  // Update form values when userProfile loads
+  // Update form state when userProfile changes
   useEffect(() => {
     if (userProfile) {
-      profileForm.reset({
-        firstName: userProfile.first_name || '',
-        lastName: userProfile.last_name || '',
-        company: userProfile.company || '',
-        email: '', // Will be filled from auth session
-        notificationEmail: userProfile.notification_email !== false, // Default to true if null
-        notificationSms: userProfile.notification_sms === true // Default to false if null
-      });
-      
-      // Get email from auth session
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) {
-          profileForm.setValue('email', session.user.email);
-        }
-      });
-
-      // Set phone contacts state
-      setContacts(prev => ({
-        ...prev,
-        phones: [userProfile.phone || '', ...(userProfile.secondary_phones || [])],
-        emails: [session?.user?.email || '', ...(userProfile.secondary_emails || [])]
-      }));
-      
-      console.log("Setting contacts with primary phone:", userProfile.phone);
-      console.log("Secondary phones:", userProfile.secondary_phones);
+      setFirstName(userProfile.first_name || '');
+      setLastName(userProfile.last_name || '');
+      setPhone(userProfile.phone || '');
+      setNotifyEmail(userProfile.notification_email ?? true);
+      setNotifySms(userProfile.notification_sms ?? false);
     }
   }, [userProfile]);
 
-  const onProfileSubmit = async (values) => {
+  const handleSaveProfile = async () => {
+    if (!userId) return;
+    
+    setIsSaving(true);
+    
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+      // Format phone for consistency
+      const formattedPhone = phone ? phone.trim() : '';
       
-      // Get secondary emails and phones (excluding the primary ones)
-      const secondaryEmails = contacts.emails.slice(1).filter(Boolean);
-      const secondaryPhones = contacts.phones.slice(1).filter(Boolean);
+      console.log('Saving profile with phone:', formattedPhone);
       
-      // Get primary phone
-      const primaryPhone = contacts.phones[0] || '';
-      
-      console.log("Submitting profile with primary phone:", primaryPhone);
-      console.log("Secondary phones:", secondaryPhones);
-      
-      // Use our utility function to update the profile
-      await updateUserProfile(session.user.id, {
-        first_name: values.firstName,
-        last_name: values.lastName,
-        company: values.company,
-        phone: primaryPhone, // Primary phone
-        secondary_phones: secondaryPhones, // Additional phones
-        secondary_emails: secondaryEmails, // Additional emails
-        notification_email: values.notificationEmail,
-        notification_sms: values.notificationSms,
-        updated_at: new Date().toISOString() // Convert Date to string
+      const { data: response, error } = await supabase.functions.invoke('update-profile', {
+        body: { 
+          userId,
+          profileData: {
+            first_name: firstName,
+            last_name: lastName,
+            phone: formattedPhone,
+            notification_email: notifyEmail,
+            notification_sms: notifySms
+          }
+        }
       });
       
-      // Check if email needs to be updated
-      if (values.email !== session.user.email) {
-        const { error: emailUpdateError } = await supabase.auth.updateUser({
-          email: values.email
-        });
+      if (error) {
+        console.error('Error updating profile:', error);
+        toast.error('Failed to update profile. Please try again.');
+        return;
+      }
+      
+      if (response?.profile) {
+        setUserProfile(response.profile);
         
-        if (emailUpdateError) throw emailUpdateError;
-        toast.info('A confirmation email has been sent to your new email address');
+        // Update contacts state to reflect the changes
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          setContacts({
+            emails: [session.user.email || '', ...(response.profile.secondary_emails || [])],
+            phones: [response.profile.phone || '', ...(response.profile.secondary_phones || [])]
+          });
+        }
+        
+        toast.success('Profile updated successfully');
       }
-      
-      toast.success('Profile updated successfully');
-      
-      // Refresh user data
-      await fetchUserData(
-        session.user.id, 
-        setUserProfile, 
-        setTerritories, 
-        setLeads, 
-        setContacts, 
-        setSubscriptionInfo, 
-        setIsLoading
-      );
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast.error('Failed to update profile');
-    }
-  };
-
-  // Stripe customer portal handler
-  const handleManageBilling = async () => {
-    try {
-      setIsLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        toast.error('You must be logged in');
-        return;
-      }
-      
-      const { data, error } = await supabase.functions.invoke('customer-portal', {
-        body: { returnUrl: window.location.origin + '/dashboard' }
-      });
-      
-      if (error) throw error;
-      
-      // Redirect to Stripe Customer Portal
-      window.location.href = data.url;
-      
-    } catch (error) {
-      console.error('Error opening customer portal:', error);
-      toast.error('Failed to open billing portal');
+    } catch (err) {
+      console.error('Error in profile update:', err);
+      toast.error('An error occurred. Please try again.');
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
-  // Enhanced refresh function with force option and better feedback
-  const refreshData = async (force = false) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('You must be logged in to refresh data');
-        return;
-      }
-      
-      if (force) {
-        setIsLoading(true);
-        toast.info("Refreshing your data...");
-      }
-      
-      console.log("Refreshing data for user:", session.user.id);
-      
-      // Clear any existing data to avoid stale state issues
-      if (force) {
-        setTerritories([]);
-        setLeads([]);
-      }
-      
-      await fetchUserData(
-        session.user.id, 
-        setUserProfile, 
-        setTerritories, 
-        setLeads, 
-        setContacts, 
-        setSubscriptionInfo, 
-        force ? () => {} : setIsLoading // Only update loading state at the end if force=true
-      );
-      
-      if (force) {
-        toast.success("Data refreshed successfully");
-        setIsLoading(false);
-      }
-    } catch (error) {
-      console.error("Error refreshing data:", error);
-      if (force) {
-        toast.error("Error refreshing data. Please try again.");
-        setIsLoading(false);
-      }
-    }
-  };
+  if (!isAuthenticated && !isLoading) {
+    // Redirect to login if not authenticated
+    window.location.href = '/login?redirect=/dashboard';
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[80vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-xl">Loading your dashboard...</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
+    <div className="container mx-auto py-8 px-4 max-w-7xl">
+      <h1 className="text-3xl font-bold mb-8">Your Dashboard</h1>
       
-      <main className="flex-1 bg-gray-50 py-8">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-              <p className="text-gray-600">Manage your territories and leads</p>
-            </div>
-          </div>
-          
-          <Tabs defaultValue="territories">
-            <TabsList className="mb-6">
-              <TabsTrigger value="territories">My Territories</TabsTrigger>
-              <TabsTrigger value="leads">My Leads</TabsTrigger>
-              <TabsTrigger value="profile">Profile</TabsTrigger>
-              <TabsTrigger value="billing">Billing</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="territories">
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {/* Add Territory Card */}
-                <AddTerritoryCard onTerritoryAdded={refreshData} />
-
-                {/* Existing Territories */}
-                {!isLoading && territories.length > 0 && territories.map((territory) => (
-                  <Card key={territory.id}>
-                    <CardHeader>
-                      <CardTitle className="text-xl">Zip Code {territory.zip_code}</CardTitle>
-                      <CardDescription>
-                        {territory.lead_type === 'investor' ? 'Investment' : 'Realtor'} Leads
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Status:</span>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Active
-                          </span>
-                        </div>
-                        
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Start Date:</span>
-                          <span>{territory.start_date ? new Date(territory.start_date).toLocaleDateString() : 'N/A'}</span>
-                        </div>
-                        
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Next Billing:</span>
-                          <span>{territory.next_billing_date ? new Date(territory.next_billing_date).toLocaleDateString() : 'N/A'}</span>
-                        </div>
-                        
-                        <div className="pt-3">
-                          <Button 
-                            variant="outline" 
-                            className="w-full text-red-500 border-red-200 hover:bg-red-50"
-                            onClick={() => handleRemoveArea(territory.id, territory.zip_code)}
-                          >
-                            Cancel Subscription
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-              
-              {isLoading && (
-                <div className="flex justify-center items-center py-12">
-                  <Loader className="h-8 w-8 animate-spin text-brand-600" />
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="mb-8">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="leads">Leads</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+        </TabsList>
+        
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Welcome Card */}
+            <Card className="md:col-span-3">
+              <CardHeader>
+                <CardTitle>Welcome{firstName ? `, ${firstName}` : ''}!</CardTitle>
+                <CardDescription>
+                  Here's an overview of your exclusive territories and leads.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="stats grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="stat bg-blue-50 p-4 rounded-lg">
+                    <h3 className="text-lg font-semibold">Territories</h3>
+                    <p className="text-3xl font-bold">{territories?.length || 0}</p>
+                  </div>
+                  <div className="stat bg-green-50 p-4 rounded-lg">
+                    <h3 className="text-lg font-semibold">Active Leads</h3>
+                    <p className="text-3xl font-bold">{leads?.length || 0}</p>
+                  </div>
+                  <div className="stat bg-purple-50 p-4 rounded-lg">
+                    <h3 className="text-lg font-semibold">Monthly Investment</h3>
+                    <p className="text-3xl font-bold">${subscriptionInfo.totalMonthly}</p>
+                  </div>
                 </div>
-              )}
-              
-              {!isLoading && territories.length === 0 && (
-                <Card className="text-center p-8">
-                  <h3 className="text-lg font-medium mb-2">No Territories Yet</h3>
-                  <p className="text-gray-600 mb-6">
-                    Add your first exclusive territory to start receiving qualified leads
-                  </p>
-                </Card>
-              )}
-            </TabsContent>
+              </CardContent>
+            </Card>
             
-            <TabsContent value="leads">
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Recent Leads</CardTitle>
-                    <CardDescription>
-                      Manage and track the status of your leads
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {isLoading ? (
-                      <div className="text-center py-8">Loading leads...</div>
-                    ) : leads.length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                          <thead>
-                            <tr className="border-b border-gray-200">
-                              <th className="py-3 px-4 font-medium">Name</th>
-                              <th className="py-3 px-4 font-medium">Contact</th>
-                              <th className="py-3 px-4 font-medium">Address</th>
-                              <th className="py-3 px-4 font-medium">Date</th>
-                              <th className="py-3 px-4 font-medium">Status</th>
-                              <th className="py-3 px-4 font-medium">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {leads.map((lead) => (
-                              <tr key={lead.id} className="border-b border-gray-100 hover:bg-gray-50">
-                                <td className="py-3 px-4">{lead.name}</td>
-                                <td className="py-3 px-4">
-                                  <div>{lead.phone}</div>
-                                  <div className="text-sm text-gray-500">{lead.email}</div>
-                                </td>
-                                <td className="py-3 px-4">
-                                  <div>{lead.address}</div>
-                                  <div className="text-sm text-gray-500">Zip: {lead.territory_zip_code}</div>
-                                </td>
-                                <td className="py-3 px-4">{new Date(lead.created_at).toLocaleDateString()}</td>
-                                <td className="py-3 px-4">
-                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                    lead.status === 'New' 
-                                      ? 'bg-green-100 text-green-800' 
-                                      : lead.status === 'Contacted' 
-                                      ? 'bg-blue-100 text-blue-800'
-                                      : 'bg-amber-100 text-amber-800'
-                                  }`}>
-                                    {lead.status}
-                                  </span>
-                                </td>
-                                <td className="py-3 px-4">
-                                  <select 
-                                    className="text-sm border border-gray-300 rounded px-2 py-1"
-                                    defaultValue={lead.status}
-                                    onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value)}
-                                  >
-                                    <option value="New">New</option>
-                                    <option value="Contacted">Contacted</option>
-                                    <option value="Negotiating">Negotiating</option>
-                                    <option value="Closed">Closed</option>
-                                    <option value="Lost">Lost</option>
-                                  </select>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        No leads available yet. They will appear here once generated for your territories.
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="profile">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Profile Settings</CardTitle>
-                  <CardDescription>
-                    Manage your account and notification preferences
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isLoading ? (
-                    <div className="text-center py-8">Loading profile...</div>
-                  ) : (
-                    <Form {...profileForm}>
-                      <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <FormField
-                            control={profileForm.control}
-                            name="firstName"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>First Name</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="John" {...field} />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={profileForm.control}
-                            name="lastName"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Last Name</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Doe" {...field} />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                        
-                        <FormField
-                          control={profileForm.control}
-                          name="company"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Company</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Your Company LLC" {...field} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <div className="border-t pt-6">
-                          <h3 className="font-medium mb-4">Contact Information</h3>
-                          
-                          <div className="space-y-4">
-                            <div>
-                              <FormLabel>Email Addresses (for lead notifications)</FormLabel>
-                              <div className="space-y-2">
-                                {contacts.emails.map((email, index) => (
-                                  <div key={`email-${index}`} className="flex items-center gap-2">
-                                    <Input 
-                                      type="email"
-                                      placeholder={index === 0 ? "Primary Email" : "Additional Email"}
-                                      value={email}
-                                      onChange={(e) => handleEmailChange(index, e.target.value)}
-                                      className="flex-1"
-                                    />
-                                    {index === 0 ? (
-                                      <div className="w-8 h-8 flex items-center justify-center">
-                                        <span className="text-xs text-gray-500">Primary</span>
-                                      </div>
-                                    ) : (
-                                      <Button 
-                                        type="button" 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        onClick={() => handleRemoveEmail(index)}
-                                      >
-                                        <X className="h-4 w-4" />
-                                      </Button>
-                                    )}
-                                  </div>
-                                ))}
-                                
-                                {contacts.emails.length < 3 && (
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="mt-2"
-                                    onClick={handleAddEmail}
-                                  >
-                                    <Plus className="h-4 w-4 mr-2" /> Add Email
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                            
-                            <div>
-                              <FormLabel>Phone Numbers (for lead notifications)</FormLabel>
-                              <div className="space-y-2">
-                                {contacts.phones.map((phone, index) => (
-                                  <div key={`phone-${index}`} className="flex items-center gap-2">
-                                    <Input 
-                                      type="tel"
-                                      placeholder={index === 0 ? "Primary Phone" : "Additional Phone"}
-                                      value={phone}
-                                      onChange={(e) => handlePhoneChange(index, e.target.value)}
-                                      className="flex-1"
-                                    />
-                                    {index === 0 ? (
-                                      <div className="w-8 h-8 flex items-center justify-center">
-                                        <span className="text-xs text-gray-500">Primary</span>
-                                      </div>
-                                    ) : (
-                                      <Button 
-                                        type="button" 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        onClick={() => handleRemovePhone(index)}
-                                      >
-                                        <X className="h-4 w-4" />
-                                      </Button>
-                                    )}
-                                  </div>
-                                ))}
-                                
-                                {contacts.phones.length < 3 && (
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="mt-2"
-                                    onClick={handleAddPhone}
-                                  >
-                                    <Plus className="h-4 w-4 mr-2" /> Add Phone
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="border-t pt-6">
-                          <h3 className="font-medium mb-4">Notification Preferences</h3>
-                          
-                          <div className="space-y-4">
-                            <FormField
-                              control={profileForm.control}
-                              name="notificationEmail"
-                              render={({ field }) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                  <div className="space-y-0.5">
-                                    <FormLabel className="text-base">Email Notifications</FormLabel>
-                                    <FormDescription>
-                                      Receive lead notifications via email
-                                    </FormDescription>
-                                  </div>
-                                  <FormControl>
-                                    <Switch
-                                      checked={field.value}
-                                      onCheckedChange={field.onChange}
-                                    />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                            
-                            <FormField
-                              control={profileForm.control}
-                              name="notificationSms"
-                              render={({ field }) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                  <div className="space-y-0.5">
-                                    <FormLabel className="text-base">SMS Notifications</FormLabel>
-                                    <FormDescription>
-                                      Receive lead notifications via text message
-                                    </FormDescription>
-                                  </div>
-                                  <FormControl>
-                                    <Switch
-                                      checked={field.value}
-                                      onCheckedChange={field.onChange}
-                                    />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                        </div>
-                        
-                        <Button type="submit" className="bg-brand-700 hover:bg-brand-800">
-                          Save Changes
-                        </Button>
-                      </form>
-                    </Form>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="billing">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Billing Information</CardTitle>
-                  <CardDescription>
-                    Manage your payment methods and subscriptions
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isLoading ? (
-                    <div className="text-center py-8">Loading billing information...</div>
-                  ) : territories.length > 0 ? (
-                    <div className="space-y-6">
-                      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-                        <div className="px-4 py-5 sm:px-6">
-                          <h3 className="text-lg leading-6 font-medium text-gray-900">
-                            Subscription Summary
-                          </h3>
-                          <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                            Details about your territory subscriptions
+            {/* Territories Card */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle>Your Territories</CardTitle>
+                <CardDescription>
+                  You have exclusive rights to leads in these zip codes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {territories && territories.length > 0 ? (
+                  <div className="space-y-4">
+                    {territories.map(territory => (
+                      <div key={territory.id} className="border p-4 rounded-lg flex justify-between items-center">
+                        <div>
+                          <h4 className="font-semibold text-lg">Zip Code: {territory.zip_code}</h4>
+                          <p className="text-sm text-muted-foreground">Type: {territory.lead_type || 'All leads'}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Next billing: {new Date(territory.next_billing_date).toLocaleDateString()}
                           </p>
                         </div>
-                        <div className="border-t border-gray-200">
-                          <dl>
-                            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                              <dt className="text-sm font-medium text-gray-500">Active Territories</dt>
-                              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                {territories.length}
-                              </dd>
-                            </div>
-                            
-                            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                              <dt className="text-sm font-medium text-gray-500">Monthly Total</dt>
-                              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                ${subscriptionInfo.totalMonthly.toFixed(2)}
-                              </dd>
-                            </div>
-                            
-                            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                              <dt className="text-sm font-medium text-gray-500">Next Billing Date</dt>
-                              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                {subscriptionInfo.nextRenewal ? new Date(subscriptionInfo.nextRenewal).toLocaleDateString() : 'N/A'}
-                                {subscriptionInfo.daysRemaining > 0 && (
-                                  <span className="ml-2 text-sm text-gray-500">
-                                    ({subscriptionInfo.daysRemaining} days remaining)
-                                  </span>
-                                )}
-                              </dd>
-                            </div>
-                            
-                            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                              <dt className="text-sm font-medium text-gray-500">Payment Method</dt>
-                              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                <Button onClick={handleManageBilling}>
-                                  Manage Payment Methods
-                                </Button>
-                              </dd>
-                            </div>
-                          </dl>
+                        <div className="bg-green-100 px-3 py-1 rounded text-green-800">
+                          Active
                         </div>
                       </div>
-
-                      <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                        <div className="flex">
-                          <div className="ml-3">
-                            <h3 className="text-sm font-medium text-blue-800">Need Help?</h3>
-                            <div className="mt-2 text-sm text-blue-700">
-                              <p>
-                                For billing questions or to discuss custom territory packages, please contact our support team.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <p className="text-muted-foreground">You don't have any territories yet.</p>
+                    <Button className="mt-4" onClick={() => window.location.href = '/add-territory'}>
+                      Add Territory
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+              {territories && territories.length > 0 && (
+                <CardFooter>
+                  <Button variant="outline" onClick={() => window.location.href = '/add-territory'}>
+                    Add Another Territory
+                  </Button>
+                </CardFooter>
+              )}
+            </Card>
+            
+            {/* Subscription Info Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Subscription</CardTitle>
+                <CardDescription>
+                  Your subscription details
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium">Monthly Total</p>
+                  <p className="text-2xl font-bold">${subscriptionInfo.totalMonthly}</p>
+                </div>
+                
+                {subscriptionInfo.nextRenewal && (
+                  <div>
+                    <p className="text-sm font-medium">Next Renewal</p>
+                    <p>{new Date(subscriptionInfo.nextRenewal).toLocaleDateString()}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {subscriptionInfo.daysRemaining} days remaining
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+        
+        {/* Leads Tab */}
+        <TabsContent value="leads" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Your Leads</CardTitle>
+              <CardDescription>
+                Manage and track your exclusive leads
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {leads && leads.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-2 font-medium">Name</th>
+                        <th className="text-left p-2 font-medium">Contact</th>
+                        <th className="text-left p-2 font-medium">Zip Code</th>
+                        <th className="text-left p-2 font-medium">Status</th>
+                        <th className="text-left p-2 font-medium">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leads.map(lead => (
+                        <tr key={lead.id} className="border-b hover:bg-muted/50">
+                          <td className="p-2">{lead.name || 'Unknown'}</td>
+                          <td className="p-2">
+                            {lead.email && <div>{lead.email}</div>}
+                            {lead.phone && <div>{lead.phone}</div>}
+                          </td>
+                          <td className="p-2">{lead.territory_zip_code}</td>
+                          <td className="p-2">
+                            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                              {lead.status || 'New'}
+                            </span>
+                          </td>
+                          <td className="p-2 text-sm text-muted-foreground">
+                            {new Date(lead.created_at).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">You don't have any leads yet.</p>
+                  <p className="mt-2">
+                    Leads will appear here when they're assigned to your territories.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* Settings Tab */}
+        <TabsContent value="settings" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile Settings</CardTitle>
+              <CardDescription>
+                Update your profile information and preferences
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Profile Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Personal Information</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input 
+                      id="firstName" 
+                      value={firstName} 
+                      onChange={(e) => setFirstName(e.target.value)} 
+                      placeholder="Your first name"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input 
+                      id="lastName" 
+                      value={lastName} 
+                      onChange={(e) => setLastName(e.target.value)} 
+                      placeholder="Your last name"
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input 
+                    id="phone" 
+                    value={phone} 
+                    onChange={(e) => setPhone(e.target.value)} 
+                    placeholder="Your phone number"
+                    type="tel"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Format: +1xxxxxxxxxx (include country code)
+                  </p>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              {/* Contact Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Contact Information</h3>
+                
+                <div className="space-y-2">
+                  <Label>Email Address</Label>
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                        {contacts.emails[0]?.substring(0, 2).toUpperCase() || 'NA'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="text-sm">{contacts.emails[0] || 'No email set'}</div>
+                  </div>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              {/* Notification Preferences */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Notification Preferences</h3>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="notifyEmail" className="block">Email Notifications</Label>
+                      <p className="text-sm text-muted-foreground">Receive new lead notifications by email</p>
                     </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500 mb-4">You don't have any active territories yet</p>
-                      <Button onClick={handleAddArea}>Add Your First Territory</Button>
+                    <Switch 
+                      id="notifyEmail" 
+                      checked={notifyEmail} 
+                      onCheckedChange={setNotifyEmail}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="notifySms" className="block">SMS Notifications</Label>
+                      <p className="text-sm text-muted-foreground">Receive new lead notifications by text message</p>
                     </div>
+                    <Switch 
+                      id="notifySms" 
+                      checked={notifySms && !!phone} 
+                      onCheckedChange={setNotifySms}
+                      disabled={!phone}
+                    />
+                  </div>
+                  
+                  {notifySms && !phone && (
+                    <p className="text-sm text-amber-600">
+                      A phone number is required for SMS notifications. Please add your phone number above.
+                    </p>
                   )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </main>
-      
-      <Footer />
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={handleSaveProfile} disabled={isSaving}>
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

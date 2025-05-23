@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from "sonner";
 import { ensureUserProfile } from './userProfile';
@@ -41,7 +42,7 @@ export const fetchUserData = async (
       
       setContacts({
         emails: [primaryEmail, ...secondaryEmails],
-        phones: [primaryPhone, ...secondaryPhones]
+        phones: [primaryPhone, ...secondaryPhones].filter(Boolean) // Filter out empty strings
       });
     }
     

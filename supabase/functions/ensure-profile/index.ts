@@ -65,7 +65,14 @@ serve(async (req) => {
     }
 
     if (profile) {
-      logStep("Found existing profile", profile);
+      logStep("Found existing profile", { 
+        id: profile.id,
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        user_type: profile.user_type,
+        phone: profile.phone || ''
+      });
+      
       return new Response(JSON.stringify({ 
         success: true, 
         message: "Profile already exists", 
@@ -104,7 +111,10 @@ serve(async (req) => {
       throw new Error(`Failed to create profile: ${createError.message}`);
     }
 
-    logStep("Successfully created profile", { id: createdProfile.id });
+    logStep("Successfully created profile", { 
+      id: createdProfile.id, 
+      phone: createdProfile.phone || '(no phone)' 
+    });
 
     return new Response(JSON.stringify({ 
       success: true, 
