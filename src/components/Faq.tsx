@@ -10,6 +10,10 @@ import {
 const Faq = () => {
   const faqs = [
     {
+      question: "How do you get your leads?",
+      answer: "We use AI technology to contact thousands of potential sellers each day. When a seller shows interest and is vetted, we immediately forward that lead to you. Our AI platform reaches out to homeowners through multiple channels to determine their interest in selling and qualify their expectations."
+    },
+    {
       question: "How many leads can I expect each month?",
       answer: "Lead volume varies by location and market conditions. On average, clients receive 5-10 qualified leads per month per zip code. Some high-demand areas may generate more leads, while others might produce fewer but higher-quality opportunities."
     },

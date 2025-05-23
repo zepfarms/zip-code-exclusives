@@ -49,6 +49,70 @@ const HowItWorks = () => {
         </div>
       </div>
 
+      {/* How We Generate Your Leads Section */}
+      <div className="container mx-auto px-4 mt-20">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">How We Generate Your Leads</h3>
+            <p className="text-lg text-gray-600">
+              Our AI-powered system reaches out to thousands of potential sellers across the country daily.
+            </p>
+          </div>
+          
+          <div className="bg-white rounded-lg border border-gray-200 p-8 md:p-12">
+            <div className="space-y-6">
+              <div className="flex items-start">
+                <div className="flex-shrink-0 w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center mr-4">
+                  <span className="text-sm font-bold text-brand-700">1</span>
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-2">AI-Powered List Building</h4>
+                  <p className="text-gray-600">
+                    We've built advanced AI tools to quickly identify potential homeowners who may be interested in selling. Our process begins with creating comprehensive lists of property owners using multiple data sources.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start">
+                <div className="flex-shrink-0 w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center mr-4">
+                  <span className="text-sm font-bold text-brand-700">2</span>
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-2">Multi-Channel Outreach</h4>
+                  <p className="text-gray-600">
+                    Our AI platform reaches out through multiple channels to determine if homeowners are interested in receiving offers or looking to sell. We contact thousands of potential sellers daily across the country.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start">
+                <div className="flex-shrink-0 w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center mr-4">
+                  <span className="text-sm font-bold text-brand-700">3</span>
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-2">Qualification Process</h4>
+                  <p className="text-gray-600">
+                    Interested homeowners are asked a variety of questions to determine their timeframe, motivation, and the reality of their expectations. This ensures we only send you qualified, serious prospects.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start">
+                <div className="flex-shrink-0 w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center mr-4">
+                  <span className="text-sm font-bold text-brand-700">4</span>
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-2">Immediate Lead Delivery</h4>
+                  <p className="text-gray-600">
+                    Once we're convinced they could be a good lead, we immediately connect them with investors and agents in their market. You receive fresh, exclusive leads as they're qualified.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="container mx-auto px-4 mt-16">
         <div className="bg-brand-50 border border-brand-100 rounded-lg p-8">
           <h3 className="text-2xl font-semibold mb-6 text-center text-brand-700">The LeadXclusive Advantage</h3>

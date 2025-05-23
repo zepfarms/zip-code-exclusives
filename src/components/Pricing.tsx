@@ -79,8 +79,8 @@ const Pricing = () => {
                 <div className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" />
                   <div>
-                    <h4 className="font-medium">7-Day Free Trial</h4>
-                    <p className="text-gray-600 mt-1">Try the service risk-free for 7 days.</p>
+                    <h4 className="font-medium">Start Getting Seller Leads in 7 Days</h4>
+                    <p className="text-gray-600 mt-1">Begin receiving qualified leads within one week of setup.</p>
                   </div>
                 </div>
                 
