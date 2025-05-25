@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -133,9 +132,6 @@ const Header = () => {
               </Link>
               <Link to="/pricing" className="text-gray-600 hover:text-brand-700 transition-colors">
                 Pricing
-              </Link>
-              <Link to="/about" className="text-gray-600 hover:text-brand-700 transition-colors">
-                About Us
               </Link>
             </>
           )}

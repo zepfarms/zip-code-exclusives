@@ -19,7 +19,6 @@ const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const HowItWorksPage = lazy(() => import("./pages/HowItWorksPage"));
 const PricingPage = lazy(() => import("./pages/PricingPage"));
-const AboutUsPage = lazy(() => import("./pages/AboutUsPage"));
 const SellerLeadsPage = lazy(() => import("./pages/SellerLeadsPage"));
 const AddTerritory = lazy(() => import("./pages/AddTerritory"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
@@ -203,7 +202,6 @@ const App = () => {
                   <Route path="/admin" element={<AdminDashboard />} />
                   <Route path="/how-it-works" element={<HowItWorksPage />} />
                   <Route path="/pricing" element={<PricingPage />} />
-                  <Route path="/about" element={<AboutUsPage />} />
                   <Route path="/seller-leads" element={<SellerLeadsPage />} />
                   <Route path="/add-territory" element={<AddTerritory />} />
                   <Route path="/terms-of-service" element={<TermsOfService />} />
