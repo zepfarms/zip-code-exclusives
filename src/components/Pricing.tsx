@@ -56,8 +56,8 @@ const Pricing = () => {
                     <div className="text-sm text-gray-400">per zip code</div>
                   </div>
                 </div>
-                <div className="inline-block bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
-                  Unlimited Leads Included
+                <div className="inline-block bg-blue-100 text-accent-800 px-3 py-1 rounded-full text-sm font-semibold">
+                  Guaranteed 5 leads a month
                 </div>
               </div>
               
@@ -86,8 +86,8 @@ const Pricing = () => {
                 <div className="flex items-start">
                   <CheckCircle className="h-6 w-6 text-teal-700 mr-3 flex-shrink-0" />
                   <div>
-                    <h4 className="font-medium">Unlimited Qualified Leads</h4>
-                    <p className="text-gray-600 mt-1">No caps or limits - get every lead in your territory.</p>
+                    <h4 className="font-medium">Guaranteed 5 Leads Monthly</h4>
+                    <p className="text-gray-600 mt-1">Minimum 5 qualified leads every month in your territory.</p>
                   </div>
                 </div>
                 

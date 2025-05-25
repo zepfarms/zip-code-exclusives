@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
@@ -26,7 +27,7 @@ const CallToAction = () => {
           Ready to Secure Your Exclusive Territory?
         </h2>
         <p className="text-xl opacity-90 max-w-2xl mx-auto mb-8">
-          Check if your desired zip code is available and start receiving qualified seller leads with no competition.
+          Check if your desired zip code is available and start receiving guaranteed 5 leads monthly with no competition.
         </p>
         <Button 
           className="px-8 py-6 text-lg bg-white text-brand-700 hover:bg-gray-100 group"
