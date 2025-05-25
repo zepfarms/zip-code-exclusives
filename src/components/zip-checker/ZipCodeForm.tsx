@@ -32,7 +32,7 @@ const ZipCodeForm = ({
         </label>
         <Input id="zipCode" placeholder="e.g. 90210" value={zipCode} onChange={e => setZipCode(e.target.value)} className="w-full" maxLength={5} />
       </div>
-      <Button type="submit" disabled={isChecking} className="w-full bg-blue-600 hover:bg-blue-500">
+      <Button type="submit" disabled={isChecking} className="w-full bg-accent-600 hover:bg-accent-500">
         {isChecking ? <>
             <Loader className="mr-2 h-4 w-4 animate-spin" />
             Checking...
