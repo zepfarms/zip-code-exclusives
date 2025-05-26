@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -51,9 +52,6 @@ const Index = () => {
               <div className="grid lg:grid-cols-2 gap-12 items-center">
                 {/* Left Column - Content */}
                 <div className="text-left">
-                  {/* Trust Badge */}
-                  
-                  
                   {/* Main Headline */}
                   <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
                     Unlimited Exclusive 
@@ -106,7 +104,53 @@ const Index = () => {
                 {/* Right Column - Visual Elements */}
                 <div className="relative lg:ml-8">
                   {/* Stats Cards */}
+                  <div className="grid grid-cols-2 gap-4 mb-8">
+                    <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/20">
+                      <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl mb-4">
+                        <Users className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div className="text-2xl font-bold text-gray-900 mb-1">1,000+</div>
+                      <div className="text-sm text-gray-600">Active Investors</div>
+                    </div>
+                    
+                    <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/20">
+                      <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-xl mb-4">
+                        <Target className="h-6 w-6 text-green-600" />
+                      </div>
+                      <div className="text-2xl font-bold text-gray-900 mb-1">50,000+</div>
+                      <div className="text-sm text-gray-600">Leads Delivered</div>
+                    </div>
+                    
+                    <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/20">
+                      <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-xl mb-4">
+                        <MapPin className="h-6 w-6 text-purple-600" />
+                      </div>
+                      <div className="text-2xl font-bold text-gray-900 mb-1">500+</div>
+                      <div className="text-sm text-gray-600">Exclusive Territories</div>
+                    </div>
+                    
+                    <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/20">
+                      <div className="flex items-center justify-center w-12 h-12 bg-orange-100 rounded-xl mb-4">
+                        <TrendingUp className="h-6 w-6 text-orange-600" />
+                      </div>
+                      <div className="text-2xl font-bold text-gray-900 mb-1">95%</div>
+                      <div className="text-sm text-gray-600">Success Rate</div>
+                    </div>
+                  </div>
                   
+                  {/* Featured Badge */}
+                  <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-2xl shadow-2xl">
+                    <div className="flex items-center mb-4">
+                      <Shield className="h-8 w-8 mr-3" />
+                      <div>
+                        <div className="font-bold text-lg">Exclusive Territory</div>
+                        <div className="text-blue-100 text-sm">100% Guaranteed</div>
+                      </div>
+                    </div>
+                    <p className="text-blue-100">
+                      Be the only real estate professional receiving seller leads in your zip code. No competition, ever.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -182,13 +226,6 @@ const Index = () => {
               </p>
               
               <div className="bg-white rounded-2xl md:rounded-3xl shadow-2xl p-6 md:p-8 lg:p-12 border border-gray-200 relative transform hover:scale-105 transition-all duration-300 mx-4">
-                {/* Popular Badge */}
-                <div className="absolute -top-4 md:-top-6 left-1/2 transform -translate-x-1/2">
-                  <div className="bg-gradient-to-r from-accent-600 to-accent-700 text-white px-4 md:px-8 py-2 md:py-3 rounded-full text-xs md:text-sm font-semibold shadow-lg">
-                    Most Popular
-                  </div>
-                </div>
-                
                 <div className="mb-8 md:mb-10">
                   <div className="flex items-center justify-center mb-4 md:mb-6">
                     <span className="text-4xl md:text-6xl font-bold text-gray-900">$199</span>
@@ -203,7 +240,7 @@ const Index = () => {
                 </div>
 
                 <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6">
-                  Exclusive Territory Rights
+                  Unlimited Exclusive Seller Leads
                 </h3>
                 <p className="text-base md:text-lg text-gray-600 mb-8 md:mb-10 leading-relaxed px-4">
                   Be the only real estate professional receiving seller leads in your zip code. 
