@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -10,9 +9,10 @@ import Pricing from '@/components/Pricing';
 import Faq from '@/components/Faq';
 import CallToAction from '@/components/CallToAction';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, DollarSign, MapPin, Star, Shield, CheckCircle2, Users, Target, TrendingUp } from 'lucide-react';
+import { ArrowRight, DollarSign, MapPin, Star, Shield, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+
 const Index = () => {
   // Function to scroll to the zip code checker section
   const scrollToZipChecker = () => {
@@ -23,7 +23,9 @@ const Index = () => {
       });
     }
   };
-  return <div className="min-h-screen flex flex-col">
+
+  return (
+    <div className="min-h-screen flex flex-col">
       <Helmet>
         <title>LeadXclusive | Exclusive Real Estate Seller Leads With No Competition</title>
         <meta name="description" content="Get exclusive real estate seller leads with one investor or agent per zip code. High-quality motivated seller leads with no competition in your territory." />
@@ -48,7 +50,7 @@ const Index = () => {
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-blue-400/5 to-indigo-400/5 rounded-full blur-3xl"></div>
           
           <div className="container mx-auto px-4 relative z-10">
-            <div className="max-w-5xl mx-auto">
+            <div className="max-w-7xl mx-auto">
               <div className="grid lg:grid-cols-2 gap-12 items-center">
                 {/* Left Column - Content */}
                 <div className="text-left">
@@ -101,55 +103,10 @@ const Index = () => {
                   </div>
                 </div>
                 
-                {/* Right Column - Visual Elements */}
-                <div className="relative lg:ml-8">
-                  {/* Stats Cards */}
-                  <div className="grid grid-cols-2 gap-4 mb-8">
-                    <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/20">
-                      <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl mb-4">
-                        <Users className="h-6 w-6 text-blue-600" />
-                      </div>
-                      <div className="text-2xl font-bold text-gray-900 mb-1">1,000+</div>
-                      <div className="text-sm text-gray-600">Active Investors</div>
-                    </div>
-                    
-                    <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/20">
-                      <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-xl mb-4">
-                        <Target className="h-6 w-6 text-green-600" />
-                      </div>
-                      <div className="text-2xl font-bold text-gray-900 mb-1">50,000+</div>
-                      <div className="text-sm text-gray-600">Leads Delivered</div>
-                    </div>
-                    
-                    <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/20">
-                      <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-xl mb-4">
-                        <MapPin className="h-6 w-6 text-purple-600" />
-                      </div>
-                      <div className="text-2xl font-bold text-gray-900 mb-1">500+</div>
-                      <div className="text-sm text-gray-600">Exclusive Territories</div>
-                    </div>
-                    
-                    <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/20">
-                      <div className="flex items-center justify-center w-12 h-12 bg-orange-100 rounded-xl mb-4">
-                        <TrendingUp className="h-6 w-6 text-orange-600" />
-                      </div>
-                      <div className="text-2xl font-bold text-gray-900 mb-1">95%</div>
-                      <div className="text-sm text-gray-600">Success Rate</div>
-                    </div>
-                  </div>
-                  
-                  {/* Featured Badge */}
-                  <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-2xl shadow-2xl">
-                    <div className="flex items-center mb-4">
-                      <Shield className="h-8 w-8 mr-3" />
-                      <div>
-                        <div className="font-bold text-lg">Exclusive Territory</div>
-                        <div className="text-blue-100 text-sm">100% Guaranteed</div>
-                      </div>
-                    </div>
-                    <p className="text-blue-100">
-                      Be the only real estate professional receiving seller leads in your zip code. No competition, ever.
-                    </p>
+                {/* Right Column - Zip Code Checker */}
+                <div className="relative lg:ml-8 flex justify-center">
+                  <div className="w-full max-w-md">
+                    <ZipCodeChecker />
                   </div>
                 </div>
               </div>
@@ -297,6 +254,8 @@ const Index = () => {
       </main>
       
       <Footer />
-    </div>;
+    </div>
+  );
 };
+
 export default Index;
