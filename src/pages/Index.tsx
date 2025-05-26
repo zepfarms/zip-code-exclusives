@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -9,7 +10,7 @@ import Pricing from '@/components/Pricing';
 import Faq from '@/components/Faq';
 import CallToAction from '@/components/CallToAction';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, DollarSign, MapPin, Star, Shield, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, DollarSign, MapPin, Star, Shield, CheckCircle2, Target } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 
